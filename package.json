@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "check": "node scripts/check.mjs",
+    "demo:reset": "node scripts/demo_reset.mjs"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^4.0.89",
