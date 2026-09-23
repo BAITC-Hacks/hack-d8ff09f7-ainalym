@@ -61,7 +61,7 @@ export function SkuIndex({ initialQuery = "" }: { initialQuery?: string }) {
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Найти по названию или коду 1С" aria-label="Найти по названию или коду 1С" style={control} data-v2-search />
       <div role="group" aria-label="Поставщик" style={{ display: "flex", gap: 6 }}>{SUP.map(([id, label]) => <Btn key={id || "all"} variant={supplier === id ? "black" : "secondary"} aria-pressed={supplier === id} onClick={() => setSupplier(id)}>{label}</Btn>)}</div>
-      {resp ? <span style={{ marginLeft: "auto", font: "var(--v2-meta)", color: "var(--v2-muted)" }}>Показано {items.length} из {resp.total}</span> : null}
+      {resp ? <span style={{ marginLeft: 8, font: "var(--v2-meta)", color: "var(--v2-muted)" }}>Показано {items.length} из {resp.total}</span> : null}
     </div>
     {error && !resp ? <Unavailable title="Список товаров недоступен" detail={error.message} retry={() => setAttempt(n => n + 1)} /> : null}
     {loading && !resp ? <Loading label="Загружаю товары…" lines={6} /> : null}

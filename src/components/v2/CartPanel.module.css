@@ -27,7 +27,7 @@
 
 .supplier { padding: 14px 0 18px; border-bottom: 1px solid var(--v2-line); }
 .supplier:last-child { border-bottom: 0; }
-.supHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.supHead { display: flex; align-items: baseline; justify-content: flex-start; gap: 16px; }
 .supName { margin: 0; font: var(--v2-body-strong); }
 .supMeta { font: var(--v2-meta); color: var(--v2-muted); font-variant-numeric: tabular-nums; }
 

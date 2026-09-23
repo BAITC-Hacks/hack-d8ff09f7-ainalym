@@ -32,7 +32,7 @@
 .blockTitle { margin: 0; font: 500 19px/24px var(--v2-font); letter-spacing: -.015em; display: flex; align-items: center; gap: 10px; }
 .blockCount { font: 500 12px/22px var(--v2-font); color: var(--v2-ink-2); background: var(--v2-well); border-radius: 999px; padding: 0 8px; }
 .recCard { padding: 20px; display: grid; gap: 14px; border-color: var(--v2-line-strong); }
-.recTop { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.recTop { display: flex; justify-content: flex-start; align-items: center; gap: 16px; flex-wrap: wrap; }
 .recQtyRow { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .recQty { margin: 0; font: 600 44px/1 var(--v2-font); letter-spacing: -.035em; }
 .recUnit { font: var(--v2-body); color: var(--v2-muted); }
