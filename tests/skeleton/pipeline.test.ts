@@ -38,7 +38,7 @@ describe("world inbox and reviewer views", () => {
     expect(todayBody.queue_count).toBe(1);
     expect(todayBody.pulse.agents.ratio).toBe(1);
     expect(todayBody.background).toHaveLength(1);
-    expect(todayBody.commitments).toEqual([expect.objectContaining({ id: "PR-1", state: "needs_review" })]);
+    expect(todayBody.commitments).toEqual([]); // обязательства появляются только после утверждения заказа (как в /money)
     expect(queueBody.items[0].title).toContain("SE");
   });
 

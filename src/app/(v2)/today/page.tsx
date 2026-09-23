@@ -248,7 +248,7 @@ function DecisionCard({ item, onDone }: { item: Decision; onDone: () => void }) 
           {p.error && <span className={styles.versionNote}>Версия предложения недоступна — обновите страницу</span>}
           {approveOpt && <Button variant="primary" busy={busy === "approve"} disabled={version === undefined || busy !== null} onClick={() => decide("approve")} title={approveOpt.effect}>{approveOpt.label}</Button>}
           {rejectOpt && <Button variant="quiet" busy={busy === "reject"} disabled={version === undefined || busy !== null} onClick={() => decide("reject")} title={rejectOpt.effect}>{rejectOpt.label}</Button>}
-          <Link href={`/replenishment?supplier=${encodeURIComponent(item.title.match(/поставщику (\S+)/)?.[1] ?? "")}`} className={styles.reviewLink}>Смотреть позиции<ArrowRight size={14} aria-hidden="true" /></Link>
+          <Link href={`/replenishment?supplier=${encodeURIComponent(item.title.match(/поставщику ([^\s:]+)/)?.[1] ?? "")}`} className={styles.reviewLink}>Смотреть позиции<ArrowRight size={14} aria-hidden="true" /></Link>
         </div>
       )}
     </article>
