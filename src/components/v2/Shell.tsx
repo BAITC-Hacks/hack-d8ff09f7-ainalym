@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { House, Package, ClipboardCheck, Truck, Boxes, Wallet, Activity, Workflow, AudioLines, Search, Bell, WifiOff, Menu, X } from "lucide-react";
+import { House, Package, ClipboardCheck, Truck, Boxes, Wallet, Activity, Settings2, AudioLines, Search, Bell, WifiOff, Menu, X } from "lucide-react";
 import { useApi, useApiSync } from "@/components/shell/api";
 import styles from "./shell.module.css";
 import { LoadRibbon } from "./loading";
@@ -15,7 +15,7 @@ const NAV = [
   { href: "/skus", label: "Товары", icon: Boxes, count: null },
   { href: "/money", label: "Деньги", icon: Wallet, count: null },
   { href: "/world", label: "Лента", icon: Activity, count: null },
-  { href: "/connections", label: "Связи", icon: Workflow, count: null },
+  { href: "/settings", label: "Настройки", icon: Settings2, count: null },
   { href: "/assistant", label: "Помощник", icon: AudioLines, count: null },
 ];
 
