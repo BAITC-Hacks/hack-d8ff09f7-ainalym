@@ -8,7 +8,16 @@ export type ThreadEntry = {
   question?: string; response?: AssistantResult;
   /** Spoken turn (voice captions) without a card. */
   say?: { who: "user" | "assistant"; text: string };
+  /** Structured render hint from a voice tool result (VOICE-FIX-2), when present. */
+  render?: Record<string, unknown>;
 };
+/** Transcript captions must be Cyrillic/Latin/digits (plus punctuation) — anything else is a transcription artefact and is dropped. */
+export function cleanCaption(text: string): string | null {
+  const value = text.trim();
+  if (!value) return null;
+  if (/[^\p{Script=Cyrillic}\p{Script=Latin}\p{N}\p{P}\p{S}\p{Z}\s]/u.test(value)) return null;
+  return value;
+}
 export const THREAD_KEY = "ainalym.assistant.thread.v1";
 const THREAD_TTL = 12 * 60 * 60 * 1000;
 const LIMIT = 60;

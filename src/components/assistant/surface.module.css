@@ -41,8 +41,7 @@
 .chip { height: 30px; padding: 0 12px; border: 1px solid var(--v2-line); border-radius: 999px; background: var(--v2-card); color: var(--v2-ink); font: 400 13px/28px var(--v2-font); cursor: pointer; white-space: nowrap; transition: background var(--v2-fast) var(--v2-ease), border-color var(--v2-fast) var(--v2-ease); }
 .chip:hover { border-color: var(--v2-line-strong); background: var(--v2-well); }
 .chip:disabled { opacity: .55; cursor: default; }
-.waveRow { height: 56px; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; width: min(100%, 420px); }
-.controls { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.controls { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .composer { flex: 1; min-width: 0; display: flex; align-items: flex-end; gap: 8px; border: 1px solid var(--v2-line-strong); border-radius: 14px; background: var(--v2-card); padding: 6px 6px 6px 14px; transition: border-color var(--v2-fast) var(--v2-ease); }
 .composer:focus-within { border-color: var(--v2-ink); }
 .composer textarea { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; resize: none; font: var(--v2-body); color: var(--v2-ink); min-height: 24px; max-height: 140px; padding: 5px 0; }
@@ -50,23 +49,20 @@
 .send { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border: 0; border-radius: 10px; background: var(--v2-ink); color: var(--v2-canvas); cursor: pointer; transition: background var(--v2-fast) var(--v2-ease); }
 .send:hover { background: var(--v2-ink-2); }
 .send:disabled { background: var(--v2-well); color: var(--v2-muted); cursor: default; }
-.mic { flex: none; width: 64px; height: 64px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--v2-ink); color: var(--v2-canvas); cursor: pointer; box-shadow: var(--v2-shadow-pop); transition: background var(--v2-fast) var(--v2-ease), transform var(--v2-fast) var(--v2-ease); }
-.mic:hover { transform: translateY(-1px); }
-.mic:disabled { background: var(--v2-well); color: var(--v2-muted); box-shadow: none; cursor: default; transform: none; }
-.mic[data-state="listening"] { background: var(--v2-accent); color: var(--v2-on-accent); box-shadow: 0 0 0 6px rgba(223,230,28,.28), var(--v2-shadow-pop); }
-.mic[data-state="speaking"] { background: var(--v2-accent); color: var(--v2-on-accent); }
-.mic[data-state="thinking"] { background: var(--v2-ink-2); }
-@media (prefers-reduced-motion: no-preference) {
-  .mic[data-state="listening"] { animation: halo 1.6s ease-in-out infinite; }
-  .mic[data-state="thinking"] { animation: breathe 1.4s ease-in-out infinite alternate; }
-}
-@keyframes halo { 0%, 100% { box-shadow: 0 0 0 4px rgba(223,230,28,.32), var(--v2-shadow-pop); } 50% { box-shadow: 0 0 0 12px rgba(223,230,28,.12), var(--v2-shadow-pop); } }
-@keyframes breathe { from { opacity: 1; } to { opacity: .72; } }
+.micToggle { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--v2-line-strong); border-radius: 50%; background: transparent; color: var(--v2-muted); cursor: pointer; transition: background var(--v2-fast) var(--v2-ease), border-color var(--v2-fast) var(--v2-ease), color var(--v2-fast) var(--v2-ease); }
+.micToggle:hover { border-color: var(--v2-ink); color: var(--v2-ink); }
+.micToggle:disabled { border-color: var(--v2-line); color: var(--v2-muted); background: var(--v2-well); cursor: default; }
+.micToggle[aria-pressed="true"] { background: var(--v2-accent); border-color: var(--v2-accent); color: var(--v2-on-accent); box-shadow: 0 0 0 4px rgba(223,230,28,.28); }
+.micToggle[data-state="thinking"] { background: var(--v2-ink-2); border-color: var(--v2-ink-2); color: var(--v2-canvas); box-shadow: none; }
+@media (prefers-reduced-motion: no-preference) { .micToggle[data-state="listening"] { animation: halo 1.6s ease-in-out infinite; } }
+@keyframes halo { 0%, 100% { box-shadow: 0 0 0 3px rgba(223,230,28,.32); } 50% { box-shadow: 0 0 0 8px rgba(223,230,28,.12); } }
+.waveInline { flex: none; width: 112px; height: 40px; display: flex; align-items: center; }
+.waveInline canvas { height: 28px; }
 .state { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 24px; margin-top: 10px; font: var(--v2-meta); color: var(--v2-ink-2); }
 .soundBtn { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--v2-line-strong); border-radius: 999px; background: var(--v2-card); color: var(--v2-ink); font: 500 13px/26px var(--v2-font); cursor: pointer; }
 .soundBtn:hover { background: var(--v2-well); }
 .hint { display: flex; justify-content: center; gap: 14px; margin: 6px 0 0; font: var(--v2-caption); color: var(--v2-muted); }
-.chip:focus-visible, .send:focus-visible, .mic:focus-visible, .linkBtn:focus-visible, .soundBtn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.chip:focus-visible, .send:focus-visible, .micToggle:focus-visible, .linkBtn:focus-visible, .soundBtn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
 @media (max-width: 767px) {
   .surface { margin: -4px 0 -48px; min-height: calc(100dvh - 56px - 120px); }
@@ -76,6 +72,6 @@
   .card article { padding: 12px; }
   .chip { min-height: 36px; line-height: 34px; }
   .composer textarea { font-size: 16px; }
-  .mic { width: 60px; height: 60px; }
+  .waveInline { width: 72px; }
   .hint { display: none; }
 }
