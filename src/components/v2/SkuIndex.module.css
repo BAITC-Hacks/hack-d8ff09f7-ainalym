@@ -1,0 +1,16 @@
+/* /skus table — thumbnail 56 (64 on wide screens), 72 px rows, name column left with its secondary lines
+   right under it; only the numeric columns (остаток, цена) sit right-aligned and tabular. */
+.table { display: flex; flex-direction: column; }
+.tr { display: grid; grid-template-columns: 56px minmax(0, 1fr) 132px 148px; column-gap: 20px; align-items: center; min-height: 72px; padding: 8px 0; border-bottom: 1px solid var(--v2-line); color: inherit; text-decoration: none; }
+.tr:first-child { border-top: 1px solid var(--v2-line); }
+.tr:hover { background: rgba(20,20,19,.03); }
+.lead { flex: none; }
+.lead img, .lead span { width: 56px !important; height: 56px !important; border-radius: 8px; }
+.name { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.label { font: var(--v2-body); overflow-wrap: anywhere; }
+.meta { font: var(--v2-meta); color: var(--v2-muted); }
+.warn { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 2px; }
+.num { display: flex; flex-direction: column; align-items: flex-end; text-align: right; gap: 2px; font-variant-numeric: tabular-nums; }
+.num .meta { white-space: nowrap; }
+@media (min-width: 1440px) { .tr { grid-template-columns: 64px minmax(0, 1fr) 140px 160px; } .lead img, .lead span { width: 64px !important; height: 64px !important; } }
+@media (max-width: 767px) { .tr { grid-template-columns: 56px minmax(0, 1fr); row-gap: 6px; } .num { grid-column: 2; align-items: flex-start; text-align: left; flex-direction: row; gap: 8px; } }

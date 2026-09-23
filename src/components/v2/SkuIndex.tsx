@@ -1,10 +1,12 @@
 "use client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { ApiError, apiRequest, useApiSync } from "@/components/shell/api";
-import { Btn, Empty, Loading, PageHead, Pill, Row, Rows, Unavailable, fmtMoney, fmtQty } from "./ui";
+import { Btn, Empty, Loading, PageHead, Pill, Unavailable, fmtMoney, fmtQty } from "./ui";
 import ui from "./ui.module.css";
+import t from "./SkuIndex.module.css";
 
 /** Product thumbnail (public /sku/*.jpg or category fallback from /api/skus); neutral placeholder when the catalogue has no image.
  *  Hover / focus (or a tap on touch screens) floats a larger preview next to the thumbnail, clamped inside the viewport. */
@@ -12,7 +14,7 @@ function Thumb({ src }: { src?: string | null }) {
   const [pop, setPop] = useState<{ x: number; y: number } | null>(null);
   const touch = useRef(false);
   const place = (el: HTMLElement) => {
-    const r = el.getBoundingClientRect(); const size = Math.min(300, Math.floor(window.innerWidth * 0.8), Math.floor(window.innerHeight * 0.7)); const gap = 12;
+    const r = el.getBoundingClientRect(); const size = Math.min(360, Math.floor(window.innerWidth * 0.8), Math.floor(window.innerHeight * 0.7)); const gap = 12;
     const x = r.right + gap + size <= window.innerWidth ? r.right + gap : Math.max(8, r.left - gap - size);
     const y = Math.min(Math.max(8, r.top + r.height / 2 - size / 2), window.innerHeight - size - 8);
     setPop({ x, y });
@@ -21,7 +23,7 @@ function Thumb({ src }: { src?: string | null }) {
   if (!src) return <span className={ui.thumbNone} aria-hidden="true" data-sku-thumb="none" />;
   return <span className={ui.thumbWrap} onMouseEnter={e => { if (!touch.current) place(e.currentTarget); }} onMouseLeave={() => { if (!touch.current) setPop(null); }} onFocus={e => place(e.currentTarget)} onBlur={() => setPop(null)}
     onPointerDown={e => { touch.current = e.pointerType === "touch"; }} onClick={e => { if (touch.current) { e.preventDefault(); e.stopPropagation(); if (pop) setPop(null); else place(e.currentTarget); } }} tabIndex={0} aria-label="Показать фото крупнее">
-    <img src={src} alt="" loading="lazy" decoding="async" width={28} height={28} className={ui.thumb} data-sku-thumb />
+    <img src={src} alt="" loading="lazy" decoding="async" width={56} height={56} className={ui.thumb} data-sku-thumb />
     {pop && <span className={ui.thumbPop} style={{ left: pop.x, top: pop.y }} aria-hidden="true"><img src={src} alt="" decoding="async" /></span>}
   </span>;
 }
@@ -64,7 +66,17 @@ export function SkuIndex({ initialQuery = "" }: { initialQuery?: string }) {
     {error && !resp ? <Unavailable title="Список товаров недоступен" detail={error.message} retry={() => setAttempt(n => n + 1)} /> : null}
     {loading && !resp ? <Loading label="Загружаю товары…" lines={6} /> : null}
     {resp && items.length === 0 ? <Empty title="Ничего не найдено">Измените запрос или выберите другого поставщика.</Empty> : null}
-    {items.length ? <Rows>{items.map(s => <Row key={s.code_1c} href={`/skus/${encodeURIComponent(s.code_1c)}`} lead={<Thumb src={s.image_url} />} label={s.name.replace(/\s+/g, " ")} meta={`${s.code_1c}${s.article ? ` · арт. ${s.article}` : ""} · ${s.supplier_name ?? s.supplier_id}${s.category ? ` · ${s.category}` : ""}`} value={s.unit_cost ? fmtMoney(s.unit_cost) : <Pill tone="warn">себестоимость не задана</Pill>} valueMeta={`остаток ${fmtQty(s.on_hand_qty, s.unit ?? "шт")} · кратность ${fmtQty(s.moq, "шт")}`} />)}</Rows> : null}
+    {items.length ? <div className={t.table}>{items.map(s => <Link key={s.code_1c} href={`/skus/${encodeURIComponent(s.code_1c)}`} className={t.tr}>
+      <div className={t.lead}><Thumb src={s.image_url} /></div>
+      <div className={t.name}>
+        <span className={t.label}>{s.name.replace(/\s+/g, " ")}</span>
+        <span className={t.meta}>{`${s.code_1c}${s.article ? ` · арт. ${s.article}` : ""} · ${s.supplier_name ?? s.supplier_id}${s.category ? ` · ${s.category}` : ""}`}</span>
+        <span className={t.meta}>{`остаток ${fmtQty(s.on_hand_qty, s.unit ?? "шт")} · кратность ${fmtQty(s.moq, "шт")}`}</span>
+        {!s.unit_cost && <span className={t.warn}><Pill tone="warn">себестоимость не задана</Pill></span>}
+      </div>
+      <div className={t.num}><span>{fmtQty(s.on_hand_qty, s.unit ?? "шт")}</span><span className={t.meta}>остаток</span></div>
+      <div className={t.num}><span>{s.unit_cost ? fmtMoney(s.unit_cost) : "—"}</span><span className={t.meta}>себестоимость</span></div>
+    </Link>)}</div> : null}
     {resp && resp.total > items.length ? <p style={{ font: "var(--v2-meta)", color: "var(--v2-muted)", margin: 0 }}>Показаны первые {items.length} — уточните запрос, чтобы найти остальные.</p> : null}
   </div>;
 }

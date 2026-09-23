@@ -48,7 +48,7 @@
 .thumb { display: block; width: 28px; height: 28px; border-radius: 6px; object-fit: cover; background: var(--v2-well); border: 1px solid var(--v2-line); }
 .thumbWrap { position: relative; display: block; width: 28px; height: 28px; border-radius: 6px; outline: none; }
 .thumbWrap:focus-visible { outline: 2px solid var(--v2-ring); outline-offset: 2px; }
-.thumbPop { position: fixed; z-index: 40; width: min(300px, 80vw, 70vh); aspect-ratio: 1; padding: 10px; box-sizing: border-box; border-radius: 12px; background: #fff; border: 1px solid var(--v2-line); box-shadow: var(--v2-shadow-pop); pointer-events: none; animation: thumbPopIn 120ms var(--v2-ease) both; }
+.thumbPop { position: fixed; z-index: 40; width: min(360px, 80vw, 70vh); aspect-ratio: 1; padding: 10px; box-sizing: border-box; border-radius: 12px; background: #fff; border: 1px solid var(--v2-line); box-shadow: var(--v2-shadow-pop); pointer-events: none; animation: thumbPopIn 120ms var(--v2-ease) both; }
 .thumbPop img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: 6px; }
 @keyframes thumbPopIn { from { opacity: 0; transform: scale(.98); } to { opacity: 1; transform: none; } }
 .thumbNone { display: block; width: 28px; height: 28px; border-radius: 6px; background: var(--v2-well); border: 1px dashed var(--v2-line-strong); }
