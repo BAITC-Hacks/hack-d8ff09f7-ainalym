@@ -1,0 +1,23 @@
+.page { display: grid; gap: 28px; max-width: 1080px; }
+.pageHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.pageHead > div { display: grid; gap: 12px; }
+.eyebrow { color: var(--muted); font: var(--t-caption); letter-spacing: .08em; }
+.subtitle { color: var(--muted); line-height: 1.5; max-width: 68ch; }
+.meta { color: var(--muted); font: var(--t-meta); line-height: 1.45; }
+.modes { border: 1px solid var(--line); border-radius: var(--radius-panel); padding: var(--panel-pad); background: var(--panel); }
+.sectionHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.axes { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); margin: 0; gap: 24px; }
+.axes > div { display: grid; align-content: start; gap: 8px; }
+.axes dt { display: flex; align-items: center; gap: 8px; color: var(--muted); font: var(--t-label); }
+.axes dd { margin: 0; font: var(--t-row-title); line-height: 1.45; }
+.axes dd.meta { font: var(--t-meta); line-height: 1.45; }
+.section { min-width: 0; }
+.rows { margin: 0; padding: 0; list-style: none; }
+.sourceRow,.serviceRow { display: grid; grid-template-columns: 20px minmax(0,1fr) auto; align-items: start; gap: 12px; padding: 18px 0; border-bottom: 1px solid var(--line); min-height: 72px; }
+.sourceRow svg,.serviceRow > svg { color: var(--muted); margin-top: 2px; }
+.sourceRow h3,.serviceRow h3 { overflow-wrap: anywhere; margin-bottom: 4px; }
+.sourceTime { color: var(--muted); font: var(--t-label); }
+.serviceRow a { display: flex; align-items: center; gap: 4px; min-height: 36px; font: var(--t-label); }
+.unavailable { padding-block: 16px; color: var(--muted); line-height: 1.5; }
+.footer { color: var(--muted); font: var(--t-meta); line-height: 1.5; display: grid; gap: 8px; max-width: 80ch; }
+@media (max-width:767px) { .page { gap: 24px; } .pageHead { gap: 12px; } .axes { grid-template-columns: 1fr; gap: 20px; } .sourceRow,.serviceRow { grid-template-columns: 20px minmax(0,1fr); } .sourceTime,.serviceRow a { grid-column: 2; } .serviceRow a { min-height: 44px; } .sectionHead { align-items: flex-start; } }
