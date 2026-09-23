@@ -1,4 +1,4 @@
-Done: provider/draft live smokes; partner WE-043/044/045 pass; AI gate 35/35; build/tsc green.
-Undone: L1 ledger implementation still unmerged; trace gate awaits it.
-Resumable: rerun tests/ai/worker_integration.test.ts with real ledger, then finish closeout.
-SHA: a37ce46 (previous feature commit; this checkpoint commit follows).
+Done: providers, decisions, worker, drafts, semantic columns; AI gate 38/38; build/tsc green.
+Undone: L1 ledger implementation still unmerged; persisted trace gate awaits it.
+Resumable: merge main when L1 lands, verify agent_run/action rows and failures, then finish closeout.
+SHA: 36b21d0 (merged base before this checkpoint commit).
