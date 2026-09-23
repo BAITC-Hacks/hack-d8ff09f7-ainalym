@@ -2,7 +2,7 @@
 
 Кейс HackAlem AI (трек «Логистика», партнёр ТОО «Электрокомплект», ekt.kz). Ниже — только то, что подтверждается текущим репозиторием. Статус каждой возможности с временем проверки (UTC) — в [`docs/TASK_MAP.md`](docs/TASK_MAP.md); README не утверждает ничего сверх этой таблицы.
 
-> Состояние README: **v1.8**, основа `main` @ `81f73d6`, наблюдение 2026-09-23 10:27Z; шаги разделов 7–8 пройдены на чистом клоне этого коммита без ключей. Разделы, помеченные «ожидается», описывают контракт (`docs/CONTRACTS.md`), а не работающий код; они обновляются по мере слияния веток.
+> Состояние README: **v1.8**, основа `main` @ `3b3dcbd`, наблюдение 2026-09-23 10:39Z; шаги разделов 7–8 пройдены на чистом клоне этого коммита без ключей. Разделы, помеченные «ожидается», описывают контракт (`docs/CONTRACTS.md`), а не работающий код; они обновляются по мере слияния веток.
 
 ## 1. Название
 
@@ -21,7 +21,7 @@
 
 ## 3. Что реализовано
 
-Наблюдение: 2026-09-23 10:25Z, `main` @ `da810b1`, чистый клон без ключей. Подтверждено кодом и проверками:
+Наблюдение: 2026-09-23 10:39Z, `main` @ `3b3dcbd`, чистый клон без ключей. Подтверждено кодом и проверками:
 
 - **данные:** 12 выгрузок партнёра (`fixtures/partner/`) → SQLite командой `npm run etl` (≈ 7 с): 3 909 артикулов, 248 915 строк продаж, 313 строк товара в пути, 1 591 месяц дефицита; текущий остаток на 22.09.2026 (SE — «Свободный остаток», IEK — остаток на начало сентября минус отгрузки сентября);
 - **расчёт M1–M5 на данных партнёра:** `node scripts/scenario.mjs` → 11 строк `[PASS]` (M1, M1-active, M1-source, M2, M2-peak, M3, M4, M5-full, M5, Money, World); `POST /api/calc/run` по поставщику или категории → рекомендации по каждому артикулу с обоснованием (`GET /api/recommendations`), предложение «Заказ поставщику …» в очереди (`GET /api/queue`, `/api/proposals/:id/approve|reject`);
@@ -32,7 +32,7 @@
 - **экраны:** «Сегодня» `/today`, «Закупки» `/replenishment`, карточка `/skus/:code`, «Проверка» `/review`, заказ `/orders/:id`, «Деньги» `/money`, «Связи» `/connections`, «Помощник» `/assistant`, лента `/world`, поставщик `/supplier/:po_id`, `/peers`;
 - **хостинг-демо:** код доступа, лимиты запросов и живых вызовов (`src/middleware.ts`, `src/server/demo_guard.ts`), контейнер и скрипты развёртывания.
 
-Проверки на 10:25Z (чистый клон `81f73d6`, без ключей, после `npm run etl`): `npm run check` → `check: passed=235 failed=0 skipped=12 externally-unverified=6` — 6 `UNVERIFIED`: три живых провайдера и живой черновик письма (включаются `AINALYM_LIVE_SMOKE=1` и ключами), две проверки живого голоса с микрофоном; `node scripts/scenario.mjs` → 11 × `[PASS]`.
+Проверки на 10:25Z (чистый клон `3b3dcbd`, без ключей, после `npm run etl`): `npm run check` → `check: passed=250 failed=0 skipped=7 externally-unverified=7` — 7 `UNVERIFIED`: три живых провайдера, живой черновик письма и живой каталог ekt.kz (включаются `AINALYM_LIVE_SMOKE=1` и ключами), две проверки живого голоса с микрофоном; `node scripts/scenario.mjs` → 11 × `[PASS]`.
 
 Не подтверждено (статус — `docs/TASK_MAP.md`): живой голос с микрофоном, снимки экранов части страниц, отправка поставщику (её нет по замыслу — только черновик).
 
@@ -156,12 +156,12 @@ npm run dev        # http://localhost:3000 → /today
 
 ## 8. Как проверить
 
-Без ключей, на данных партнёра, после шагов раздела 7. Ожидаемый вывод — наблюдение 10:25Z на чистом клоне `81f73d6`.
+Без ключей, на данных партнёра, после шагов раздела 7. Ожидаемый вывод — наблюдение 10:25Z на чистом клоне `3b3dcbd`.
 
 **Командами**
 
 1. `npm run etl` — строки `sku: 3909`, `sales_line: 248915`, `sales_month: 99634`, `stock_month: 117282`, `in_transit: 313`, `season_index: 24`, `stockout months: 1591`.
-2. `npm run check` — итоговая строка `check: passed=235 failed=0 skipped=12 externally-unverified=6` (`UNVERIFIED` — живые провайдеры и микрофон, раздел 3).
+2. `npm run check` — итоговая строка `check: passed=250 failed=0 skipped=7 externally-unverified=7` (`UNVERIFIED` — живые провайдеры и микрофон, раздел 3).
 3. `node scripts/scenario.mjs` — пять проверок ТЗ на эталонных артикулах:
    - `[PASS] M1 — Товар в пути +100 уменьшает чистую потребность …` (IEK `010500006_`, Δ = 100), `[PASS] M1-active — При дефиците +100 в пути снижает потребность до кратности на 100 (SKU=010300095_, Δ=100.000)` и `[PASS] M1-source — Отсутствующий обязательный источник назван`;
    - `[PASS] M2 — Сезонный профиль SKU меняет прогноз по месяцам (max/min=10.41)` и `[PASS] M2-peak — … (peak quarter=3)` (SE `130300027_`);
@@ -178,11 +178,13 @@ npm run dev        # http://localhost:3000 → /today
 7. **M3 — дефицит:** в рекомендации `/skus/300200898_` (рамка ARTGALLERY сталь, SE) — «Без продаж из-за отсутствия остатка: 2026-03, 2026-04»; эталонный `130200032_` — строка M3 в `scenario.mjs`.
 8. **M4 — разовые документы:** расчёт по IEK (`POST /api/calc/run` с `{"scope":{"supplier":"IEK"}}`) → `/skus/010500008_` → «исключены разовые документы: …, 20000099834, …» (порог 720 шт); пресет жюри «Разовый заказ 5000 шт» в ленте → документ в списке исключённых, регулярный спрос почти не меняется.
 8a. **Правка количества менеджером:** `GET /api/recommendations?supplier=SE` → строка `300200745_` (`id`, `version`: 1, 126 шт) → `POST /api/recommendations/:id/adjust` с `{"qty": 132, "reason": "объект клиента сдвинулся на октябрь", "version": 1}` → `qty_recommended` остаётся 126, `qty_adjusted` = 132, состояние `adjusted`, версия 2; повтор с `"version": 1` → **409** `{"ok":false,"code":"stale_version","current_version":2}` — устаревшая версия не перезаписывает правку.
-9. **M5 — заказ по поставщикам:** `GET /api/recommendations` / `/replenishment` — группы IEK и SE, у каждой строки срочность и обоснование → очередь `GET /api/queue`: «Заказ поставщику SE: 294 позиций» → текущая версия предложения — `GET /api/proposals/:id` (поле `proposal.version`; события ленты её повышают) → `POST /api/proposals/:id/approve` с `{"proposal_version": <текущая версия>}` → черновик заказа `GET /api/orders/:id` (SE, 67 651 шт, 67 449 839,07 KZT; себестоимость известна для 262 из 294 строк) → `POST /api/orders/:id/approve` с `{"version": <версия заказа>}` → экспорт `GET /api/orders/:id/export.xlsx`: 294 строки, колонки «Код 1с», «Артикул поставщика», «Наименование», «Кол-во», «Кратность», «Срочность», «Обоснование» → `/supplier/:po_id` показывает «Черновик заказа — не отправлен» → `GET /api/money`: обязательства по SE — предоплата 20 234 951,72 KZT сегодня и остаток 47 214 887,35 KZT к 12.11.2026.
+9. **M5 — заказ по поставщикам:** `GET /api/recommendations` / `/replenishment` — группы IEK и SE, у каждой строки срочность и обоснование → очередь `GET /api/queue`: «Заказ поставщику SE: 294 позиций» → текущая версия предложения — `GET /api/proposals/:id` (поле `proposal.version`; события ленты её повышают) → `POST /api/proposals/:id/approve` с `{"proposal_version": <текущая версия>}` → черновик заказа `GET /api/orders/:id` (SE, 67 651 шт, 67 449 839,07 KZT; себестоимость известна для 262 из 294 строк) → `POST /api/orders/:id/approve` с `{"version": <версия заказа>}` → экспорт `GET /api/orders/:id/export.xlsx` — файл «Заказ_поставщику_SE_<дата>.xlsx» в форме документа 1С «Заказ поставщику»: 294 строки, колонки «Номенклатура.Код», «Номенклатура», «Артикул», «Ед.», «Количество», «Цена», «Поставщик», «Дата поставки (ETA)», «Срочность», «Обоснование»; срочность по строкам: критично 58, скоро 83, планово 153 → `/supplier/:po_id` показывает «Черновик заказа — не отправлен» → `GET /api/money`: обязательства по SE — предоплата 20 234 951,72 KZT сегодня и остаток 47 214 887,35 KZT к 12.11.2026.
 
-Вывод проверки чистого клона (`bash scripts/clean_clone_check.sh`) на 10:27Z: `CLEAN-CLONE: check: passed=235 failed=0 skipped=12 externally-unverified=6` → `CLEAN-CLONE: PASS @ 81f73d6` (локальный клон `main`). Финальный прогон против GitHub — ≈ 12:10Z, вывод будет здесь.
+Вывод проверки чистого клона (`bash scripts/clean_clone_check.sh`: клон → `npm install` → `.env.local` из `.env.example` → `npm run etl` → `npm run check`) на 10:39Z: `CLEAN-CLONE: check: passed=250 failed=0 skipped=7 externally-unverified=7` → `CLEAN-CLONE: PASS @ 3b3dcbd` (локальный клон `main`). Финальный прогон против GitHub — ≈ 12:10Z, вывод будет здесь.
 
 ## 9. Данные и интеграции
+
+Вход: стандартные отчёты 1С УТ (динамика продаж, остатки, товар в пути, MOQ) загружаются как есть, без доработки конфигурации. Выход для 1С — файл в форме документа «Заказ поставщику» (раздел 8, шаг 9); `GET /api/modes` показывает внешний контур как «Экспорт для 1С (файл)».
 
 Данные — обезличенные выгрузки партнёра ТОО «Электрокомплект», предоставленные организатором для кейса, без изменений (`fixtures/partner/`, раскрытие — `DISCLOSURE.md`; строки, периоды и загружаемые поля по каждому файлу — [`fixtures/PROVENANCE.md`](fixtures/PROVENANCE.md)). Данных о клиентах нет — только номера документов.
 
@@ -205,7 +207,7 @@ npm run dev        # http://localhost:3000 → /today
 
 Политики (заявлены, редактируемы): срок поставки IEK 40 дней, SE 50 дней; период пересмотра 30 дней; уровень сервиса 90 %; условия оплаты — предоплата 30 % при утверждении, остаток к сроку поставки; ожидаемая дата прихода товара в пути = 22.09.2026 + срок поставки (IEK 01.11.2026, SE 11.11.2026). Правила разбора: пустая ячейка продаж = 0; пустой остаток = неизвестен (не ноль); кратность/MOQ 0 или пусто = 1; себестоимость SE 0 = неизвестна. Это допущения команды, не данные партнёра.
 
-Изображения товаров (`image_url` у артикулов и рекомендаций) — иллюстративные: миниатюры из официального каталога IEK и иллюстрации категорий; происхождение — `fixtures/PROVENANCE.md`.
+Изображения товаров (`image_url` у артикулов и рекомендаций) — иллюстративные: миниатюры из официального каталога IEK и иллюстрации категорий; происхождение — `fixtures/PROVENANCE.md`. Каталог ekt.kz подключён адаптером только для чтения; живой вызов в проверках не выполняется (`UNVERIFIED` без `AINALYM_LIVE_SMOKE=1`).
 
 Три оси правды на каждом результате (`docs/CONTRACTS.md` §1, §5): происхождение («Данные партнёра · обезличены»), AI («Живой AI» / «Правила без LLM» / «Воспроизведение · записанное решение» / «Провайдер недоступен»), внешний контур («Экспорт для 1С (файл)»; канал поставщика — «Черновик заказа — не отправлен» / «Подтверждено (симулятор)»). События ленты, которые вводит пользователь, помечены «Симулятор мира — синтетическое событие».
 
@@ -261,4 +263,4 @@ npm run dev        # http://localhost:3000 → /today
 
 ## EN summary
 
-Ainalym is a financial operations OS for trading businesses; agents run the commercial cycle, you decide. First vertical: automatic supplier replenishment orders for an electrical-components distributor (HackAlem AI, Logistics track, partner Elektrokomplekt LLP, anonymised exports). As of `main` @ `81f73d6` (10:25Z): `npm run etl` loads the 12 partner files into SQLite; `node scripts/scenario.mjs` prints the five ТЗ checks M1–M5 plus Money and World as 11 `[PASS]` lines on partner data; the app (`npm run dev`) runs the calculation, shows recommendations with a numeric rationale per SKU, a decision queue, version-bound approval, 30/70 obligations, a 1C-compatible export and a supplier draft that is never sent. With no keys it runs in «Rules, no LLM» mode. Status per capability: `docs/TASK_MAP.md`.
+Ainalym is a financial operations OS for trading businesses; agents run the commercial cycle, you decide. First vertical: automatic supplier replenishment orders for an electrical-components distributor (HackAlem AI, Logistics track, partner Elektrokomplekt LLP, anonymised exports). As of `main` @ `3b3dcbd` (10:25Z): `npm run etl` loads the 12 partner files into SQLite; `node scripts/scenario.mjs` prints the five ТЗ checks M1–M5 plus Money and World as 11 `[PASS]` lines on partner data; the app (`npm run dev`) runs the calculation, shows recommendations with a numeric rationale per SKU, a decision queue, version-bound approval, 30/70 obligations, a 1C-compatible export and a supplier draft that is never sent. With no keys it runs in «Rules, no LLM» mode. Status per capability: `docs/TASK_MAP.md`.
