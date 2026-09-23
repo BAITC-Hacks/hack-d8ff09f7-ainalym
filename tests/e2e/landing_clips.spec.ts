@@ -113,7 +113,7 @@ export async function recordClip(name: Clip) {
     if (name === "order") {
       await ready(page, "/orders");
       // Select an existing priced draft. Opening it is read-only; never click approval.
-      const draft = page.locator("article").filter({ hasText: /Заказ SE/ }).filter({ has: page.getByRole("button", { name: "Утвердить заказ", exact: true }) }).first();
+      const draft = page.locator("li").filter({ has: page.getByRole("heading", { name: /Заказ SE/ }) }).filter({ has: page.getByRole("button", { name: "Утвердить заказ", exact: true }) }).first();
       const href = await draft.getByRole("link", { name: "Открыть", exact: true }).getAttribute("href");
       if (!href) throw new Error("No existing draft order to record");
       await ready(page, href);

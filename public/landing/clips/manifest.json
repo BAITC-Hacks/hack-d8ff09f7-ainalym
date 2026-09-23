@@ -42,5 +42,28 @@
     ],
     "assistantRequests": 0,
     "waitingCut": false
+  },
+  "order": {
+    "width": 1280,
+    "height": 800,
+    "durationSeconds": 9,
+    "audio": false,
+    "files": [
+      {
+        "file": "order.webm",
+        "bytes": 782888
+      },
+      {
+        "file": "order.mp4",
+        "bytes": 186587
+      },
+      {
+        "file": "order.png",
+        "bytes": 179942
+      }
+    ],
+    "assistantRequests": 0,
+    "waitingCut": false,
+    "reviewRoute": "/orders/[order]"
   }
 }
