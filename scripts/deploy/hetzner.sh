@@ -107,7 +107,7 @@ release=$1
 domain=$2
 app=/opt/ainalym
 cd "$app/releases/$release"
-npm ci --omit=dev
+npm ci --include=dev
 chown -R ainalym:ainalym "$app/releases/$release"
 install -o root -g root -m 600 /etc/ainalym.env.new /etc/ainalym.env
 rm -f /etc/ainalym.env.new

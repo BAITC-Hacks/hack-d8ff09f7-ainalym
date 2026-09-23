@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { GET as appHealth } from "./app/api/health/route";
 import {
   ACCESS_COOKIE,
   ACCESS_DAYS,
@@ -34,7 +35,9 @@ export async function middleware(request: NextRequest) {
   const active = guardEnabled();
 
   if (path === "/api/health") {
-    return NextResponse.json({ ok: true, demo_guard: active ? "on" : "off", remaining_daily_budget: active ? remainingDailyCalls() : null }, { headers: { "Cache-Control": "no-store" } });
+    const health = await appHealth();
+    const payload = await health.json();
+    return NextResponse.json({ ...payload, demo_guard: active ? "on" : "off", remaining_daily_budget: active ? remainingDailyCalls() : null }, { status: health.status, headers: { "Cache-Control": "no-store" } });
   }
   if (!active) return NextResponse.next();
 
