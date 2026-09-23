@@ -14,18 +14,18 @@ Replay: `fixtures/decision_catalog.json` contains the five case questions; `fixt
 
 Guardrails: mocked 429/timeout → `provider_error`/503; direct provider error falls back to Gateway; unknown, insufficient, unsupported, and provider error remain distinct; foreign-org references are removed before model input; untrusted text remains data; image-only facts avoid a model call; short Chinese `预付` is retained; a SKU version change discards a stale answer.
 
-Worker evidence: `tests/ai/partner_event.test.ts` processes WE-043/044/045 from partner ETL: injected 5,000-unit one-off excluded, transit +100, SE cost 360.00, each affected SKU recomputed. `tests/ai/worker_integration.test.ts` proves two pending rows → processed 2 and a second tick → 0. `tests/ai/worker_ledger.test.ts` will assert persisted run/action provider metadata and failed-row reason after L1 merges; a temporary cross-lane probe against L1's committed ledger passed that assertion.
+Worker evidence: `tests/ai/partner_event.test.ts` processes WE-043/044/045 from partner ETL: injected 5,000-unit one-off excluded, transit +100, SE cost 360.00, each affected SKU recomputed. `tests/ai/worker_integration.test.ts` proves two pending rows → processed 2 and a second tick → 0. With L1 merged, `tests/ai/worker_ledger.test.ts` proves one persisted `world_event` run per event, decision provider/model and source IDs, a failed-row reason, and no rerun. L2a also records its calculation as a separate `calc_request` run linked through `calc_run`.
 
-Gate output on merged L6 state: `RUN_AI_DRAFT_LIVE=1 npm run check -- ai` → `passed=39 failed=0 skipped=1 externally-unverified=0` (only persisted L1 ledger test skipped); `npx tsc --noEmit` → exit 0; `npm run build` → exit 0. Earlier, before the ledger test was added, the live AI gate was `passed=39 failed=0 skipped=0`. Live provider smoke was 4/4.
+Gate output on merged L1/L2/L6 state: `RUN_AI_DRAFT_LIVE=1 npm run check -- ai` → `passed=41 failed=0 skipped=0 externally-unverified=0`; `npm run build` → exit 0; `npx tsc --noEmit` after build → exit 0. Live provider smoke was 4/4; `POST /api/drafts` test returned a reviewable supplier artifact with exact source lines. An earlier parallel `tsc` raced Next's generated route types and failed; sequential rerun after build passed.
 
 Files changed: `src/ai/{provider,catalog,replay,decisions,interpret,worker,drafting,columns}.ts`; `tests/ai/{live_smoke,draft_live_smoke,decisions,guardrails,worker,worker_integration,worker_ledger,partner_event,drafting,columns}.test.ts`; `fixtures/{decision_catalog,replay_decisions}.json`; the five routes above; `docs/agent_handoffs/{L3_CHECKPOINT,L3_AI_LAYER_CLOSEOUT}.md`.
 
 Dependencies added by L3: none. `npm install` was run first and rerun after L9's shared `xlsx` addition. Only additive runtime migration of `decision_record.evidence_versions`, `rubric_version`, `cache_key`, and an index; no schema file edit.
 
-Unverified: L1's ledger implementation is not on `main` yet, so the portable persisted-trace test skips. Merge `main` when L1 lands and rerun it plus the AI gate. L6's supplier page currently shows a deterministic prepared letter; the generated AI artifact is exposed through `/api/drafts` and `/api/artifacts`, and page wiring is outside L3's allowed paths.
+Unverified surface: L6's supplier page currently shows a deterministic prepared letter; the generated AI artifact is exposed through `/api/drafts` and `/api/artifacts`, and page wiring is outside L3's allowed paths. The UI's «почему» and `/connections` rendering of provider/model metadata is likewise outside this lane; records and ledger rows carry both fields.
 
 Protected surfaces: no UI file, `main`, history rewrite, or `tests/fixtures/eval/*` import from `src/` changed by L3. Case reframe uses RU supplier drafting and the five replenishment questions; trading-case objects were not introduced.
 
-Gate: YELLOW
+Gate: GREEN
 
-tip: 123d19e
+tip: 9dec6d9
