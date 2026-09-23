@@ -137,6 +137,10 @@ describe("world events and SKU drilldown", () => {
     await applyWorldEvent(event("WE-2", "stock_snapshot", "SE-1", { ym: "2026-09", opening_qty: null }));
     expect(one("SELECT known,opening_qty FROM stock_month WHERE code_1c='SE-1'")).toMatchObject({ known: 0, opening_qty: null });
   });
+  it("accepts a world stock snapshot array and its explicit known flag", async () => {
+    await applyWorldEvent(event("WE-STOCKS", "stock_snapshot", "SE-1", { ym: "2026-09", stocks: [{ code_1c: "SE-1", opening_qty: "0", known: 0 }] }));
+    expect(one("SELECT known,opening_qty FROM stock_month WHERE code_1c='SE-1'")).toMatchObject({ known: 0, opening_qty: null });
+  });
   it("updates in-transit quantity and marks the affected SKU", async () => {
     const r = await applyWorldEvent(event("WE-3", "in_transit_update", "SE-1", { po_ref: "SUP-1", qty: 100 }));
     expect(r.affected_codes).toEqual(["SE-1"]);
@@ -145,6 +149,19 @@ describe("world events and SKU drilldown", () => {
   it("turns a one-off judge message into a flagged sales line", async () => {
     await applyWorldEvent(event("WE-4", "judge_message", "SE-1", { qty: 5000, at: "2026-09-23" }, "Разовый заказ 5000 шт"));
     expect(one("SELECT qty,source FROM sales_line WHERE code_1c='SE-1'")).toMatchObject({ qty: "5000", source: "judge" });
+  });
+  it("applies the judge one-off document payload", async () => {
+    await applyWorldEvent(event("WE-J1", "judge_message", "SE-1", { action: "inject_sales_line", line: { code_1c: "SE-1", qty: "5000", at: "2026-08-22", doc_no: "JUDGE-DOC" } }));
+    expect(one("SELECT doc_no,source FROM sales_line WHERE code_1c='SE-1'")).toMatchObject({ doc_no: "JUDGE-DOC", source: "judge" });
+  });
+  it("applies the judge in-transit increase as a delta", async () => {
+    q("INSERT INTO in_transit(code_1c,po_ref,qty) VALUES ('SE-1','BASE','20')");
+    await applyWorldEvent(event("WE-J2", "judge_message", "SE-1", { action: "adjust_in_transit", delta_qty: 100 }));
+    expect(one("SELECT sum(CAST(qty AS INTEGER)) AS n FROM in_transit WHERE code_1c='SE-1'")?.n).toBe(120);
+  });
+  it("applies the judge price update", async () => {
+    await applyWorldEvent(event("WE-J3", "judge_message", "SE-1", { action: "update_unit_cost", to: "360.00" }));
+    expect(one("SELECT unit_cost FROM sku WHERE code_1c='SE-1'")?.unit_cost).toBe("360.00");
   });
   it("updates unit cost from a price event", async () => {
     await applyWorldEvent(event("WE-5", "price_update", "SE-1", { unit_cost: "125.00" }));

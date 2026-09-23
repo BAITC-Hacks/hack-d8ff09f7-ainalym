@@ -16,7 +16,7 @@ export function syncOrderObligations(poId: string, tx?: DatabaseSync): Row[] {
     if (lines.some(l => l.unit_cost === null)) return [];
     const total = lines.reduce((a, l) => a.plus(new Decimal(String(l.unit_cost)).times(Number(l.qty))), new Decimal(0));
     const terms = JSON.parse(String(po.terms || "{}")) as Record<string, unknown>;
-    const pct = new Decimal(String(terms.prepayment_pct ?? terms.prepayment_percent ?? 30));
+    const pct = new Decimal(String(terms.prepayment_pct ?? terms.prepay_pct ?? terms.prepayment_percent ?? 30));
     if (pct.lt(0) || pct.gt(100)) throw new Error("invalid_supplier_terms");
     const prepayment = new Decimal(money(total.times(pct).div(100)));
     const installments = [
