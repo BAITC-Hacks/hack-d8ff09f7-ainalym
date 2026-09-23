@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NextRequest } from "next/server";
 import { middleware } from "../../src/middleware";
-import { allowApiRequest, hasAccess, issueAccessCookie, remainingDailyCalls, reserveLiveCall } from "../../src/server/demo_guard";
+import { allowApiRequest, guardedProviderFetch, hasAccess, issueAccessCookie, remainingDailyCalls, reserveLiveCall } from "../../src/server/demo_guard";
 
 let temporary: string;
 const previous = { ...process.env };
@@ -68,5 +68,15 @@ describe("persistent daily live budget", () => {
     }));
     expect(response.status).toBe(503);
     expect(await response.json()).toMatchObject({ error: "Provider unavailable", ai: "unavailable" });
+  });
+
+  it("counts each outgoing provider request, including a retry", async () => {
+    let sent = 0;
+    const upstream = (async () => { sent++; return new Response("ok"); }) as typeof fetch;
+    const request = "https://provider.invalid/evaluate";
+    expect((await guardedProviderFetch(request, undefined, upstream)).status).toBe(200);
+    expect((await guardedProviderFetch(request, undefined, upstream)).status).toBe(200);
+    expect((await guardedProviderFetch(request, undefined, upstream)).status).toBe(503);
+    expect(sent).toBe(2);
   });
 });

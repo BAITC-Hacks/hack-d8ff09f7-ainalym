@@ -12,4 +12,4 @@ After the L9 merge, a fresh container initialized `/data/ainalym.db` with `npm r
 
 Scenario gap: `POST /api/demo/example` → HTTP 404; `GET /api/today` → HTTP 404. L9 ETL and the L1 health route landed; the remaining L1 scenario routes have not. Rerun both after the next L1 floor.
 
-Checks: `npm run check -- demo` → `passed=7 failed=0`; `npm run build` → GREEN; `npx tsc --noEmit` → GREEN. Live provider cap is tested in isolation but awaits L3/L5 provider-boundary wiring; external phone/tunnel integration remains unverified. The merged ETL uses `xlsx`, whose installed package reports a high severity audit advisory; its supplied exports are the current input boundary.
+Checks: `npm run check -- demo` → `passed=8 failed=0`; `npm run build` → GREEN; `npx tsc --noEmit` → GREEN. Live provider cap is tested in isolation but awaits L3/L5 provider-boundary wiring; external phone/tunnel integration remains unverified. The merged ETL uses `xlsx`, whose installed package reports a high severity audit advisory; its supplied exports are the current input boundary.

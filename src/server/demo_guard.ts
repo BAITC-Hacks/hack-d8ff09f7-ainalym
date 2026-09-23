@@ -124,3 +124,14 @@ export function reserveLiveCall(now = Date.now()): { allowed: boolean; remaining
 export function providerUnavailable(): Response {
   return Response.json({ error: "Provider unavailable", label: "Провайдер недоступен", ai: "unavailable", offline_path: "Правила без LLM · локальный запуск по README" }, { status: 503, headers: { "Cache-Control": "no-store" } });
 }
+
+// Pass this to SDK clients as their fetch implementation, and use it for direct
+// provider fetches. Reserving here counts retries and fallbacks separately.
+export async function guardedProviderFetch(input: RequestInfo | URL, init?: RequestInit, upstream: typeof fetch = fetch): Promise<Response> {
+  try {
+    if (!reserveLiveCall().allowed) return providerUnavailable();
+  } catch {
+    return providerUnavailable();
+  }
+  return upstream(input, init);
+}
