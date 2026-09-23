@@ -1,0 +1,113 @@
+{
+  "today": {
+    "width": 1280,
+    "height": 800,
+    "durationSeconds": 9,
+    "audio": false,
+    "files": [
+      {
+        "file": "today.webm",
+        "bytes": 983057
+      },
+      {
+        "file": "today.mp4",
+        "bytes": 378144
+      },
+      {
+        "file": "today.png",
+        "bytes": 110353
+      }
+    ],
+    "assistantRequests": 0,
+    "waitingCut": false
+  },
+  "purchases": {
+    "width": 1280,
+    "height": 800,
+    "durationSeconds": 9,
+    "audio": false,
+    "files": [
+      {
+        "file": "purchases.webm",
+        "bytes": 1177889
+      },
+      {
+        "file": "purchases.mp4",
+        "bytes": 551534
+      },
+      {
+        "file": "purchases.png",
+        "bytes": 236891
+      }
+    ],
+    "assistantRequests": 0,
+    "waitingCut": false
+  },
+  "order": {
+    "width": 1280,
+    "height": 800,
+    "durationSeconds": 9,
+    "audio": false,
+    "files": [
+      {
+        "file": "order.webm",
+        "bytes": 782888
+      },
+      {
+        "file": "order.mp4",
+        "bytes": 186587
+      },
+      {
+        "file": "order.png",
+        "bytes": 179942
+      }
+    ],
+    "assistantRequests": 0,
+    "waitingCut": false,
+    "reviewRoute": "/orders/[order]"
+  },
+  "money": {
+    "width": 1280,
+    "height": 800,
+    "durationSeconds": 9,
+    "audio": false,
+    "files": [
+      {
+        "file": "money.webm",
+        "bytes": 991883
+      },
+      {
+        "file": "money.mp4",
+        "bytes": 512161
+      },
+      {
+        "file": "money.png",
+        "bytes": 165378
+      }
+    ],
+    "assistantRequests": 0,
+    "waitingCut": false
+  },
+  "assistant": {
+    "width": 1280,
+    "height": 800,
+    "durationSeconds": 9,
+    "audio": false,
+    "files": [
+      {
+        "file": "assistant.webm",
+        "bytes": 704460
+      },
+      {
+        "file": "assistant.mp4",
+        "bytes": 150223
+      },
+      {
+        "file": "assistant.png",
+        "bytes": 141361
+      }
+    ],
+    "assistantRequests": 1,
+    "waitingCut": false
+  }
+}
