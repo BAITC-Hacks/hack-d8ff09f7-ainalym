@@ -4,6 +4,7 @@ import { dirname, join, relative } from 'node:path';
 import XLSX from 'xlsx';
 import Decimal from 'decimal.js';
 import { databasePath } from '../../src/db/path.mjs';
+import { transitDueDate } from './transit-date.mjs';
 
 const root = process.cwd();
 const dbArg = process.argv.indexOf('--db');
@@ -80,7 +81,8 @@ try {
     f = file(s,s==='IEK'?'Путь ИЭК':'Товар в пути'); a = rows(f,s==='SE'?'TDSheet':undefined);
     if (s==='IEK') {
       requireHeaders(a[0],['Код 1с','Артикул ИЭК'],f);
-      for (const r of a.slice(1)) { const code=str(r[0]); if (!code) continue; sku(s,code,{article:str(r[1]),name:str(r[2])}); for(let i=3;i<a[0].length;i++){const q=num(r[i]);if(q>0)transitInsert.run(code,str(a[0][i]),String(q),'2026-11-01',source(f));} }
+      const dueDates = a[0].slice(3).map(transitDueDate);
+      for (const r of a.slice(1)) { const code=str(r[0]); if (!code) continue; sku(s,code,{article:str(r[1]),name:str(r[2])}); for(let i=3;i<a[0].length;i++){const q=num(r[i]);if(q>0)transitInsert.run(code,str(a[0][i]),String(q),dueDates[i-3],source(f));} }
     } else {
       const h=a[1].map(str); requireHeaders(h,['Код 1с','СЭ в пути 24.09','Свободный остаток','Категория 2026','СС реал','Вес'],f);
       const pos=x=>h.indexOf(x);

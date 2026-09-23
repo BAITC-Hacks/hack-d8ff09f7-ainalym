@@ -52,6 +52,16 @@ describe("deterministic replenishment need", () => {
     expect(base.need - supplied.need).toBe(2);
   });
 
+  it("counts only transit due within the horizon and names its arrival date", async () => {
+    const database = fixture();
+    database.prepare("INSERT INTO in_transit(code_1c,po_ref,qty,expected_at) VALUES ('TEST','SOON','4','2025-09-30')").run();
+    database.prepare("INSERT INTO in_transit(code_1c,po_ref,qty,expected_at) VALUES ('TEST','LATE','100','2026-01-01')").run();
+    const result = await computeNeed("TEST", params, context(database));
+    expect(result.components.in_transit).toBe(4);
+    expect(result.components.in_transit_sources).toEqual([expect.objectContaining({ po_ref: "SOON", expected_at: "2025-09-30" })]);
+    expect(result.rationale_ru).toContain("прибудет до 30.09");
+  });
+
   it("uses metre units, an IEK minimum, and an SE multiple", async () => {
     const database = fixture();
     database.prepare("UPDATE sku SET unit='м',moq=10 WHERE code_1c='TEST'").run();
