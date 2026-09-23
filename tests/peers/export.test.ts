@@ -10,7 +10,10 @@ import { applyWorldEvent } from "../../src/domain/events";
 import { approveOrder } from "../../src/domain/orders";
 import { recomputeAffected } from "../../src/domain/recompute";
 import { deliverOrder } from "../../src/peers/deliver";
-import { exportOrder } from "../../src/peers/onec_export";
+import { exportDownloadDisposition, exportOrder, ONEC_EXPORT_HEADERS } from "../../src/peers/onec_export";
+import { exportResponse } from "../../src/app/api/orders/[id]/_export";
+import { GET as peerExportGet } from "../../src/app/api/peers/onec-export/[po_id]/route";
+import { GET as getModes } from "../../src/app/api/modes/route";
 
 let exportDir: string;
 beforeEach(() => {
@@ -28,6 +31,21 @@ beforeEach(() => {
 afterEach(() => { resetInstance(); rmSync(exportDir, { recursive: true, force: true }); delete process.env.EXPORT_DIR; });
 
 describe("1C file export boundary", () => {
+  it("reports file import from 1С with the latest ETL fetch time and file-only output", async () => {
+    const fetchedAt = "2026-09-23T10:30:00.000Z";
+    db().prepare("INSERT INTO organization (id,name,payload) VALUES (?,?,?)")
+      .run("partner", "Партнёр", JSON.stringify({ etl_fetched_at: fetchedAt }));
+    const response = await getModes();
+    const modes = await response.json();
+    expect(modes.connections).toContainEqual({
+      id: "onec_in", label: "Вход: стандартные отчёты 1С УТ",
+      detail: "динамика продаж, остатки, товар в пути, MOQ загружаются как есть, без доработки конфигурации",
+      state: "active", external: "file_import", as_of: fetchedAt,
+    });
+    expect(modes.connections).toContainEqual({ id: "onec_out", label: "Экспорт для 1С (файл)", state: "active", external: "export_only" });
+    expect(modes.sources).toContainEqual({ name: "Вход: стандартные отчёты 1С УТ", as_of: fetchedAt, anonymised: true });
+  });
+
   it("adds recommendation_id to an existing order line table", () => {
     const legacy = new DatabaseSync(":memory:");
     try {
@@ -46,12 +64,30 @@ describe("1C file export boundary", () => {
     expect(first).toMatchObject({ provenance: "partner_anonymised", ai: "none", external: "export_only" });
     expect(second).toMatchObject({ provenance: "partner_anonymised", ai: "none", external: "export_only" });
     expect(first.label).toBe("Экспорт для 1С (файл)");
-    expect(readFileSync(first.csv_path, "utf8")).toContain("Код 1с;Артикул поставщика;Наименование;Кол-во;Кратность;Срочность;Обоснование");
+    const csvRows = readFileSync(first.csv_path, "utf8").replace(/^\ufeff/, "").trim().split(/\r?\n/).map(row => row.split(";"));
+    expect(csvRows[0]).toEqual(ONEC_EXPORT_HEADERS);
+    expect(csvRows[1]).toEqual(["03001_", "Кабель", "K-5", "", "20", "", "IEK", "", "не требуется", "Потребность на 70 дней"]);
     expect(readFileSync(first.csv_path, "utf8")).toContain("03001_");
-    expect(readFileSync(first.xlsx_path).subarray(0, 2).toString()).toBe("PK");
+    const workbook = readXlsx(readFileSync(first.xlsx_path), { type: "buffer" });
+    const sheetRows = xlsxUtils.sheet_to_json<(string | number)[]>(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: "" });
+    expect(sheetRows[0]).toEqual(ONEC_EXPORT_HEADERS);
+    expect(sheetRows[1]).toEqual(["03001_", "Кабель", "K-5", "", 20, "", "IEK", "", "не требуется", "Потребность на 70 дней"]);
     expect(db().prepare("SELECT COUNT(*) AS n FROM ledger_peer_record WHERE peer = 'onec_export'").get()).toMatchObject({ n: 1 });
     expect(db().prepare("SELECT state FROM purchase_order WHERE id = 'PO-1'").get()).toMatchObject({ state: "exported" });
     expect(await deliverOrder({ id: "PO-1" })).toMatchObject({ state: "exported", path: first.xlsx_path });
+  });
+
+  it("exports known unit cost and ETA, with RFC 5987 filenames on both download routes", async () => {
+    db().prepare("UPDATE sku SET unit='шт', unit_cost='125.50' WHERE code_1c='03001_'").run();
+    db().prepare("UPDATE purchase_order SET eta='2026-11-01' WHERE id='PO-1'").run();
+    const files = exportOrder("PO-1");
+    const row = readFileSync(files.csv_path, "utf8").replace(/^\ufeff/, "").trim().split(/\r?\n/)[1].split(";");
+    expect(row).toEqual(["03001_", "Кабель", "K-5", "шт", "20", "125.50", "IEK", "2026-11-01", "не требуется", "Потребность на 70 дней"]);
+    const disposition = exportDownloadDisposition("PO-1", "xlsx");
+    expect(decodeURIComponent(disposition.split("filename*=UTF-8''")[1])).toMatch(/^Заказ_поставщику_IEK_\d{4}-\d{2}-\d{2}\.xlsx$/);
+    expect((await exportResponse("PO-1", "csv")).headers.get("content-disposition")).toBe(exportDownloadDisposition("PO-1", "csv"));
+    const response = await peerExportGet(new Request("http://localhost/api/peers/onec-export/PO-1?format=xlsx"), { params: Promise.resolve({ po_id: "PO-1" }) });
+    expect(response.headers.get("content-disposition")).toBe(disposition);
   });
 
   it("refuses export before human approval", async () => {
@@ -68,10 +104,10 @@ describe("1C file export boundary", () => {
     db().prepare("UPDATE purchase_order_line SET recommendation_id='REC-1' WHERE po_id='PO-1'").run();
     const files = exportOrder("PO-1");
     const csvRow = readFileSync(files.csv_path, "utf8").trim().split(/\r?\n/)[1].split(";");
-    expect(csvRow[5]).toBe(label);
+    expect(csvRow[8]).toBe(label);
     const workbook = readXlsx(readFileSync(files.xlsx_path), { type: "buffer" });
     const rows = xlsxUtils.sheet_to_json<(string | number)[]>(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
-    expect(rows[1][5]).toBe(label);
+    expect(rows[1][8]).toBe(label);
   });
 
   it("keeps all 294 SE line urgencies after a one-SKU world recompute", async () => {
@@ -113,9 +149,9 @@ describe("1C file export boundary", () => {
     const lines = readFileSync(files.csv_path, "utf8").replace(/^\ufeff/, "").trim().split(/\r?\n/).slice(1);
     expect(lines).toHaveLength(294);
     for (const line of lines) {
-      const [code, , , , , urgency, rationale] = line.split(";");
+      const [code, , , , , , , , urgency, rationale] = line.split(";");
       expect([urgency, rationale]).toEqual(expected.get(code));
     }
-    expect(new Set(lines.map(line => line.split(";")[5]))).toEqual(new Set(["критично", "скоро", "планово"]));
+    expect(new Set(lines.map(line => line.split(";")[8]))).toEqual(new Set(["критично", "скоро", "планово"]));
   }, 30000);
 });

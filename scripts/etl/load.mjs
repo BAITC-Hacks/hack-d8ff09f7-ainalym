@@ -94,6 +94,8 @@ try {
   d.exec("UPDATE sales_month SET qty_lines='0' WHERE qty_lines IS NULL");
   const skuInsert=d.prepare('INSERT INTO sku (code_1c,supplier_id,article,name,unit,category,unit_cost,moq,weight,on_hand_qty,on_hand_as_of) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
   for(const x of catalog.values()) skuInsert.run(x.code_1c,x.supplier_id,x.article,x.name,x.unit,x.category,x.unit_cost,x.moq,x.weight,x.on_hand_qty??null,x.on_hand_as_of??null);
+  const org = d.prepare("SELECT payload FROM organization WHERE id='partner'").get();
+  d.prepare("UPDATE organization SET payload=? WHERE id='partner'").run(JSON.stringify({ ...JSON.parse(org.payload), etl_fetched_at: new Date().toISOString() }));
   d.exec('COMMIT');
 } catch(e) { d.exec('ROLLBACK'); d.close(); throw e; }
 

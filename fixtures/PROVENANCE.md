@@ -2,6 +2,10 @@
 
 Данные партнёра ТОО «Электрокомплект», обезличены (номера документов, без клиентов). The twelve XLSX files below were copied verbatim by the root. This lane reads them without editing them. Product names, 1C codes and document numbers remain source values; no customer or person fields are loaded.
 
+## Вход 1С
+
+Вход: стандартные отчёты 1С УТ партнёра в XLSX — динамика продаж, ежемесячные продажи и остатки, товар в пути, MOQ и сезонность. Файлы загружаются как есть через `npm run etl`, без доработки конфигурации 1С. Это файловый импорт, не живая связь с учётной системой. `GET /api/modes` показывает время последней загрузки как `connections[onec_in].as_of` из `organization.payload.etl_fetched_at`; дата относится к ETL, а не к созданию исходных отчётов. Выход — отдельный файл «Экспорт для 1С (файл)» после утверждения заказа; автоматической записи в 1С нет.
+
 | Supplier | File | Data rows | Period | Loaded fields |
 | --- | --- | ---: | --- | --- |
 | IEK | `MOQ  ИЭК.xlsx` | 1,938 | 2026 export | Код 1с, Артикул поставщика, Наименование, Мин. разр. к отгр. |

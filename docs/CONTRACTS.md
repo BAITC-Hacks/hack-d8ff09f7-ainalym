@@ -54,7 +54,7 @@ App Router handlers use the zod schemas in src/server/contracts.ts. A successful
 |---|---|---|
 | GET /api/health | mode:live or offline; ai_provider:jev/openai/rules/offline; providers:{jev,openai,voice}:configured or missing; demo_guard:on/off; remaining_daily_budget:i or null; db:ok; version:i | 200, 503 |
 | GET /api/state | fingerprint:s, state_version:i, at:ISO string | 200 |
-| GET /api/modes | axes:{provenance,ai,external}, labels:map with section 5 values | 200 |
+| GET /api/modes | axes:{provenance,ai,external}, labels:map with section 5 values; connections includes `onec_in` (file_import, ETL `as_of` when loaded) and `onec_out` (export_only) | 200 |
 | POST /api/demo/reset | Rebuild partner.db via ETL; returns counts: table-name to integer, including world_event=45 before processing | 200, 503 |
 | POST /api/demo/example | Empty body; performs the SE calculation; same result as /api/calc/run | 200, 500 |
 | POST /api/calc/run | {scope:{supplier?:IEK or SE,category?:s},params?:{lead_time_days?:i,review_days?:i,service_level?:number,growth_cap?:number,outlier?:{k_month,k_doc,min_units:number}}} → {run_id:s,skus:i,recommended:i,proposals:[{id,kind,subject_id,state,money_at_stake}],excluded:{missing_sales:i,missing_stock:i}} | 200, 400, 500 |
@@ -74,6 +74,8 @@ App Router handlers use the zod schemas in src/server/contracts.ts. A successful
 Internal entry onEvent(kind, payload, source_id) accepts the section 2 world kinds, validates the current organization, inserts one pending world_event by (org_id,source_id), then calls processEvent(id). An identical source returns {event_id,run_id,replayed:true} with no second insert or state_version bump. Ledger startRun, recordAction and finishRun accept an optional caller DatabaseSync transaction; action idempotency_key replay returns the existing ID with no write.
 
 Delegated surface remains: GET /api/orders[/:id], POST /api/orders/:id/approve and GET /api/orders/:id/export.csv|xlsx (L2/L6, versioned PO approval and 1C export); GET /api/proposals and POST /api/proposals/:id/approve|reject (L2a, proposal_version, 409 stale); GET /api/world/feed, POST /api/world/play|compose (L6, scripted events); POST/GET /api/decisions and POST /api/drafts, GET /api/artifacts/:id[/download] (L3); voice and assistant routes (L5); supplier simulator and search/notifications routes (L6/L4c). Their owner-specific request details continue under sections 4–8 and their route modules.
+
+1С «Заказ поставщику» file export (CSV/XLSX) columns, in order: `Номенклатура.Код`, `Номенклатура`, `Артикул`, `Ед.`, `Количество`, `Цена` (blank when unknown), `Поставщик`, `Дата поставки (ETA)`, `Срочность`, `Обоснование`. The first column is the partner's 1С SKU code; readers may also accept legacy `Код 1с` as an input alias. Download name: `Заказ_поставщику_<SE|IEK>_<YYYY-MM-DD>.xlsx|csv` via UTF-8 `filename*`. Export remains a file for separate import into 1С, with no accounting-system write.
 
 ## 4. Voice tools (L5 bridge → L2/L3). Call `{request_id, scope:{org_id, supplier_id?, code_1c?}, args}`.
 | Tool | args | result |
