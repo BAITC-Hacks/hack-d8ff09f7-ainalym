@@ -16,4 +16,10 @@ The brief asked for ring 1 to split stock value by urgency (Срочно / На 
 
 ## Checks
 - `npx tsc --noEmit` — clean (stale `.next/types` errors ignored per brief).
-- `npm run check` / `npm run build` — see the lane's final message.
+- `npm run check` — passed=335 failed=0 skipped=7 externally-unverified=7 (GREEN).
+- `npm run build` — passed; `/today` prerendered.
+
+## Demo-data note
+`scripts/demo_reset.mjs` seeds the partner org with `opening_cash: []`, so after a fresh reset ring 2 shows the calm «Заполните в Настройках» link until an opening balance is entered in Settings (the previous chart had the same gap). Ring 1 is always filled on the demo (stock at cost 144 117 720 ₸, 13 % with known cost, 3 083 positions without a price). Seeding a demo balance is a one-line change in `demo_reset.mjs`, outside this lane's scope.
+
+Gate: GREEN
