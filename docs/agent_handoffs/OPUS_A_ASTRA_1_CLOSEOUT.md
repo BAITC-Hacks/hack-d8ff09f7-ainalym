@@ -13,7 +13,7 @@ Evidence: docs/evidence/opus_a/astra/REVIEW.md and before/after pairs for all th
 State evidence: same directory; loading/empty/unavailable, rationale, conflicts, approved exports, search and 320px focus.
 Independent review: docs/evidence/opus_a/astra/INDEPENDENT_REVIEW.md; initial findings corrected.
 Gates: tsc PASS; build PASS; scoped ESLint PASS; npm run check 227 PASS, 0 FAIL, 6 skipped/external-unverified.
-Playwright: partial final run; exact results in astra/ACCEPTANCE.json and both result JSONs; earlier real approval/exports passed.
+Playwright: 11/14 passed; rerun 0/2. Recalc assertion corrected; repeat exports and phone state matrix remain unverified.
 Warnings retained: existing middleware deprecation and dynamic filesystem tracing.
 Files: docs/evidence/opus_a/astra/FILES.txt lists every changed path.
 Commits: 8253a73 baseline review; 1b3c277 implementation; evidence/test closeout follows.
