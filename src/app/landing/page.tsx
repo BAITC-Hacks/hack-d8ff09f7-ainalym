@@ -16,6 +16,7 @@ const STEPS = [
   { step: "01", title: "Файлы 1С", text: "Продажи, остатки и товар в пути — исходные данные для закупки. 1С — файловый обмен." },
   { step: "02", title: "Расчёт", text: "Ainalym учитывает сезонность, срок поставки и разовые продажи. По каждому товару видно, сколько заказать и почему." },
   { step: "03", title: "Заказ поставщику", text: "Вы проверяете количество и утверждаете черновик. Файл заказа и письмо готовы к вашей отправке." },
+  { step: "04", title: "Документы", text: "Счёт, накладная или фото: агент извлекает строки, сверяет с заказом и готовит пакет документов по маршруту поставки - РК, ЕАЭС, импорт. Черновики не отправляются." },
 ];
 
 const HONEST = [
@@ -54,7 +55,7 @@ export default function LandingPage() {
           <HeroMedia />
           <div className={styles.heroInner}>
             <div className={styles.reveal}>
-              <p className={styles.eyebrow}>Для дистрибьюторов электротоваров в Казахстане</p>
+              <p className={styles.eyebrow}>Операционная система импорта и закупок</p>
               <h1 id="hero-title" className={styles.heroTitle}>
                 Сколько заказать,
                 <span className={styles.heroTitleSoft}>чтобы хватило до поставки.</span>
@@ -62,6 +63,7 @@ export default function LandingPage() {
               <p className={styles.heroLead}>
                 Ainalym считает потребность по продажам, остаткам и товару в пути. Вы видите причины каждой рекомендации и решаете, что закупать.
               </p>
+              <p className={styles.heroNote}>Белый импорт должен быть таким же простым, как заказать доставку.</p>
               <div className={styles.actions}>
                 <a className={styles.primary} href={DEMO_HREF}>
                   Открыть демо <ArrowRight aria-hidden="true" size={18} />
@@ -101,22 +103,27 @@ export default function LandingPage() {
             <div className={styles.proofItem}>
               <dt>Товаров в демо</dt>
               <dd>3 909</dd>
-              <p>Ассортимент из файлов партнёра</p>
+              <dd className={styles.proofDetail}>Ассортимент из файлов партнёра</dd>
             </div>
             <div className={styles.proofItem}>
               <dt>Поставщики</dt>
               <dd className={styles.proofNames}>IEK <span>Systeme Electric</span></dd>
-              <p>Расчёт по каждому поставщику</p>
+              <dd className={styles.proofDetail}>Расчёт по каждому поставщику</dd>
             </div>
             <div className={styles.proofItem}>
               <dt>Срок поставки</dt>
               <dd>40–50 <span className={styles.proofUnit}>дней</span></dd>
-              <p>IEK — 40, Systeme Electric — 50</p>
+              <dd className={styles.proofDetail}>IEK — 40, Systeme Electric — 50</dd>
             </div>
             <div className={styles.proofItem}>
               <dt>Оплата в демо</dt>
               <dd>30 / 70 <span className={styles.proofUnit}>%</span></dd>
-              <p>30 % — предоплата, 70 % — к поставке</p>
+              <dd className={styles.proofDetail}>30 % — предоплата, 70 % — к поставке</dd>
+            </div>
+            <div className={styles.proofItem}>
+              <dt>Данные демо</dt>
+              <dd>249 тыс. <span className={styles.proofUnit}>строк продаж</span></dd>
+              <dd className={styles.proofDetail}>12 файлов партнёра</dd>
             </div>
           </dl>
           <p className={styles.proofNote}>Сроки поставки и схема оплаты — настройки демо, а не подтверждённые условия поставщиков. Суммы считаются там, где известна себестоимость; по IEK она не задана.</p>
@@ -140,10 +147,14 @@ export default function LandingPage() {
 
         <section className={styles.closing} aria-labelledby="closing-title">
           {/* eslint-disable-next-line @next/next/no-img-element -- same cached poster as the hero */}
-          <img className={styles.closingImage} src={POSTER_SRC} alt="" width={1920} height={1072} loading="lazy" decoding="async" />
+          <img className={styles.closingImage} src={POSTER_SRC} alt="" width={1600} height={900} loading="lazy" decoding="async" />
           <div className={styles.closingInner}>
             <h2 id="closing-title" className={styles.closingTitle}>Расчёт готовит Ainalym. Решение принимаете вы.</h2>
             <p className={styles.closingLead}>Проверьте рекомендации, поправьте количество и утвердите заказ. Отправка поставщику — в ваших руках.</p>
+            <div className={styles.vision}>
+              <p className={styles.kicker}>Куда это ведёт</p>
+              <p className={styles.visionText}>AI-помощник превращает разрозненные документы и переписку в понятный маршрут официального импорта - от заказа поставщику до принятого на склад товара. Документы собраны, расхождения найдены, расходы рассчитаны, следующий шаг известен.</p>
+            </div>
             <p className={styles.promise}>
               <ShieldCheck aria-hidden="true" size={20} />
               <span>В демо заказ и письмо остаются черновиками для самостоятельной отправки.</span>

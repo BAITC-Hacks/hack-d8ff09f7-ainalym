@@ -30,6 +30,7 @@ function ClipCard({ clip, index, motion }: { clip: typeof CLIPS[number]; index: 
   const [playing, setPlaying] = useState(false);
   const [hasFrame, setHasFrame] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [failed, setFailed] = useState(false);
   const poster = `/landing/clips/${clip.id}.png`;
 
   useEffect(() => {
@@ -55,7 +56,7 @@ function ClipCard({ clip, index, motion }: { clip: typeof CLIPS[number]; index: 
   }, [hovered, loaded, motion, paused, visible]);
 
   return (
-    <figure ref={card} className={styles.clipCard} data-product-clip={clip.id} data-revealed={loaded || undefined}>
+    <figure ref={card} className={styles.clipCard} data-product-clip={clip.id} data-revealed={loaded || undefined} data-inview={visible || undefined}>
       <div
         className={styles.clipMedia}
         onPointerEnter={event => { if (event.pointerType === "mouse") setHovered(true); }}
@@ -80,10 +81,10 @@ function ClipCard({ clip, index, motion }: { clip: typeof CLIPS[number]; index: 
             aria-label={`Демонстрация: ${clip.title}`}
             onPlaying={() => { setPlaying(true); setHasFrame(true); }}
             onPause={() => setPlaying(false)}
-            onError={() => { setPlaying(false); setHasFrame(false); }}
+            onError={() => { setPlaying(false); setHasFrame(false); setFailed(true); }}
           >
             <source src={`/landing/clips/${clip.id}.mp4`} type="video/mp4" />
-            <source src={`/landing/clips/${clip.id}.webm`} type="video/webm" />
+            <source src={`/landing/clips/${clip.id}.webm`} type="video/webm" onError={() => { setFailed(true); setPlaying(false); setHasFrame(false); }} />
           </video>
         )}
       </div>
@@ -91,8 +92,9 @@ function ClipCard({ clip, index, motion }: { clip: typeof CLIPS[number]; index: 
         <div className={styles.clipHeading}>
           <span className={styles.clipNumber}>{String(index + 1).padStart(2, "0")}</span>
           <h3 className={styles.clipTitle}>{clip.title}</h3>
-          {motion && loaded && (
-            <div className={styles.clipControls}>
+          <div className={styles.clipControls}>
+            {motion && loaded && !failed && <>
+
               <button type="button" className={styles.clipControl} aria-label={`${playing ? "Приостановить" : "Воспроизвести"} ролик «${clip.title}»`} onClick={() => {
                 if (playing) {
                   setPaused(true);
@@ -106,11 +108,11 @@ function ClipCard({ clip, index, motion }: { clip: typeof CLIPS[number]; index: 
               <button type="button" className={styles.clipControl} aria-label={`Развернуть ролик «${clip.title}»`} onClick={() => { void video.current?.requestFullscreen?.().catch(() => undefined); }}>
                 <Maximize2 size={16} aria-hidden="true" />
               </button>
-            </div>
-          )}
+            </>}
+          </div>
         </div>
         <p className={styles.clipValue}>{clip.value}<span>{clip.detail}</span></p>
-        {motion && loaded && <p className={styles.clipStatus} aria-hidden="true">{hovered && !paused ? "Пауза для чтения" : playing ? "Ролик без звука" : "На паузе · нажмите ▶ для просмотра"}</p>}
+        <p className={styles.clipStatus} aria-hidden="true">{!motion || !loaded ? "\u00a0" : failed ? "Запись недоступна — показан кадр из демо" : hovered && !paused ? "Пауза для чтения" : playing ? "Ролик без звука" : "На паузе · нажмите ▶ для просмотра"}</p>
       </figcaption>
     </figure>
   );
