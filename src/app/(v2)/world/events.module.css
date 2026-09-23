@@ -1,0 +1,24 @@
+.page { display: grid; gap: 28px; min-width: 0; }
+.sample { display: grid; gap: 6px; justify-items: end; max-width: 36ch; }
+.hint { color: var(--v2-muted, var(--muted)); font-size: 12px; line-height: 1.4; text-align: end; }
+.day { display: grid; gap: 8px; }
+.dayTitle { display: flex; align-items: baseline; gap: 10px; margin: 0; font-size: 14px; font-weight: 600; letter-spacing: .01em; }
+.dayCount { color: var(--v2-muted, var(--muted)); font-weight: 400; font-variant-numeric: tabular-nums; }
+.list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--v2-line, var(--line)); }
+.event { display: grid; grid-template-columns: 52px 40px minmax(0, 1fr); gap: 14px; align-items: start; padding: 14px 0; border-bottom: 1px solid var(--v2-line, var(--line)); }
+.time { color: var(--v2-muted, var(--muted)); font-size: 13px; font-variant-numeric: tabular-nums; padding-top: 2px; }
+.media img { display: block; width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: var(--v2-well, var(--wash)); border: 1px solid var(--v2-line, var(--line)); }
+.mediaNone { display: block; width: 40px; height: 40px; border-radius: 8px; background: var(--v2-well, var(--wash)); }
+.body { display: grid; gap: 8px; min-width: 0; }
+.text { margin: 0; line-height: 1.5; max-width: 72ch; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.link { font-size: 13px; text-decoration: none; min-height: 28px; display: inline-flex; align-items: center; }
+.link:hover, .link:focus-visible { text-decoration: underline; }
+.empty { display: grid; gap: 6px; padding: 32px 0; max-width: 60ch; }
+.emptyTitle { margin: 0; font-weight: 600; }
+.emptyBody { margin: 0; color: var(--v2-muted, var(--muted)); line-height: 1.5; }
+@media (max-width: 767px) {
+  .sample { justify-items: start; max-width: none; } .hint { text-align: start; }
+  .event { grid-template-columns: 40px minmax(0, 1fr); } .time { grid-column: 1 / -1; padding: 0; } .media { grid-row: 2; } .body { grid-row: 2; }
+  .link { min-height: 44px; }
+}
