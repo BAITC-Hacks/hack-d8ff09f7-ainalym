@@ -17,7 +17,11 @@ function seed(id: string, seq: number, kind = "stock_snapshot") {
     VALUES (?, 'OWN', ?, ?, ?, '{}', 'pending')`).run(id, seq, kind, id);
 }
 
-beforeAll(() => { resetInstance(); });
+beforeAll(() => {
+  resetInstance();
+  db().prepare("INSERT INTO supplier(id,name,lead_time_days) VALUES ('SE','System Electric',50)").run();
+  db().prepare("INSERT INTO sku(code_1c,supplier_id,name) VALUES ('SE-BORDER','SE','Выключатель')").run();
+});
 beforeEach(() => {
   db().exec("DELETE FROM world_event; DELETE FROM task; DELETE FROM proposal; DELETE FROM decision_record");
   mocks.apply.mockReset();
@@ -76,16 +80,38 @@ describe("world event worker", () => {
     const previous = process.env.AI_PROVIDER;
     process.env.AI_PROVIDER = "rules";
     try {
-      db().prepare(`INSERT INTO world_event(id,org_id,seq,kind,source_id,text,payload,state)
-        VALUES ('WE-BORDER','OWN',1,'judge_message','BORDER','Разовый заказ',?,'pending')`)
-        .run(JSON.stringify({ qty: 100, threshold: 100, doc_no: "DOC-BORDER" }));
+      db().prepare(`INSERT INTO world_event(id,org_id,seq,kind,code_1c,source_id,at,text,payload,state)
+        VALUES ('WE-BORDER','OWN',1,'judge_message','SE-BORDER','BORDER','2025-01-15','Разовый заказ',?,'pending')`)
+        .run(JSON.stringify({ qty: 100, threshold: 100, doc_no: "DOC-BORDER", at: "2025-01-15" }));
       const result = await processEvent("WE-BORDER");
       expect(result.reason).toBeUndefined();
       const proposal = db().prepare("SELECT kind,state,payload FROM proposal WHERE subject_id='DOC-BORDER'")
         .get() as { kind: string; state: string; payload: string } | undefined;
       expect(proposal).toMatchObject({ kind: "outlier_review", state: "needs_review" });
-      expect(JSON.parse(proposal!.payload).answer).toBe("one_off");
+      expect(JSON.parse(proposal!.payload)).toMatchObject({ answer: "one_off", ym: "2025-01", state: "excluded", code_1c: "SE-BORDER" });
       expect(mocks.record.mock.calls.some(([, action]) => action.kind === "escalation")).toBe(true);
     } finally { if (previous === undefined) delete process.env.AI_PROVIDER; else process.env.AI_PROVIDER = previous; }
+  });
+
+  it("fails a borderline event before applying source data when its provider is unavailable", async () => {
+    const previous = {
+      AI_PROVIDER: process.env.AI_PROVIDER, TYPESAFE_API_KEY: process.env.TYPESAFE_API_KEY,
+      AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
+    };
+    process.env.AI_PROVIDER = "jev";
+    delete process.env.TYPESAFE_API_KEY;
+    delete process.env.AI_GATEWAY_API_KEY;
+    try {
+      db().prepare(`INSERT INTO world_event(id,org_id,seq,kind,code_1c,source_id,at,text,payload,state)
+        VALUES ('WE-PROVIDER-ERROR','OWN',1,'judge_message','SE-BORDER','PROVIDER-ERROR','2025-01-15','Разовый заказ',?,'pending')`)
+        .run(JSON.stringify({ qty: 100, threshold: 100, doc_no: "DOC-PROVIDER-ERROR", at: "2025-01-15" }));
+      const result = await processEvent("WE-PROVIDER-ERROR");
+      expect(result.reason).toBe("provider_error:one_off_order");
+      expect(mocks.apply).not.toHaveBeenCalled();
+      expect((db().prepare("SELECT COUNT(*) AS n FROM sales_line").get() as { n: number }).n).toBe(0);
+      expect((db().prepare("SELECT state FROM world_event WHERE id='WE-PROVIDER-ERROR'").get() as { state: string }).state).toBe("failed");
+    } finally {
+      for (const [key, value] of Object.entries(previous)) if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
   });
 });

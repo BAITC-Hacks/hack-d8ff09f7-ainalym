@@ -49,7 +49,17 @@ async function recordDecision(runId: string, eventId: string, question: string, 
   if (result.result_state === "provider_error") throw new Error(`provider_error:${question}`);
 }
 
-async function proposeOutlierReview(row: EventRow, runId: string, subject: string, answer: string | null, decisionId: string): Promise<void> {
+async function proposeOutlierReview(row: EventRow, runId: string, subject: string, answer: string | null, decisionId: string, at: string): Promise<void> {
+  const ym = at.slice(0, 7);
+  if (!row.code_1c || !/^\d{4}-\d{2}$/.test(ym) || (answer !== "one_off" && answer !== "regular")) {
+    await recordAction(runId, {
+      kind: "escalation", subject_ref: subject, world_event_id: row.id,
+      summary_ru: `Пограничный документ ${subject} требует ручной проверки исходных данных`,
+      sources: [row.id, decisionId], autonomy: "escalated", result: "needs_owner",
+      idempotency_key: `${row.id}:outlier_missing_inputs:${subject}`,
+    });
+    return;
+  }
   const existing = db().prepare("SELECT id FROM proposal WHERE kind='outlier_review' AND subject_id=? AND state='needs_review' LIMIT 1")
     .get(subject) as { id: string } | undefined;
   const proposalId = existing?.id || `PR-${randomUUID()}`;
@@ -57,8 +67,9 @@ async function proposeOutlierReview(row: EventRow, runId: string, subject: strin
     const version = row.code_1c ? (tx.prepare("SELECT version FROM sku WHERE code_1c=?").get(row.code_1c) as { version: number } | undefined)?.version : undefined;
     tx.prepare(`INSERT INTO proposal(id,kind,subject_type,subject_id,subject_version,payload,affects,state,rationale_ru,sources,created_at)
       VALUES (?,'outlier_review','sales_document',?,?,?,?, 'needs_review',?,?,?)`).run(
-        proposalId, subject, version ?? null, JSON.stringify({ answer, decision_record_id: decisionId, doc_no: subject, code_1c: row.code_1c }),
-        JSON.stringify(row.code_1c ? [row.code_1c] : []),
+        proposalId, subject, version ?? null, JSON.stringify({ answer, decision_record_id: decisionId,
+          doc_no: subject, code_1c: row.code_1c, ym, state: answer === "one_off" ? "excluded" : "kept" }),
+        JSON.stringify([row.code_1c]),
         `Пограничный разовый заказ ${subject}: решение AI — ${answer ?? "не определено"}. Подтвердите исключение или сохранение.`,
         JSON.stringify([row.id, decisionId]), new Date().toISOString(),
       );
@@ -72,8 +83,11 @@ async function proposeOutlierReview(row: EventRow, runId: string, subject: strin
   });
 }
 
-async function maybeSemanticDecisions(row: EventRow, payload: Record<string, unknown>, runId: string): Promise<void> {
+interface PendingOutlierReview { subject: string; answer: string | null; decisionId: string; at: string }
+
+async function maybeSemanticDecisions(row: EventRow, payload: Record<string, unknown>, runId: string): Promise<PendingOutlierReview | null> {
   const text = row.text || String(payload.text || "");
+  let review: PendingOutlierReview | null = null;
   if (row.kind === "supplier_reply" && text) {
     await recordDecision(runId, row.id, "supplier_terms_hint", row.po_id || row.source_id, { text, org_id: row.org_id });
   }
@@ -93,14 +107,16 @@ async function maybeSemanticDecisions(row: EventRow, payload: Record<string, unk
         idempotency_key: `${row.id}:decision:one_off_order`,
       });
       if (judgment.result_state === "provider_error") throw new Error("provider_error:one_off_order");
-      if (judgment.decision_record_id) await proposeOutlierReview(
-        row, runId, String(payload.doc_no || row.source_id), judgment.answer, judgment.decision_record_id,
-      );
+      if (judgment.decision_record_id) review = {
+        subject: String(payload.doc_no || row.source_id), answer: judgment.answer,
+        decisionId: judgment.decision_record_id, at: String(payload.at || row.at || ""),
+      };
     }
   }
   if (payload.urgency_reason && row.code_1c) {
     await recordDecision(runId, row.id, "urgency_override_reason", row.code_1c, { text: String(payload.urgency_reason), org_id: row.org_id });
   }
+  return review;
 }
 
 async function recomputeAffected(row: EventRow, codes: string[], runId: string): Promise<string | null> {
@@ -178,6 +194,7 @@ async function runEvent(id: string): Promise<ProcessResult> {
   }
   try {
     const payload = eventPayload(row);
+    const review = await maybeSemanticDecisions(row, payload, runId);
     const sourceRow = domainEvent(row, payload, runId);
     const applied = await applyWorldEvent(sourceRow);
     if (!applied.applied && applied.reason !== "replayed") throw new Error(applied.reason || "event_not_applied");
@@ -185,7 +202,7 @@ async function runEvent(id: string): Promise<ProcessResult> {
       kind: "status_change", subject_ref: row.id, world_event_id: row.id,
       summary_ru: `Событие ${row.kind} применено`, sources: [row.source_id], idempotency_key: `${row.id}:applied`,
     });
-    await maybeSemanticDecisions(row, payload, runId);
+    if (review) await proposeOutlierReview(row, runId, review.subject, review.answer, review.decisionId, review.at);
     await recomputeAffected(row, applied.affected_codes, runId);
     withTx(tx => {
       tx.prepare("UPDATE world_event SET state='processed',run_id=?,processed_at=? WHERE id=?").run(runId, new Date().toISOString(), id);

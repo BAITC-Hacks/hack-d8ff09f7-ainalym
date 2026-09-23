@@ -179,6 +179,9 @@ describe("provider and decision guardrails", () => {
     db().prepare("UPDATE sku SET version=version+1 WHERE code_1c='AI-TEST-SKU'").run();
     const fresh = await decide("category_hint", "AI-TEST-SKU", context);
     expect(fresh.id).not.toBe(first.id);
+    const changedText = await decide("category_hint", "AI-TEST-SKU", { name: "Кабель" });
+    expect(changedText.id).not.toBe(fresh.id);
+    expect(changedText.answer).toBe("cables");
   });
 
   it("OpenAI preserves unknown and errors separately", async () => {

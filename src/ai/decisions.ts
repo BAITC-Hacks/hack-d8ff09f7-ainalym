@@ -56,6 +56,7 @@ function versionsFor(subject_ref: string, context: Record<string, unknown>): Rec
   const sku = db().prepare("SELECT version FROM sku WHERE code_1c = ?").get(skuCode) as { version: number } | undefined;
   if (sku) versions[`sku:${skuCode}`] = sku.version;
   if (Object.keys(versions).length === 0) versions.state = stateVersion();
+  versions.context = Number.parseInt(createHash("sha256").update(JSON.stringify(context)).digest("hex").slice(0, 12), 16);
   return versions;
 }
 
@@ -90,6 +91,7 @@ export async function decide(question_id: string, subject_ref: string, context: 
   const clean = sanitizeDecisionContext(context);
   const input = clean && typeof clean === "object" && !Array.isArray(clean) ? clean as Record<string, unknown> : {};
   const versions = versionsFor(subject_ref, input);
+  const startState = stateVersion();
   const rubric = question?.rubric_version ?? "unsupported";
   const hint = modelHint(selectedProvider());
   const missingRequired = question && (question.required_input_context ?? []).some(key => input[key] === undefined || input[key] === null || input[key] === "");
@@ -108,7 +110,7 @@ export async function decide(question_id: string, subject_ref: string, context: 
   }
   // A model response to an older SKU or inbox state is never accepted as a current judgment.
   const current = versionsFor(subject_ref, input);
-  if (JSON.stringify(current) !== JSON.stringify(versions)) {
+  if (JSON.stringify(current) !== JSON.stringify(versions) || stateVersion() !== startState) {
     result = { answer: null, distribution: {}, provider: result.provider, model_version: result.model_version, result_state: "insufficient", label: result.label };
   }
   const key = cacheKey(question_id, subject_ref, versions, rubric, result.model_version);
