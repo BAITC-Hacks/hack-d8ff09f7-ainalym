@@ -1,5 +1,5 @@
-# L2a checkpoint — gates
-Done: money, need engine, supplier proposals, task/schedule loop, versioned approval, queue/today/orders views, proposal routes; 20 domain tests pass; build and TypeScript pass.
-Undone: `npm run check -- domain` (L1 not landed), partner named-SKU eval (L9 not landed), live `/api/queue` and `/api/today` curl (L1 routes not landed).
-Resumable: merge main; run ETL and named-SKU checks when L9 lands; run full domain check and API curls when L1 lands; fix contract mismatches.
-SHA: this checkpoint commit (parent 2ad980d).
+# L2a checkpoint — partner evaluation
+Done: ETL loaded; named M1–M5 checks pass; full SE supplier run works with explicit unresolved sources; affected-only successor proposals retain other lines; 29 domain tests pass.
+Undone: L1 live queue/today routes and ledger integration; L2b money view; L6 export gate.
+Resumable: merge main; run build/check and API curls after L1/L2b/L6 land; fix integration mismatches.
+SHA: this checkpoint commit (parent 18932ec).

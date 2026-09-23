@@ -6,13 +6,14 @@ import { computeNeed, type EngineContext, type EngineParams, type NeedResult } f
 import { paramsForSupplier } from "./params";
 import { Money } from "./money";
 import { transitionTask } from "./tasks";
+import { createTask } from "./tasks";
 
 export interface CalcScope { supplier?: string; category?: string; codes?: string[] }
 export interface CalcContext extends EngineContext { org_id?: string }
 export interface ApplyResult { proposals: Record<string, unknown>[]; tasks: Record<string, unknown>[]; affected: string[] }
 type Sku = { code_1c: string; supplier_id: string; name: string; unit_cost: string | null; moq: number };
 type Rec = { id: string; code_1c: string; supplier_id: string; qty_recommended: number; qty_adjusted: number | null; rationale_ru: string; proposal_id: string | null; unit_cost: string | null; name: string; components: string };
-type Run = { id: string; agent_run_id: string | null };
+type Run = { id: string; agent_run_id: string | null; scope: string };
 
 function inTx<T>(database: DatabaseSync, fn: () => T): T {
   database.exec("BEGIN");
@@ -28,9 +29,20 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
   const skus = (database.prepare(query).all(...[scope.supplier, scope.category].filter((value) => value !== undefined)) as Sku[])
     .filter((sku) => !scope.codes || scope.codes.includes(sku.code_1c));
   const computed: { sku: Sku; result: NeedResult; params: EngineParams }[] = [];
+  const unresolved: { code_1c: string; supplier_id: string; reason: string }[] = [];
   for (const sku of skus) {
     const params = paramsForSupplier(sku.supplier_id, database, overrides);
-    computed.push({ sku, params, result: await computeNeed(sku.code_1c, params, { database, as_of: ctx.as_of }) });
+    try {
+      const result = await computeNeed(sku.code_1c, params, { database, as_of: ctx.as_of });
+      if (result.components.stock_stale) unresolved.push({ code_1c: sku.code_1c, supplier_id: sku.supplier_id,
+        reason: `stock source missing for ${sku.code_1c}: latest confirmed month ${result.components.stock_month}` });
+      else computed.push({ sku, params, result });
+    }
+    catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      if (!/source missing/i.test(reason)) throw error;
+      unresolved.push({ code_1c: sku.code_1c, supplier_id: sku.supplier_id, reason });
+    }
   }
   const id = `RUN-${randomUUID()}`;
   const agentRunId = await startRun({ org_id: orgId, trigger_type: "calc_request", trigger_ref: id });
@@ -58,15 +70,26 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
       sources: result.components.outliers_excluded as unknown[], autonomy: "auto", idempotency_key: `outlier:${id}:${sku.code_1c}` });
   }
   const applied = await applyRecommendations(id, { database, org_id: orgId });
+  for (const supplierId of [...new Set(unresolved.map((row) => row.supplier_id))]) {
+    const gaps = unresolved.filter((row) => row.supplier_id === supplierId);
+    const task = await createTask({ title: `Проверить отсутствующие источники ${supplierId}: ${gaps.length} SKU`, state: "needs_review",
+      sources: gaps.map((row) => `${row.code_1c}: ${row.reason}`) }, { database, org_id: orgId, run_id: agentRunId });
+    applied.tasks.push(task);
+    await recordAction(agentRunId, { kind: "escalation", subject_ref: task.id,
+      summary_ru: `Требуются данные для ${gaps.length} SKU ${supplierId}`, rationale_ru: gaps.map((row) => `${row.code_1c}: ${row.reason}`).join("; "),
+      sources: gaps.map((row) => row.code_1c), autonomy: "escalated", result: "needs_owner", idempotency_key: `source-gap:${id}:${supplierId}` });
+  }
   await finishRun(agentRunId, "done");
-  return { run_id: id, skus: skus.length, recommended: computed.filter(({ result }) => result.need > 0).length, ...applied };
+  return { run_id: id, skus: skus.length, recommended: computed.filter(({ result }) => result.need > 0).length, unresolved, ...applied };
 }
 
 /** One supplier order proposal per supplier; replay and newer runs are safe. */
 export async function applyRecommendations(run_id: string, ctx: CalcContext = {}): Promise<ApplyResult> {
   const database = ctx.database ?? db();
-  const run = database.prepare("SELECT id,agent_run_id FROM calc_run WHERE id=?").get(run_id) as Run | undefined;
+  const run = database.prepare("SELECT id,agent_run_id,scope FROM calc_run WHERE id=?").get(run_id) as Run | undefined;
   if (!run) throw new Error(`calculation run ${run_id} is missing`);
+  const scope = JSON.parse(run.scope) as CalcScope;
+  const scopedCodes = new Set(scope.codes ?? []);
   const recommendations = database.prepare(`SELECT r.id,r.code_1c,r.supplier_id,r.qty_recommended,r.qty_adjusted,r.rationale_ru,r.proposal_id,r.components,s.name,s.unit_cost
     FROM recommendation r JOIN sku s ON s.code_1c=r.code_1c WHERE r.run_id=? ORDER BY r.supplier_id,r.code_1c`).all(run_id) as Rec[];
   const groups = new Map<string, Rec[]>();
@@ -74,27 +97,41 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
     if ((rec.qty_adjusted ?? rec.qty_recommended) <= 0) continue;
     groups.set(rec.supplier_id, [...(groups.get(rec.supplier_id) ?? []), rec]);
   }
+  for (const code of scopedCodes) {
+    const supplier = database.prepare("SELECT supplier_id FROM sku WHERE code_1c=?").get(code) as { supplier_id: string } | undefined;
+    if (supplier && !groups.has(supplier.supplier_id)) groups.set(supplier.supplier_id, []);
+  }
   const proposals: Record<string, unknown>[] = [];
   const tasks: Record<string, unknown>[] = [];
   for (const [supplierId, rows] of groups) {
-    const existingId = rows[0].proposal_id;
+    const existingId = rows[0]?.proposal_id;
     if (existingId) {
       const existing = database.prepare("SELECT * FROM proposal WHERE id=?").get(existingId) as Record<string, unknown> | undefined;
       if (existing) proposals.push(existing);
       continue;
     }
-    const old = database.prepare("SELECT id FROM proposal WHERE kind='supplier_order' AND subject_id=? AND state='needs_review' ORDER BY created_at DESC LIMIT 1")
-      .get(supplierId) as { id: string } | undefined;
+    const old = database.prepare("SELECT id,payload,sources FROM proposal WHERE kind='supplier_order' AND subject_id=? AND state='needs_review' ORDER BY created_at DESC LIMIT 1")
+      .get(supplierId) as { id: string; payload: string; sources: string } | undefined;
     const id = `PR-${randomUUID()}`;
     const taskId = `TK-${randomUUID()}`;
-    const lines = rows.map((rec) => ({ recommendation_id: rec.id, code_1c: rec.code_1c, name: rec.name,
+    const currentLines = rows.map((rec) => ({ recommendation_id: rec.id, code_1c: rec.code_1c, name: rec.name,
       qty: rec.qty_adjusted ?? rec.qty_recommended, unit_cost: rec.unit_cost, rationale_ru: rec.rationale_ru,
       components: JSON.parse(rec.components) as Record<string, unknown> }));
+    const carried = old && scopedCodes.size ? ((JSON.parse(old.payload) as { lines: typeof currentLines }).lines ?? [])
+      .filter((line) => !scopedCodes.has(line.code_1c)) : [];
+    const lines = [...carried, ...currentLines];
+    if (!lines.length) {
+      if (old) {
+        database.prepare("UPDATE proposal SET state='stale',version=version+1 WHERE id=? AND state='needs_review'").run(old.id);
+        bumpStateVersion(database);
+      }
+      continue;
+    }
     const priced = lines.filter((line) => line.unit_cost !== null);
     const total = priced.reduce((sum, line) => sum.add(Money.of(line.unit_cost!).mul(line.qty)), Money.of("0"));
     const moneyAtStake = priced.length ? total.toJSON() : null;
     const rationale = `Заказ ${supplierId}: ${lines.length} позиций, ${lines.reduce((sum, line) => sum + line.qty, 0)} шт. ${priced.length === lines.length ? `Стоимость ${total.amount} KZT.` : `Стоимость известна для ${priced.length} из ${lines.length} позиций; неизвестные цены требуют проверки.`} Подтвердите точный состав и количество перед передачей.`;
-    const sources = rows.map((row) => `recommendation:${row.id}`);
+    const sources = [...new Set([...rows.map((row) => `recommendation:${row.id}`), ...carried.map((line) => `recommendation:${line.recommendation_id}`)])];
     const proposal = { id, kind: "supplier_order", subject_type: "supplier", subject_id: supplierId, subject_version: 1,
       payload: JSON.stringify({ run_id, supplier_id: supplierId, lines, cost_known_lines: priced.length }),
       affects: JSON.stringify(rows.map((row) => row.code_1c)), supersedes_id: old?.id ?? null, state: "needs_review",
@@ -105,6 +142,7 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
       database.prepare(`INSERT INTO proposal (id,kind,subject_type,subject_id,subject_version,payload,affects,supersedes_id,state,rationale_ru,sources,money_at_stake,version,created_at)
         VALUES (@id,@kind,@subject_type,@subject_id,@subject_version,@payload,@affects,@supersedes_id,@state,@rationale_ru,@sources,@money_at_stake,@version,@created_at)`).run(proposal);
       for (const rec of rows) database.prepare("UPDATE recommendation SET proposal_id=? WHERE id=?").run(id, rec.id);
+      for (const line of carried) database.prepare("UPDATE recommendation SET proposal_id=? WHERE id=?").run(id, line.recommendation_id);
       database.prepare("INSERT INTO task (id,title,state,owner_role,proposal_id,updated_at) VALUES (?,?,?,?,?,?)")
         .run(taskId, `Проверить заказ ${supplierId}`, "needs_review", "purchasing_manager", id, proposal.created_at);
       bumpStateVersion(database);
@@ -120,7 +158,7 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
         sources, autonomy: "escalated", result: "needs_owner", idempotency_key: `escalation:${id}` });
     }
   }
-  return { proposals, tasks, affected: recommendations.map((row) => row.code_1c) };
+  return { proposals, tasks, affected: [...new Set([...recommendations.map((row) => row.code_1c), ...scopedCodes])] };
 }
 
 export class ProposalConflictError extends Error { readonly status = 409; }

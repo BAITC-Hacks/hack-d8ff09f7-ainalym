@@ -41,6 +41,17 @@ describe("deterministic replenishment need", () => {
     expect(base.need - supplied.need).toBe(2);
   });
 
+  it("responds to sales and stock changes independently", async () => {
+    const database = fixture();
+    const before = await computeNeed("TEST", params, context(database));
+    database.prepare("UPDATE stock_month SET opening_qty='18' WHERE code_1c='TEST'").run();
+    const lessStock = await computeNeed("TEST", params, context(database));
+    expect(lessStock.need).toBeGreaterThan(before.need);
+    database.prepare("UPDATE sales_month SET qty_file='30' WHERE code_1c='TEST' AND ym='2025-08'").run();
+    const moreSales = await computeNeed("TEST", params, context(database));
+    expect(moreSales.components.base_rate).toBeGreaterThan(lessStock.components.base_rate as number);
+  });
+
   it("raises the forecast into the SKU's seasonal peak", async () => {
     const database = fixture({ seasonal: true });
     const quiet = await computeNeed("TEST", params, context(database, "2025-03-01"));
