@@ -2,6 +2,9 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 import { db, resetInstance } from "../../src/db/client";
 import { runCalculation } from "../../src/domain/apply";
 import { processEvent } from "../../src/ai/worker";
+import { DatabaseSync } from "node:sqlite";
+import { migrate } from "../../src/db/client";
+import { applyRecommendations } from "../../src/domain/apply";
 
 beforeAll(() => {
   resetInstance();
@@ -16,6 +19,18 @@ beforeAll(() => {
     }
     d.prepare("INSERT INTO stock_month(code_1c,ym,opening_qty) VALUES (?,'2024-12','0')").run(code);
   }
+});
+
+it("does not create an empty supplier proposal for zero need", async () => {
+  const database = new DatabaseSync(":memory:");
+  try {
+    migrate(database);
+    database.prepare("INSERT INTO supplier(id,name,lead_time_days) VALUES ('ZERO','Zero',50)").run();
+    database.prepare("INSERT INTO sku(code_1c,supplier_id,name) VALUES ('ZERO-1','ZERO','Inactive')").run();
+    database.prepare("INSERT INTO calc_run(id,started_at,finished_at) VALUES ('RUN-ZERO','2025-01-01','2025-01-01')").run();
+    database.prepare("INSERT INTO recommendation(id,run_id,code_1c,supplier_id,qty_recommended) VALUES ('REC-ZERO','RUN-ZERO','ZERO-1','ZERO',0)").run();
+    expect((await applyRecommendations("RUN-ZERO", { database })).proposals).toHaveLength(0);
+  } finally { database.close(); }
 });
 afterAll(() => resetInstance());
 

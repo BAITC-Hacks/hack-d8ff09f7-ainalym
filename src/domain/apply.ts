@@ -92,6 +92,13 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
       qty: rec.qty_adjusted ?? rec.qty_recommended, unit_cost: rec.unit_cost, rationale_ru: rec.rationale_ru,
       components: JSON.parse(rec.components) as Record<string, unknown> }));
     const lines = [...carried, ...changed].sort((a, b) => a.code_1c.localeCompare(b.code_1c));
+    if (!lines.length) {
+      if (old) inTx(database, () => {
+        database.prepare("UPDATE proposal SET state='stale',version=version+1 WHERE id=? AND state='needs_review'").run(old.id);
+        bumpStateVersion(database);
+      });
+      continue;
+    }
     const priced = lines.filter((line) => line.unit_cost !== null);
     const total = priced.reduce((sum, line) => sum.add(Money.of(line.unit_cost!).mul(line.qty)), Money.of("0"));
     const moneyAtStake = priced.length ? total.toJSON() : null;
