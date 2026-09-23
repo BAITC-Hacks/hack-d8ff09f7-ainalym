@@ -8,7 +8,7 @@ const amount = (n: Decimal.Value) => Money.of(new Decimal(n).toDecimalPlaces(2))
 
 export interface MoneyView {
   cash: MoneyRow[];
-  committed_by_supplier: { supplier_id: string; amount: string; currency: string; lines: number; cost_known_lines: number }[];
+  committed_by_supplier: { supplier_id: string; amount: string | null; currency: string; lines: number; cost_known_lines: number; cost_complete: boolean; unknown_cost_lines: number }[];
   next_60d: { out: { at: string; amount: string; currency: string; po_id: string; kind: string }[] };
   stock_value: { amount: string; currency: string; cost_known_share: number; cost_unknown_count: number } | null;
   risks: { code: string; count: number; label_ru: string; amount?: string; currency?: string }[];
@@ -46,7 +46,10 @@ export async function moneyView(orgId: string, asOf = new Date()): Promise<Money
     }
     bySupplier.set(key, item);
   }
-  const committed_by_supplier = [...bySupplier.values()].map(r => ({ ...r, amount: amount(r.amount) }));
+  const committed_by_supplier = [...bySupplier.values()].map(r => ({
+    ...r, amount: r.cost_known_lines ? amount(r.amount) : null,
+    cost_complete: r.cost_known_lines === r.lines, unknown_cost_lines: r.lines - r.cost_known_lines,
+  }));
   const horizon = new Date(asOf);
   horizon.setUTCDate(horizon.getUTCDate() + 60);
   const out = (d.prepare("SELECT kind,po_id,amount,currency,due_at FROM obligation WHERE state='open' AND due_at<=? ORDER BY due_at,id")

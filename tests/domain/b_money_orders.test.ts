@@ -130,6 +130,7 @@ describe("money derived from ledger rows", () => {
     approveOrder("PO-2", 1);
     const view = await moneyView("ORG");
     expect(view.risks.some(r => r.code === "cost_unknown" && r.count >= 1)).toBe(true);
+    expect(view.committed_by_supplier).toEqual(expect.arrayContaining([expect.objectContaining({ supplier_id: "IEK", amount: null, cost_complete: false, unknown_cost_lines: 1 })]));
   });
   it("values only known-cost stock", async () => {
     q("INSERT INTO stock_month(code_1c,ym,opening_qty,known) VALUES ('SE-1','2026-09','5',1)");
