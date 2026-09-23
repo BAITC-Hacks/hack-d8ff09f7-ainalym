@@ -20,7 +20,7 @@ export interface Artifact {
   sources: string[];
   created_at: string;
   consistency: "passed" | "revised";
-  label: "Подготовить, не отправлять";
+  label: "Черновик заказа — не отправлен";
 }
 export class DraftProviderUnavailable extends Error {
   constructor() { super("Provider unavailable"); }
@@ -61,7 +61,7 @@ async function draftText(prompt: unknown, schema: z.ZodType): Promise<{ object: 
 }
 
 function consistent(markdown: string, exactLines: { code: string; qty: number }[]): boolean {
-  if (/отправлен|отправили|подтвержд[её]н поставщиком|оплачен|выполнен/i.test(markdown)) return false;
+  if (/(?<!не )отправлен|отправили|подтвержд[её]н поставщиком|оплачен|выполнен/i.test(markdown)) return false;
   return exactLines.every(line => markdown.includes(line.code) && markdown.includes(`${line.qty} шт`));
 }
 
@@ -86,7 +86,7 @@ export async function prepareSupplierEmail(po_id: string): Promise<Artifact> {
   const rows = lines.map(line => `- ${line.code_1c} · ${line.name}${line.article ? ` · арт. ${line.article}` : ""} — ${line.qty} шт`);
   const title = `Черновик заказа ${po.id} для ${po.supplier_name}`;
   const render = (greeting: string, closing: string) => [
-    `# ${title}`, "", "**Подготовить, не отправлять.**", "",
+    `# ${title}`, "", "**Черновик заказа — не отправлен**", "",
     greeting, "", `Просим рассмотреть заказ ${po.id}:`, "", ...rows, "",
     po.eta ? `Ожидаемый срок по плану: ${po.eta}. Просим подтвердить возможность поставки.` : "Просим подтвердить срок поставки.",
     "", closing, "", `Источники: ${po.id}; ${lines.map(line => line.code_1c).join(", ")}.`,
@@ -103,7 +103,7 @@ export async function prepareSupplierEmail(po_id: string): Promise<Artifact> {
     id: `ART-${randomUUID()}`, kind: "supplier_email", source_id: po.id, state: "needs_review",
     provider: "openai", model_version: generated.model, title_ru: title, markdown,
     sources: [po.id, ...lines.map(line => `sku:${line.code_1c}`)], created_at: new Date().toISOString(),
-    consistency, label: "Подготовить, не отправлять",
+    consistency, label: "Черновик заказа — не отправлен",
   });
   const run = po.run_id ? d.prepare("SELECT agent_run_id FROM calc_run WHERE id=?").get(po.run_id) as { agent_run_id: string | null } | undefined : undefined;
   if (run?.agent_run_id) await recordAction(run.agent_run_id, {
@@ -129,7 +129,7 @@ export async function prepareRunSummary(run_id: string): Promise<Artifact> {
   const details = groups.map(group => `- ${group.supplier_id}: ${group.sku_count} позиций, ${group.qty} шт`);
   const title = `Сводка расчёта ${run_id}`;
   const render = (intro: string) => [
-    `# ${title}`, "", "**Подготовить, не отправлять.**", "", intro, "",
+    `# ${title}`, "", "**Черновик заказа — не отправлен**", "", intro, "",
     `Обработано SKU: ${run.skus}. Рекомендовано к заказу: ${run.recommended}.`, "",
     ...details, "", `Источник: ${run_id}. Решение по заказам остаётся за менеджером.`,
   ].join("\n");
@@ -143,7 +143,7 @@ export async function prepareRunSummary(run_id: string): Promise<Artifact> {
     id: `ART-${randomUUID()}`, kind: "run_summary", source_id: run_id, state: "needs_review",
     provider: "openai", model_version: generated.model, title_ru: title, markdown,
     sources: [run_id, ...groups.map(group => `supplier:${group.supplier_id}`)], created_at: new Date().toISOString(),
-    consistency, label: "Подготовить, не отправлять",
+    consistency, label: "Черновик заказа — не отправлен",
   });
   if (run.agent_run_id) await recordAction(run.agent_run_id, {
     kind: "order_drafted", subject_ref: run_id,
