@@ -1,6 +1,6 @@
-# L6 checkpoint — PO export
-done: world feed/API, judge page, supplier channel; approved PO to CSV/XLSX and one peer record.
-done: export_only label, no connector; fail-first peer tests 7/7; build GREEN; XLSX opened by openpyxl.
-undone: peer view, runtime integration gate, route handoff for /api/orders/:id/export.
-resumable: show world events and export records in /peers; verify HTTP gates after ETL lands.
+# L6 checkpoint — peer view
+done: world API, judge page, supplier channel, CSV/XLSX export seam, /peers view.
+done: peer tests 7/7; build GREEN; local HTTP play/compose/dedupe/export GREEN; screenshots in docs/evidence/peers.
+undone: L1/L2/L3 integration gate and /api/orders/:id/export handoff; npm run check script not yet on main.
+resumable: merge main at checkpoint, then rerun full gate and align event payloads with landed worker.
 sha: HEAD (the commit containing this checkpoint).

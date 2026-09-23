@@ -1,4 +1,5 @@
-.main { max-width: 920px; width: 100%; margin: 0 auto; padding: 36px 24px 80px; color: var(--ink, #1e2931); }
+.canvas { min-height: 100vh; width: 100%; background: #f3f7f5; color: #1e2931; }
+.main { max-width: 920px; width: 100%; margin: 0 auto; padding: 36px 24px 80px; }
 .topline { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
 .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #667983; }
 .title { font-size: clamp(28px, 4vw, 42px); line-height: 1.1; letter-spacing: -.035em; margin: 6px 0 10px; }

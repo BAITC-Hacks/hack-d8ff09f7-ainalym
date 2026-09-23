@@ -25,7 +25,7 @@ export default async function SupplierPage({ params }: { params: Promise<{ po_id
       <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Код 1С</th><th>Артикул</th><th>Наименование</th><th>Кол-во</th></tr></thead><tbody>
         {lines.map((line) => <tr key={line.code_1c}><td>{line.code_1c}</td><td>{line.article ?? "—"}</td><td>{line.name}</td><td>{line.qty}</td></tr>)}
       </tbody></table></div>
-      <p className={styles.truth}>Черновик заказа — не отправлен до явного действия в контролируемом демо-канале.</p>
+      <p className={styles.truth}>{channel.state === "draft" ? "Черновик заказа — не отправлен." : "Контролируемый демо-канал · письмо не покидало приложение."}</p>
     </section>
     <section className={styles.panel} aria-labelledby="reply-title"><h2 id="reply-title">Ответ поставщика</h2><SupplierActions poId={po_id} orderState={order.state} channel={channel} /></section>
   </main>;
