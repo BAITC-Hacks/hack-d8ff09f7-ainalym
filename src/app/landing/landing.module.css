@@ -112,10 +112,18 @@
 /* Product recordings: one overview, then four focused workflows. */
 .clips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px 24px; margin-top: 56px; }
 .clipCard { min-width: 0; margin: 0; border: 1px solid var(--hair); border-radius: 20px; overflow: hidden; background: var(--night-2); }
+.clipCard[data-revealed] { animation: rise 280ms var(--ease-out); }
+.clipCard { transition: border-color 180ms var(--ease-out); }
+.clipCard:hover, .clipCard:focus-within { border-color: rgba(242, 184, 148, 0.4); }
+.clipCard:hover .clipTitle, .clipCard:focus-within .clipTitle { color: var(--dawn); }
+.clipTitle { transition: color 180ms; }
+.clipHint { margin-top: 16px; color: var(--text-2); font-size: 14px; line-height: 1.5; }
+.clipStatus { min-height: 20px; margin-top: 14px; color: var(--dawn); font-size: 12px; line-height: 20px; }
+@media (hover: none), (prefers-reduced-motion: reduce) { .clipHint { display: none; } }
 .clipCard:first-child { grid-column: 1 / -1; }
 .clipMedia { position: relative; aspect-ratio: 8 / 5; background: var(--night-2); }
 .clipPoster, .clipVideo { display: block; width: 100%; height: 100%; object-fit: contain; }
-.clipVideo { position: absolute; inset: 0; opacity: 0; }
+.clipVideo { position: absolute; inset: 0; opacity: 0; transition: opacity 180ms; }
 .clipVideo[data-playing] { opacity: 1; }
 .clipCaption { padding: 24px 28px 28px; }
 .clipHeading { display: flex; align-items: center; gap: 12px; min-height: 36px; }
@@ -123,8 +131,8 @@
 .clipTitle { color: var(--text); font-size: 22px; line-height: 1.25; font-weight: 600; letter-spacing: -0.015em; }
 .clipValue { margin-top: 10px; color: var(--text); font-size: 16px; line-height: 1.55; text-wrap: pretty; }
 .clipValue span { display: block; color: var(--text-2); }
-.clipControls { display: flex; gap: 4px; margin-left: auto; }
-.clipControl { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border: 1px solid var(--hair); border-radius: 50%; color: var(--text-2); background: transparent; cursor: pointer; }
+.clipControls { flex: none; display: flex; gap: 4px; margin-left: auto; }
+.clipControl { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border: 1px solid var(--hair); border-radius: 50%; color: var(--text-2); background: transparent; cursor: pointer; }
 .clipControl:hover { background: var(--dawn-soft); color: var(--text); }
 
 /* Files → calculation → supplier order */

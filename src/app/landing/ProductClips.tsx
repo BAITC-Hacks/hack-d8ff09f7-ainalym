@@ -18,7 +18,7 @@ const CLIPS = [
   { id: "purchases", title: "Закупки", value: "Расчёт пополнения сразу превращается в корзину.", detail: "Количество, сумма и предоплата — перед вами." },
   { id: "order", title: "Заказ поставщику", value: "Проверьте состав заказа и утвердите его сами.", detail: "Позиции и суммы уже собраны — решение за вами." },
   { id: "money", title: "Деньги", value: "Выплаты поставщикам на 60 дней вперёд.", detail: "Видно, когда нужны деньги и каких данных не хватает." },
-  { id: "assistant", title: "ИИ-Помощник", value: "Спросите, что срочно заказать, — получите список.", detail: "Ответ по данным склада помогает выбрать следующий шаг." },
+  { id: "assistant", title: "Помощник", value: "Спросите, что срочно заказать, — получите список.", detail: "Ответ по данным склада помогает выбрать следующий шаг." },
 ] as const;
 
 function ClipCard({ clip, index, motion }: { clip: typeof CLIPS[number]; index: number; motion: boolean }) {
@@ -28,6 +28,8 @@ function ClipCard({ clip, index, motion }: { clip: typeof CLIPS[number]; index: 
   const [loaded, setLoaded] = useState(false);
   const [paused, setPaused] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [hasFrame, setHasFrame] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const poster = `/landing/clips/${clip.id}.png`;
 
   useEffect(() => {
@@ -44,25 +46,29 @@ function ClipCard({ clip, index, motion }: { clip: typeof CLIPS[number]; index: 
   useEffect(() => {
     const element = video.current;
     if (!element) return;
-    if (motion && visible && !paused) {
+    if (motion && visible && !paused && !hovered) {
       element.muted = true;
       void element.play().catch(() => setPlaying(false));
     } else {
       element.pause();
     }
-  }, [loaded, motion, paused, visible]);
+  }, [hovered, loaded, motion, paused, visible]);
 
   return (
-    <figure ref={card} className={styles.clipCard} data-product-clip={clip.id}>
-      <div className={styles.clipMedia}>
+    <figure ref={card} className={styles.clipCard} data-product-clip={clip.id} data-revealed={loaded || undefined}>
+      <div
+        className={styles.clipMedia}
+        onPointerEnter={event => { if (event.pointerType === "mouse") setHovered(true); }}
+        onPointerLeave={() => setHovered(false)}
+        onPointerCancel={() => setHovered(false)}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element -- exact-size local video poster, also the reduced-motion fallback */}
         <img src={poster} className={styles.clipPoster} width={1280} height={800} loading="lazy" decoding="async" alt={`${clip.title}: ${clip.value}`} />
         {motion && loaded && (
           <video
             ref={video}
             className={styles.clipVideo}
-            data-playing={playing || undefined}
-            autoPlay
+            data-playing={hasFrame || undefined}
             muted
             loop
             playsInline
@@ -71,8 +77,9 @@ function ClipCard({ clip, index, motion }: { clip: typeof CLIPS[number]; index: 
             width={1280}
             height={800}
             aria-label={`Демонстрация: ${clip.title}`}
-            onPlaying={() => setPlaying(true)}
-            onError={() => setPlaying(false)}
+            onPlaying={() => { setPlaying(true); setHasFrame(true); }}
+            onPause={() => setPlaying(false)}
+            onError={() => { setPlaying(false); setHasFrame(false); }}
           >
             <source src={`/landing/clips/${clip.id}.mp4`} type="video/mp4" />
             <source src={`/landing/clips/${clip.id}.webm`} type="video/webm" />
@@ -85,8 +92,15 @@ function ClipCard({ clip, index, motion }: { clip: typeof CLIPS[number]; index: 
           <h3 className={styles.clipTitle}>{clip.title}</h3>
           {motion && loaded && (
             <div className={styles.clipControls}>
-              <button type="button" className={styles.clipControl} aria-label={`${paused ? "Воспроизвести" : "Приостановить"} ролик «${clip.title}»`} onClick={() => setPaused(value => !value)}>
-                {paused ? <Play size={16} aria-hidden="true" /> : <Pause size={16} aria-hidden="true" />}
+              <button type="button" className={styles.clipControl} aria-label={`${playing ? "Приостановить" : "Воспроизвести"} ролик «${clip.title}»`} onClick={() => {
+                if (playing) {
+                  setPaused(true);
+                } else {
+                  setPaused(false);
+                  void video.current?.play().catch(() => setPlaying(false));
+                }
+              }}>
+                {!playing ? <Play size={16} aria-hidden="true" /> : <Pause size={16} aria-hidden="true" />}
               </button>
               <button type="button" className={styles.clipControl} aria-label={`Развернуть ролик «${clip.title}»`} onClick={() => { void video.current?.requestFullscreen?.().catch(() => undefined); }}>
                 <Maximize2 size={16} aria-hidden="true" />
@@ -95,6 +109,7 @@ function ClipCard({ clip, index, motion }: { clip: typeof CLIPS[number]; index: 
           )}
         </div>
         <p className={styles.clipValue}>{clip.value}<span>{clip.detail}</span></p>
+        {motion && loaded && <p className={styles.clipStatus} aria-hidden="true">{hovered && !paused ? "Пауза для чтения" : playing ? "Ролик без звука" : "На паузе · нажмите ▶ для просмотра"}</p>}
       </figcaption>
     </figure>
   );
@@ -106,9 +121,10 @@ export function ProductClips() {
     <section id="product" className={styles.section} aria-labelledby="product-title">
       <div className={styles.sectionHead}>
         <p className={styles.kicker}>Продукт в действии</p>
-        <h2 id="product-title" className={styles.sectionTitle}>Что делает Ainalym</h2>
-        <p className={styles.sectionLead}>Пять коротких историй о закупках, складе и деньгах. На реальных экранах демо, без звука.</p>
+        <h2 id="product-title" className={styles.sectionTitle}>От срочных позиций до плана платежей</h2>
+        <p className={styles.sectionLead}>Посмотрите, как расчёт становится заказом и планом платежей. Пять коротких записей из демо, без звука.</p>
       </div>
+      <p className={styles.clipHint}>Наведите на ролик, чтобы рассмотреть детали. Уберите курсор — просмотр продолжится.</p>
       <div className={styles.clips}>
         {CLIPS.map((clip, index) => <ClipCard key={clip.id} clip={clip} index={index} motion={motion} />)}
       </div>
