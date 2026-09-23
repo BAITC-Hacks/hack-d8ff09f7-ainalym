@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { bumpStateVersion, db, resetInstance } from "../../src/db/client";
 import { executeVoiceTool } from "../../src/voice/tools";
+import * as views from "../../src/domain/views";
 import { TranscriptGate, VoiceTurnGate } from "../../src/voice/transport";
 import { POST as toolRoute } from "../../src/app/api/voice/tools/[name]/route";
 
@@ -66,6 +67,19 @@ describe("voice tool bridge", () => {
     const explanation = await executeVoiceTool("explain_sku", { request_id: "call-explain", scope: { org_id: "ORG-1", supplier_id: "SE", code_1c: "CODE-1" }, args: { code_1c: "CODE-1" } });
     expect(explanation.result).toMatchObject({ ok: true, code_1c: "CODE-1", components: { on_hand: 0 } });
     expect(typeof explanation.result.rationale_ru).toBe("string");
+  });
+
+  it("returns the first result to a duplicate while a slow tool is running", async () => {
+    const view = vi.spyOn(views, "queueView").mockImplementation(async () => {
+      await new Promise(resolve => setTimeout(resolve, 2200));
+      return { items: [{ id: "PR-1", kind: "proposal", title: "Проверить заказ SE", why: "Требуется решение", sources: [], money_at_stake: null, options: [], href: "/review/PR-1", since: "2026-09-23" }] };
+    });
+    const call = { request_id: "call-slow-duplicate", scope: { org_id: "ORG-1" }, args: {} };
+    const [first, second] = await Promise.all([executeVoiceTool("what_needs_me", call), executeVoiceTool("what_needs_me", call)]);
+    expect(first.result).toMatchObject({ ok: true, items: [{ id: "PR-1" }] });
+    expect(second.result).toMatchObject({ ok: true, replayed: true, items: [{ id: "PR-1" }] });
+    expect(view).toHaveBeenCalledTimes(1);
+    view.mockRestore();
   });
 
   it("rejects a SKU outside the current supplier", async () => {
