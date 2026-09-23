@@ -70,7 +70,6 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
     FROM recommendation r JOIN sku s ON s.code_1c=r.code_1c WHERE r.run_id=? ORDER BY r.supplier_id,r.code_1c`).all(run_id) as Rec[];
   const groups = new Map<string, Rec[]>();
   for (const rec of recommendations) {
-    if ((rec.qty_adjusted ?? rec.qty_recommended) <= 0) continue;
     groups.set(rec.supplier_id, [...(groups.get(rec.supplier_id) ?? []), rec]);
   }
   const proposals: Record<string, unknown>[] = [];
@@ -82,23 +81,27 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
       if (existing) proposals.push(existing);
       continue;
     }
-    const old = database.prepare("SELECT id FROM proposal WHERE kind='supplier_order' AND subject_id=? AND state='needs_review' ORDER BY created_at DESC LIMIT 1")
-      .get(supplierId) as { id: string } | undefined;
+    const old = database.prepare("SELECT id,payload,sources,version FROM proposal WHERE kind='supplier_order' AND subject_id=? AND state='needs_review' ORDER BY created_at DESC,rowid DESC LIMIT 1")
+      .get(supplierId) as { id: string; payload: string; sources: string; version: number } | undefined;
     const id = `PR-${randomUUID()}`;
     const taskId = `TK-${randomUUID()}`;
-    const lines = rows.map((rec) => ({ recommendation_id: rec.id, code_1c: rec.code_1c, name: rec.name,
+    const changedCodes = new Set(rows.map(row => row.code_1c));
+    const priorLines = old ? (JSON.parse(old.payload) as { lines?: Array<{ recommendation_id: string; code_1c: string; name: string; qty: number; unit_cost: string | null; rationale_ru: string; components: Record<string, unknown> }> }).lines ?? [] : [];
+    const carried = priorLines.filter(line => !changedCodes.has(line.code_1c));
+    const changed = rows.filter(rec => (rec.qty_adjusted ?? rec.qty_recommended) > 0).map((rec) => ({ recommendation_id: rec.id, code_1c: rec.code_1c, name: rec.name,
       qty: rec.qty_adjusted ?? rec.qty_recommended, unit_cost: rec.unit_cost, rationale_ru: rec.rationale_ru,
       components: JSON.parse(rec.components) as Record<string, unknown> }));
+    const lines = [...carried, ...changed].sort((a, b) => a.code_1c.localeCompare(b.code_1c));
     const priced = lines.filter((line) => line.unit_cost !== null);
     const total = priced.reduce((sum, line) => sum.add(Money.of(line.unit_cost!).mul(line.qty)), Money.of("0"));
     const moneyAtStake = priced.length ? total.toJSON() : null;
     const rationale = `Заказ ${supplierId}: ${lines.length} позиций, ${lines.reduce((sum, line) => sum + line.qty, 0)} шт. ${priced.length === lines.length ? `Стоимость ${total.amount} KZT.` : `Стоимость известна для ${priced.length} из ${lines.length} позиций; неизвестные цены требуют проверки.`} Подтвердите точный состав и количество перед передачей.`;
-    const sources = rows.map((row) => `recommendation:${row.id}`);
-    const proposal = { id, kind: "supplier_order", subject_type: "supplier", subject_id: supplierId, subject_version: 1,
+    const sources = lines.map(line => `recommendation:${line.recommendation_id}`);
+    const proposal = { id, kind: "supplier_order", subject_type: "supplier", subject_id: supplierId, subject_version: old ? old.version + 1 : 1,
       payload: JSON.stringify({ run_id, supplier_id: supplierId, lines, cost_known_lines: priced.length }),
-      affects: JSON.stringify(rows.map((row) => row.code_1c)), supersedes_id: old?.id ?? null, state: "needs_review",
+      affects: JSON.stringify(lines.map(line => line.code_1c)), supersedes_id: old?.id ?? null, state: "needs_review",
       rationale_ru: rationale, sources: JSON.stringify(sources), money_at_stake: moneyAtStake ? JSON.stringify(moneyAtStake) : null,
-      version: 1, created_at: new Date().toISOString() };
+      version: old ? old.version + 1 : 1, created_at: new Date().toISOString() };
     inTx(database, () => {
       if (old) database.prepare("UPDATE proposal SET state='stale',version=version+1 WHERE id=? AND state='needs_review'").run(old.id);
       database.prepare(`INSERT INTO proposal (id,kind,subject_type,subject_id,subject_version,payload,affects,supersedes_id,state,rationale_ru,sources,money_at_stake,version,created_at)
