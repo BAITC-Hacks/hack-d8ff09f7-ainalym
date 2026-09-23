@@ -17,4 +17,4 @@ export type TodayResponse = Labelled & { lead: string; decision: QueueItem | nul
 export type LedgerRow = Labelled & { id: string; run_id: string; summary_ru: string; rationale_ru?: string; at: string; autonomy: "auto" | "escalated"; result: "done" | "needs_owner" | "failed"; sources: Source[]; subject_ref?: string; code_1c?: string; po_id?: string; provider?: string; kind?: string; href?: string };
 export type LedgerResponse = { rows?: LedgerRow[]; actions?: LedgerRow[]; items?: LedgerRow[]; stats: { auto: number; needs_you: number }; empty_reason?: string };
 export type WorldEvent = Labelled & { id: string; seq: number; kind: string; actor_id?: string; code_1c?: string; text: string; at: string; state: string; run_id?: string; source_id?: string };
-export type FeedResponse = { events: WorldEvent[]; empty_reason?: string };
+export type FeedResponse = { events?: WorldEvent[]; rows?: WorldEvent[]; empty_reason?: string };
