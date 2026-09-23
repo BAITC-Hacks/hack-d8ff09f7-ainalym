@@ -60,6 +60,11 @@
 .chevron { transition: transform var(--v2-fast) var(--v2-ease); margin-top: 2px; }
 .rowOpen .chevron { transform: rotate(90deg); }
 .name { font: var(--v2-body-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tdWithThumb { display: grid; grid-template-columns: 26px minmax(0, 1fr); column-gap: 10px; }
+.tdWithThumb .thumb { grid-row: 1 / span 2; }
+.thumb { width: 26px; height: 26px; border-radius: 6px; object-fit: cover; background: var(--v2-wash); border: 1px solid var(--v2-line); align-self: center; }
+.ektLine { margin-top: 8px; font: var(--v2-meta); color: var(--v2-muted); }
+.ektLine a { color: var(--v2-ink-2); }
 .meta { font: var(--v2-meta); color: var(--v2-muted); margin-top: 2px; white-space: nowrap; }
 .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .qtyValue { font: 600 15px/20px var(--v2-font); display: inline-flex; align-items: center; gap: 5px; justify-content: flex-end; }

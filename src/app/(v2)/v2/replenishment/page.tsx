@@ -8,7 +8,7 @@ import { Button, MiniBars, Pill, Skeleton, Sparkline, StateBlock, TruthStrip, Ur
 import styles from "./replenishment.module.css";
 
 type Components = { source_months?: number; sales_lines?: number; stock_month?: string; stock_stale?: boolean; transit_rows?: number; base_rate?: number; season_source?: string; season?: Record<string, number>; growth?: number; horizon_days?: number; forecast_qty?: number; monthly_forecast?: Record<string, number>; stockout_uplift?: number; safety?: number; on_hand?: number; on_hand_as_of?: string; in_transit?: number; in_transit_sources?: unknown[]; net_need?: number; raw_need?: number; moq?: number; days_of_cover?: number; outlier_threshold?: number; median_month_qty?: number; p95_doc_qty?: number; raw_observed_forecast?: number };
-type Row = { id: string; code_1c: string; name: string; on_hand: string; in_transit: string; forecast_qty: string | null; qty_recommended: number; qty_adjusted: number | null; moq: number; urgency: Urgency; rationale_ru: string; components: Components; outliers_excluded: { doc_no?: string; qty?: string | number; rule?: string; ym?: string; threshold?: number }[]; stockout_months: string[] };
+type Row = { id: string; code_1c: string; name: string; on_hand: string; in_transit: string; forecast_qty: string | null; qty_recommended: number; qty_adjusted: number | null; moq: number; urgency: Urgency; rationale_ru: string; components: Components; outliers_excluded: { doc_no?: string; qty?: string | number; rule?: string; ym?: string; threshold?: number }[]; stockout_months: string[]; image_url?: string | null; ekt_url?: string | null; ekt_stock_total?: number | string | null; ekt_stock_as_of?: string | null };
 type Group = { supplier_id: string; total_qty: number; total_cost: Money | null; cost_known_lines: number; rows: Row[] };
 type Recs = { ai: string; external: string; state_version: number; groups: Group[] };
 type Proposals = { proposals: { id: string; kind: string; subject_id: string; state: string; version: number; money_at_stake: Money | null; payload?: { run_id?: string } }[] };
@@ -111,7 +111,7 @@ function Replenishment() {
                 return [
                   <tr key={r.id} ref={el => { if (el) rowRefs.current.set(r.id, el); else rowRefs.current.delete(r.id); }} tabIndex={0} role="button" aria-expanded={open} aria-controls={`x-${r.id}`} className={`${styles.row} ${open ? styles.rowOpen : ""} ${draft !== undefined ? styles.rowDraft : ""}`} onClick={() => toggle(r.id)} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(r.id); } }}>
                     <td className={styles.tdChevron}><ChevronRight size={16} className={styles.chevron} aria-hidden="true" /></td>
-                    <td><span className={styles.name}>{r.name.replace(/\s+/g, " ")}</span><span className={styles.meta}>{r.code_1c} · {r.supplier}{r.moq > 1 && ` · кратность ${r.moq}`}{c.days_of_cover != null && ` · покрытие ${fmtNum(c.days_of_cover, 0)} дн`}</span></td>
+                    <td className={r.image_url ? styles.tdWithThumb : undefined}>{r.image_url && <img src={r.image_url} alt="" className={styles.thumb} loading="lazy" width={26} height={26} />}<span className={styles.name}>{r.name.replace(/\s+/g, " ")}</span><span className={styles.meta}>{r.code_1c} · {r.supplier}{r.moq > 1 && ` · кратность ${r.moq}`}{c.days_of_cover != null && ` · покрытие ${fmtNum(c.days_of_cover, 0)} дн`}</span></td>
                     <td><UrgencyPill value={r.urgency} /></td>
                     <td className={styles.num} title={c.on_hand_as_of ? `Остаток на ${c.on_hand_as_of}` : undefined}><span>{fmtInt(r.on_hand)}</span><span className={styles.meta}>{c.on_hand_as_of ? `на ${c.on_hand_as_of.slice(5).replace("-", ".")}` : "дата неизвестна"}{c.stock_stale && " · устарел"}</span></td>
                     <td className={styles.num}><span>{fmtInt(r.in_transit)}</span><span className={styles.meta}>{c.transit_rows ? `${c.transit_rows} поставок` : "нет поставок"}</span></td>
@@ -198,13 +198,14 @@ function Rationale({ r, draft, onDraft }: { r: Row & { supplier: string }; draft
         </section>
       </div>
       <p className={styles.rationaleText}>{r.rationale_ru}</p>
+      {r.ekt_stock_total != null && <p className={styles.ektLine}>На складе ekt.kz сейчас: {fmtInt(r.ekt_stock_total)} ({r.ekt_stock_as_of ? `снимок от ${r.ekt_stock_as_of}` : "живой API"}){r.ekt_url && <> · <a href={r.ekt_url} target="_blank" rel="noreferrer">ekt.kz</a></>}</p>}
       <div className={styles.adjust}>
         <label className={styles.adjustLabel} htmlFor={`adj-${r.id}`}>Скорректировать количество</label>
         <input id={`adj-${r.id}`} type="number" min={0} step={r.moq} inputMode="numeric" className={styles.adjustInput} value={val} onChange={e => setVal(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); apply(); } }} />
         <Button variant="dark" onClick={apply}>В черновик</Button>
         {draft !== undefined && <Button variant="quiet" onClick={() => { onDraft(null); setVal(String(r.qty_adjusted ?? r.qty_recommended)); }}><Undo2 size={14} aria-hidden="true" />Вернуть расчёт</Button>}
         <span className={styles.adjustNote}>{draft !== undefined ? `Черновик ${fmtInt(draft)} шт — применится при «Подготовить заказ ${r.supplier}» (версия предложения проверяется)` : "Корректировка попадёт в заказ вместе с его утверждением"}</span>
-        <Link href={`/v2/skus/${encodeURIComponent(r.code_1c)}`} className={styles.skuLink}>Карточка SKU<ArrowRight size={13} aria-hidden="true" /></Link>
+        <Link href={`/v2/skus/${encodeURIComponent(r.code_1c)}`} prefetch={false} className={styles.skuLink}>Карточка SKU<ArrowRight size={13} aria-hidden="true" /></Link>
       </div>
       <p className={styles.srUrgency}>Срочность: {URGENCY_RU[r.urgency]}</p>
     </div>

@@ -4,8 +4,9 @@
 
 .rail { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; background: var(--v2-rail); border-right: 1px solid var(--v2-line); padding: 18px 12px; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 22px; }
-.mark { width: 18px; height: 18px; border-radius: 4px; background: var(--v2-ink); position: relative; }
-.mark::after { content: ""; position: absolute; inset: 5px; border-radius: 2px; background: var(--v2-accent); }
+.mark { width: 24px; height: 24px; border-radius: 5px; background: var(--v2-ink); position: relative; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; }
+.mark::after { content: ""; position: absolute; inset: 7px; border-radius: 2px; background: var(--v2-accent); }
+.mark img { position: relative; z-index: 1; width: 24px; height: 24px; display: block; }
 .wordmark { font: 600 15px/20px var(--v2-font); letter-spacing: -0.01em; }
 .railClose { display: none; margin-left: auto; background: none; border: 0; padding: 8px; }
 

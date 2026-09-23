@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowRight, FileText, Bot, CircleAlert, RefreshCw } from "lucide-react";
 import { ApiError, apiRequest, useApi, useApiSync } from "@/components/shell/api";
 import { Button, Pill, Skeleton, StateBlock, TruthStrip, UrgencyPill, errorKind, errorTitle, fmtInt, fmtMoney, fmtNum, type Money, type Urgency } from "@/components/v2/primitives";
+import { useTodaySnapshot } from "@/components/v2/Shell";
 import styles from "./today.module.css";
 
 type Decision = { id: string; kind: string; title: string; why: string; sources: string[]; money_at_stake?: Money | null; options: { key: string; label: string; effect: string }[]; href: string; since: string };
@@ -20,7 +21,7 @@ const time = (iso: string) => new Date(iso).toLocaleTimeString("ru-RU", { hour: 
 const today = new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
 
 export default function TodayPage() {
-  const t = useApi<Today>("/api/today");
+  const t = useTodaySnapshot<Today>();
   const q = useApi<Queue>("/api/queue");
   const d = t.data;
   return (
@@ -42,7 +43,7 @@ export default function TodayPage() {
           {q.loading && !q.data && <div className={styles.card}><Skeleton rows={3} /></div>}
           {q.error && !q.data && <StateBlock kind={errorKind(q.error)} title={errorTitle(q.error)} detail={q.error.message} action={<Button onClick={q.reload}>Повторить</Button>} />}
           {q.data && q.data.items.length === 0 && <StateBlock kind="empty" title="Решений нет — агенты работают" detail={q.data.empty_reason ?? d?.empty_reason ?? "Новые предложения появятся после следующего расчёта или события мира."} />}
-          {q.data?.items.map(item => <DecisionCard key={item.id} item={item} onDone={() => { t.reload(); q.reload(); }} />)}
+          {q.data?.items.map(item => item.kind === "proposal" ? <DecisionCard key={item.id} item={item} onDone={() => { t.reload(); q.reload(); }} /> : <TaskCard key={item.id} item={item} />)}
         </section>
         <aside className={styles.rail}>
           {d && <>
@@ -51,7 +52,7 @@ export default function TodayPage() {
               <ul className={styles.list}>
                 {d.pulse.stockout_risk.top.map(s => (
                   <li key={s.code_1c} className={styles.listRow}>
-                    <Link href={`/v2/skus/${encodeURIComponent(s.code_1c)}`} className={styles.rowMain}><span className={styles.rowTitle}>{s.name.replace(/\s+/g, " ")}</span><span className={styles.rowMeta}>{s.code_1c} · срок поставки {s.lead_time_days} дн</span></Link>
+                    <Link href={`/v2/skus/${encodeURIComponent(s.code_1c)}`} prefetch={false} className={styles.rowMain}><span className={styles.rowTitle}>{s.name.replace(/\s+/g, " ")}</span><span className={styles.rowMeta}>{s.code_1c} · срок поставки {s.lead_time_days} дн</span></Link>
                     <span className={styles.rowRight} title={`Покрытие ${fmtNum(s.days_of_cover)} дн при сроке поставки ${s.lead_time_days} дн`}><span className={`${styles.days} ${s.days_of_cover < 0 ? styles.neg : ""}`}>{s.days_of_cover < 0 ? "нет остатка" : `${fmtNum(s.days_of_cover, 0)} дн`}</span><UrgencyPill value={s.urgency} /></span>
                   </li>
                 ))}
@@ -68,7 +69,7 @@ export default function TodayPage() {
             <section className={styles.railBlock} aria-labelledby="cm-h">
               <h2 id="cm-h" className={styles.h3}>Обязательства и расчёты</h2>
               <ul className={styles.list}>
-                {d.commitments.map(c => <li key={c.id} className={styles.listRow}><span className={styles.rowMain}><span className={styles.rowTitleSm}>{c.title}</span><span className={styles.rowMeta}>{c.owner} · {c.next_event ? time(c.next_event) : "—"}</span></span><Pill tone={c.state === "done" ? "ok" : "warn"}>{c.state === "done" ? "готово" : c.state}</Pill></li>)}
+                {d.commitments.map(c => <li key={c.id} className={styles.listRow}><span className={styles.rowMain}><span className={styles.rowTitleSm}>{c.title}</span><span className={styles.rowMeta}>{c.owner} · {c.next_event ? time(c.next_event) : "—"}</span></span><Pill tone={c.state === "done" ? "ok" : c.state === "draft" ? "neutral" : "warn"}>{c.state === "done" ? "готово" : c.state === "draft" ? "черновик — не отправлен" : c.state === "approved" ? "утверждено" : c.state}</Pill></li>)}
                 {d.commitments.length === 0 && <li className={styles.emptyRow}>Обязательств нет — заказы не утверждались</li>}
               </ul>
             </section>
@@ -109,6 +110,27 @@ function Pulse({ d, stale }: { d: Today; stale: boolean }) {
         <p className={styles.tileMeta}>из {fmtInt(d.pulse.agents.auto + d.pulse.agents.needs_you)} действий за последний расчёт</p>
       </div>
     </section>
+  );
+}
+
+function TaskCard({ item }: { item: Decision }) {
+  const supplier = item.title.match(/источники (\S+):/)?.[1] ?? "";
+  return (
+    <article className={styles.card} aria-labelledby={`c-${item.id}`}>
+      <div className={styles.cardRow}>
+        <span className={styles.cardIcon} aria-hidden="true"><Bot size={18} /></span>
+        <div className={styles.cardMain}>
+          <h3 id={`c-${item.id}`} className={styles.cardTitle}>{item.title}</h3>
+          <p className={styles.cardWhy}>{item.why.length > 220 ? `${item.why.slice(0, 220)}…` : item.why}</p>
+          <details className={styles.sources}><summary>Источники · {item.sources.length} · с {time(item.since)}</summary><ul>{item.sources.slice(0, 6).map(s => <li key={s}><code>{s}</code></li>)}{item.sources.length > 6 && <li>… и ещё {item.sources.length - 6}</li>}</ul></details>
+        </div>
+        <div className={styles.cardMoney}><Pill tone="warn">Нужна ваша проверка</Pill><span className={styles.moneyMeta}>задача агента</span></div>
+      </div>
+      <div className={styles.cardActions}>
+        <span className={styles.versionNote}>Действия по задаче: маршрут /api/tasks не подключён — решение по задаче здесь не принимается</span>
+        {supplier && <Link href={`/v2/replenishment?supplier=${encodeURIComponent(supplier)}`} className={styles.reviewLink}>Позиции {supplier}<ArrowRight size={14} aria-hidden="true" /></Link>}
+      </div>
+    </article>
   );
 }
 
