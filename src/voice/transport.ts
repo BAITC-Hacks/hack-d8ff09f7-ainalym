@@ -13,7 +13,7 @@ export class VoiceTurnGate {
     this.pending.clear();
   }
   accept(responseId?: string): number | null {
-    if (responseId && this.ignored.delete(responseId)) return null;
+    if (responseId && this.ignored.has(responseId)) return null;
     return this.epoch;
   }
   isCurrent(epoch: number) { return epoch === this.epoch; }
@@ -35,6 +35,23 @@ export class TranscriptGate {
   peek() { return this.transcript; }
   take() { const text = this.transcript; this.transcript = ""; this.active = false; return text; }
   clear() { this.transcript = ""; this.active = false; this.inputItemId = undefined; }
+}
+
+// One result can trigger one follow-up, with an absolute cap per user turn.
+export class AutomaticResponseGate {
+  private handled = new Set<string>();
+  private responses = 0;
+  resetTurn() { this.responses = 0; }
+  claim(callId: string): boolean {
+    if (!callId || this.handled.has(callId)) return false;
+    this.handled.add(callId);
+    return true;
+  }
+  followUp(): boolean {
+    if (this.responses >= 2) return false;
+    this.responses++;
+    return true;
+  }
 }
 
 export function mentionedSupplier(text: string): "IEK" | "SE" | undefined {

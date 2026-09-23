@@ -2,6 +2,7 @@ import { db } from "../db/client";
 import { moneyView } from "../domain/cashflow";
 import { orderById } from "../domain/orders";
 import { queueView } from "../domain/views";
+import { resolveSkuCode as lookupSku } from "./sku_lookup";
 import type { AssistantContext } from "../components/assistant/context";
 
 /** Data-backed answers for the assistant, built from saved recommendations and orders. No AI key needed. */
@@ -36,6 +37,14 @@ export function detectKind(text: string, context: AssistantContext): AnswerKind 
   if (/что измен|что нового|изменилось|последние действия/.test(t)) return "changed";
   if (/почему|объясни|обоснов/.test(t)) return code_1c ? "why_qty" : po_id ? "why_order" : "unknown";
   return "unknown";
+}
+
+/** Resolves a typed or spoken SKU reference to a stored code — the voice lane's resolver (trim → exact → code + "_" → prefix → article → name). */
+export function resolveSkuCode(raw: string, orgId = "partner"): string | undefined { return lookupSku(raw ?? "", { org_id: orgId }) ?? undefined; }
+/** A SKU mentioned in free text: a 7–12 digit code, with or without the trailing underscore («почему 130200122» → 130200122_). */
+export function mentionedSku(text: string, orgId = "partner"): string | undefined {
+  for (const match of text.matchAll(/(?<!\d)(\d{7,12}_?)(?!\d)/g)) { const hit = resolveSkuCode(match[1], orgId); if (hit) return hit; }
+  return undefined;
 }
 
 function latestRec(code: string): Rec | undefined {
@@ -180,14 +189,24 @@ function changed(orgId: string): Answer {
 }
 
 export async function answerInContext(ask: Ask): Promise<Answer> {
-  const base = ask.base && /^\/[a-z0-9_-]*$/i.test(ask.base) ? ask.base.replace(/\/$/, "") : "/v2";
-  const kind = detectKind(ask.text, ask.context);
-  const { code_1c, po_id } = ask.context.entity;
+  // The shell is served at /, so the default prefix is ""; an explicit "/v2" style prefix is still honoured.
+  const base = typeof ask.base === "string" && /^(\/[a-z0-9_-]*)?$/i.test(ask.base) ? ask.base.replace(/\/$/, "") : "";
+  const mentioned = mentionedSku(ask.text, ask.org_id);
+  let context: AssistantContext = mentioned ? { ...ask.context, entity: { ...ask.context.entity, code_1c: mentioned } } : ask.context;
+  let kind = detectKind(ask.text, context);
+  if (kind === "unknown" && mentioned) kind = "why_qty";
+  if (kind === "unknown") {
+    // «почему <название или артикул>» — look the position up by article or name.
+    const rest = ask.text.replace(/^(почему|объясни|расскажи про|что с|покажи|сколько заказать)\s+/i, "").trim();
+    const byName = rest !== ask.text.trim() && rest.length >= 4 ? resolveSkuCode(rest, ask.org_id) : undefined;
+    if (byName) { context = { ...context, entity: { ...context.entity, code_1c: byName } }; kind = "why_qty"; }
+  }
+  const { code_1c, po_id } = context.entity;
   switch (kind) {
     case "why_qty": return whyQty(code_1c!, base);
     case "what_if_transit": return whatIfTransit(code_1c!, ask.text, base);
     case "why_order": return whyOrder(po_id!, base);
-    case "urgent": return urgent(ask.context, base);
+    case "urgent": return urgent(context, base);
     case "pay_week": return payWeek(ask.org_id, base, ask.asOf ?? new Date());
     case "needs_me": return needsMe(ask.org_id, base);
     case "changed": return changed(ask.org_id);

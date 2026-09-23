@@ -14,7 +14,7 @@ export async function POST(request: Request): Promise<Response> {
   const context = parseContext(body.context && typeof body.context === "object" ? JSON.stringify(body.context) : null) ?? { route: "other" as const, entity: {} };
   if (!text) return Response.json({ ok: false, reply_ru: CANNOT_ANSWER });
   try {
-    const answer = await answerInContext({ text, context, base: typeof body.base === "string" ? body.base : "/v2", org_id: orgId() });
+    const answer = await answerInContext({ text, context, base: typeof body.base === "string" ? body.base : "", org_id: orgId() });
     return Response.json(answer);
   } catch {
     return Response.json({ ok: false, reply_ru: CANNOT_ANSWER });

@@ -32,11 +32,14 @@ function codePage(next: string, failed = false): NextResponse {
   return new NextResponse(html, { status: failed ? 401 : 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" } });
 }
 
+// Public without the demo code: the landing, its media and the brand mark.
+const PUBLIC_PATH = /^\/(?:landing(?:\/.*)?|brand\/.+|icon\.svg)$/;
+
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const active = guardEnabled();
 
-  if (path === "/api/health") return NextResponse.next();
+  if (path === "/api/health" || PUBLIC_PATH.test(path)) return NextResponse.next();
 
   if (active && path.startsWith("/api/") && !allowApiRequest(ipFor(request))) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": "1", "Cache-Control": "no-store" } });

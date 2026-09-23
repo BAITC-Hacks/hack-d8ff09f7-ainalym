@@ -18,6 +18,8 @@ export function fmtMoney(m: Money | null | undefined, compact = false): string {
   if (compact && Math.abs(v) >= 1e3) return `${(v / 1e3).toLocaleString("ru-RU", { maximumFractionDigits: 0 })} тыс. ${sym}`;
   return `${v.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} ${sym}`;
 }
+/** Conditional-format tier for money at stake (KZT): ≥ 1 000 000 strong, ≥ 100 000 medium. */
+export const stakeTier = (amount: number | string | null | undefined): "strong" | "medium" | undefined => { const v = Math.abs(Number(amount)); return !Number.isFinite(v) || amount == null || amount === "" ? undefined : v >= 1_000_000 ? "strong" : v >= 100_000 ? "medium" : undefined; };
 export const fmtDate = (iso: string | null | undefined) => iso ? new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) : "—";
 export const fmtYm = (ym: string) => { const [y, m] = ym.split("-"); return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("ru-RU", { month: "short", year: "2-digit" }); };
 

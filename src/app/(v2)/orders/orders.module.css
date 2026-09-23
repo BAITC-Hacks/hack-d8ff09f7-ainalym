@@ -14,7 +14,12 @@
 .meta { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font: var(--v2-meta); color: var(--v2-muted); }
 .sum { text-align: right; display: grid; gap: 4px; justify-items: end; }
 .sum strong { font: 500 19px/24px var(--v2-font); letter-spacing: -0.02em; }
-.sum span { font: var(--v2-meta); color: var(--v2-muted); }
+.sum span { font: var(--v2-meta); color: var(--v2-muted); font-variant-numeric: tabular-nums; }
+/* Stake / due tints — one warm step for money, red only when the date has passed. */
+.sum [data-stake="medium"] { background: var(--v2-well); border-radius: 4px; padding: 0 6px; color: var(--v2-ink); }
+.sum [data-stake="strong"] { background: var(--v2-alert-row); border-radius: 4px; padding: 0 6px; color: var(--v2-ink); font-weight: 500; }
+.sum [data-due="overdue"] { color: var(--v2-danger); font-weight: 500; }
+.sum [data-due="soon"] { color: var(--v2-warn); }
 .policy { font: var(--v2-caption); color: var(--v2-muted); }
 .stages { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
 .stages li { display: grid; gap: 6px; font: var(--v2-caption); color: var(--v2-muted); min-width: 0; }

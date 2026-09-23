@@ -1,4 +1,4 @@
-/* Popup (page mode): the conversation is the whole window — no sidebar, no top bar, no page padding. */
-html[data-assistant-page] .v2 aside[aria-label="Разделы"], html[data-assistant-page] .v2 header { display: none; }
-html[data-assistant-page] .v2 main { padding: 0; max-width: none; }
-html[data-assistant-page] .v2 > div { display: block; min-height: 0; }
+/* Popup window («Открыть отдельно»): the conversation is the whole window — no sidebar, no top bar. In the shell the surface keeps the chrome. */
+html[data-assistant-popup] .v2 aside[aria-label="Разделы"], html[data-assistant-popup] .v2 header { display: none; }
+html[data-assistant-popup] .v2 main { padding: 12px 16px 0; max-width: none; }
+html[data-assistant-popup] .v2 > div { display: block; min-height: 0; }

@@ -4,8 +4,12 @@ import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { ApiError, apiRequest, useApiSync } from "@/components/shell/api";
 import { Btn, Empty, Loading, PageHead, Pill, Row, Rows, Unavailable, fmtMoney, fmtQty } from "./ui";
+import ui from "./ui.module.css";
 
-type Sku = { code_1c: string; name: string; article?: string | null; supplier_id: string; supplier_name?: string; category?: string | null; unit?: string | null; unit_cost?: string | null; moq?: number; on_hand_qty?: string | null };
+/** Product thumbnail (public /sku/*.jpg or category fallback from /api/skus); neutral placeholder when the catalogue has no image. */
+function Thumb({ src }: { src?: string | null }) { return src ? <img src={src} alt="" loading="lazy" decoding="async" width={28} height={28} className={ui.thumb} data-sku-thumb /> : <span className={ui.thumbNone} aria-hidden="true" data-sku-thumb="none" />; }
+
+type Sku = { code_1c: string; name: string; article?: string | null; supplier_id: string; supplier_name?: string; category?: string | null; unit?: string | null; unit_cost?: string | null; moq?: number; on_hand_qty?: string | null; image_url?: string | null };
 type Resp = { items: Sku[]; total: number };
 const LIMIT = 200;
 const SUP = [["", "Все поставщики"], ["IEK", "IEK"], ["SE", "System Electric"]] as const;
@@ -43,7 +47,7 @@ export function SkuIndex({ initialQuery = "" }: { initialQuery?: string }) {
     {error && !resp ? <Unavailable title="Список товаров недоступен" detail={error.message} retry={() => setAttempt(n => n + 1)} /> : null}
     {loading && !resp ? <Loading label="Загружаю товары…" lines={6} /> : null}
     {resp && items.length === 0 ? <Empty title="Ничего не найдено">Измените запрос или выберите другого поставщика.</Empty> : null}
-    {items.length ? <Rows>{items.map(s => <Row key={s.code_1c} href={`/skus/${encodeURIComponent(s.code_1c)}`} label={s.name.replace(/\s+/g, " ")} meta={`${s.code_1c}${s.article ? ` · арт. ${s.article}` : ""} · ${s.supplier_name ?? s.supplier_id}${s.category ? ` · ${s.category}` : ""}`} value={s.unit_cost ? fmtMoney(s.unit_cost) : <Pill tone="warn">себестоимость не задана</Pill>} valueMeta={`остаток ${fmtQty(s.on_hand_qty, s.unit ?? "шт")} · кратность ${fmtQty(s.moq, "шт")}`} />)}</Rows> : null}
+    {items.length ? <Rows>{items.map(s => <Row key={s.code_1c} href={`/skus/${encodeURIComponent(s.code_1c)}`} lead={<Thumb src={s.image_url} />} label={s.name.replace(/\s+/g, " ")} meta={`${s.code_1c}${s.article ? ` · арт. ${s.article}` : ""} · ${s.supplier_name ?? s.supplier_id}${s.category ? ` · ${s.category}` : ""}`} value={s.unit_cost ? fmtMoney(s.unit_cost) : <Pill tone="warn">себестоимость не задана</Pill>} valueMeta={`остаток ${fmtQty(s.on_hand_qty, s.unit ?? "шт")} · кратность ${fmtQty(s.moq, "шт")}`} />)}</Rows> : null}
     {resp && resp.total > items.length ? <p style={{ font: "var(--v2-meta)", color: "var(--v2-muted)", margin: 0 }}>Показаны первые {items.length} — уточните запрос, чтобы найти остальные.</p> : null}
   </div>;
 }
