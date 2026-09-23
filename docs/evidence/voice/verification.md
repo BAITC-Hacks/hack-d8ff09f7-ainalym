@@ -1,9 +1,10 @@
 # L5 voice evidence (2026-09-23)
 
-- `npm run check -- voice` after L2a/L2b merge: 13 passed, 0 failed, 2 externally unverified. `tests/voice/tools.test.ts` runs the real `runCalculation` service and observes one `calc_run`, one `proposal`, and one durable `task` after concurrent duplicate delivery; it checks stale state rejection, supplier scope, and the persisted SKU explanation.
+- `npm run check -- voice` after L2a/L2b merge: 14 passed, 0 failed, 2 externally unverified. `tests/voice/tools.test.ts` runs the real `runCalculation` service and observes one `calc_run`, one `proposal`, and one durable `task` after concurrent duplicate delivery; it checks stale state rejection, supplier scope, and the persisted SKU explanation.
 - `npm run build`: GREEN; `npx tsc --noEmit`: GREEN after build.
 - `tests/voice/session.test.ts`: missing key returns `503` with `label:"Provider unavailable"`; mocked mint returns one ephemeral secret with four tool definitions, capped response expiry, and no standard key in response.
 - Local HTTP check with `OPENAI_API_KEY='' PORT=3335 npm run dev` then `curl -X POST http://localhost:3335/api/voice/session`: HTTP `503`, `code:"provider_unavailable"`, `label:"Provider unavailable"`. The dev server was stopped after the check.
+- Session, transcription and typed intent reserve the existing live-demo budget before each provider call. `tests/voice/session.test.ts` confirms exhausted budget makes no provider request.
 - `tests/voice/interruption.test.ts`: scripted response creation, interruption and late completion abort a pending request and drop the late call.
 - `tests/voice/fallback.test.ts`: no-key typed status answer comes from a persisted ledger action; missing-key transcription returns no transcript; mocked provider transcript is stored once with `medium:"voice_note"`.
 - Partner ETL check via `node scripts/etl/load.mjs --db <temporary-db>`: `organization=0`, `supplier=2`, `sku=3909`. Voice scope deliberately rejects an absent organization; upstream ETL/reset must insert the contract organization row before a partner-data round-trip can pass.

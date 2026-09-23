@@ -2,6 +2,7 @@ import { stateVersion } from "../../../../db/client";
 import { executeVoiceTool } from "../../../../voice/tools";
 import type { ToolScope } from "../../../../voice/tools";
 import { keywordIntent, replyFromResult, structuredIntent } from "../../../../voice/typed";
+import { reserveLiveCall } from "../../../../server/demo_guard";
 
 export const runtime = "nodejs";
 export async function POST(request: Request) {
@@ -15,6 +16,7 @@ export async function POST(request: Request) {
   let intent = keywordIntent(text, scope);
   let intentMode = "Rules, no LLM";
   if (key) {
+    if (!reserveLiveCall().allowed) return Response.json({ ok: false, code: "provider_unavailable", label: "Provider unavailable", reply_ru: "Провайдер недоступен. Используйте локальный режим «Правила без LLM».", state_version: stateVersion() }, { status: 503 });
     try { intent = await structuredIntent(text, scope, key); intentMode = "Live AI"; }
     catch { intentMode = "Provider unavailable"; }
   }

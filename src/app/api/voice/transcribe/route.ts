@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { bumpStateVersion, db, stateVersion, withTx } from "../../../../db/client";
+import { reserveLiveCall } from "../../../../server/demo_guard";
 
 export const runtime = "nodejs";
 const label = "Голосовая заметка · транскрипция";
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
   const inserted = db().prepare("INSERT OR IGNORE INTO voice_note (id, request_id, org_id, medium, label, state, created_at) VALUES (?, ?, ?, 'voice_note', ?, 'pending', ?)").run(id, requestId, orgId, label, new Date().toISOString());
   if (!inserted.changes) return Response.json({ ok: false, code: "request_pending", message: "Transcription is in progress" }, { status: 409 });
   try {
+    if (!reserveLiveCall().allowed) throw new Error("live call budget exhausted");
     const payload = new FormData();
     payload.set("model", "gpt-4o-mini-transcribe");
     payload.set("file", file);

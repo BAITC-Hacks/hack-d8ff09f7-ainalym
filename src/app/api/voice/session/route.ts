@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { reserveLiveCall } from "../../../../server/demo_guard";
 
 export const runtime = "nodejs";
 export const REALTIME_MODEL = "gpt-realtime-2.1";
@@ -17,6 +18,7 @@ export async function POST() {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return NextResponse.json({ ok: false, code: "provider_unavailable", label: "Provider unavailable", message: "Voice provider is not configured" }, { status: 503 });
   try {
+    if (!reserveLiveCall().allowed) throw new Error("live call budget exhausted");
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
