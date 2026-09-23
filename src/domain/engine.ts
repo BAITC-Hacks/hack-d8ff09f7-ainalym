@@ -95,19 +95,39 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
   }
   const fileMonths = months.map((month) => dec(month.qty_file)).filter((qty) => qty.gt(0));
   const positiveDocs = [...docGroups.values()].map((doc) => doc.qty).filter((qty) => qty.gt(0)).sort((a, b) => a.comparedTo(b));
-  const p95Index = Math.max(0, Math.ceil(positiveDocs.length * 0.95) - 1);
   const medianMonth = sku.median_month_qty ? dec(sku.median_month_qty) : median(fileMonths);
-  const p95Doc = sku.p95_doc_qty ? dec(sku.p95_doc_qty) : (positiveDocs[p95Index] ?? new Decimal(0));
-  const threshold = Decimal.max(params.outlier.min_units,
-    Decimal.min(medianMonth.times(params.outlier.k_month), p95Doc.times(params.outlier.k_doc)));
+  // Compare each document with its peers; an injected document cannot raise its own cutoff.
+  const peerStat = (candidate: Decimal): Decimal => {
+    let low = 0, high = positiveDocs.length;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if (positiveDocs[middle].lt(candidate)) low = middle + 1;
+      else high = middle;
+    }
+    const excludedIndex = low < positiveDocs.length && positiveDocs[low].eq(candidate) ? low : -1;
+    const peerCount = positiveDocs.length - (excludedIndex >= 0 ? 1 : 0);
+    if (!peerCount) return new Decimal(params.outlier.min_units).div(params.outlier.k_doc || 1);
+    const peerAt = (index: number) => positiveDocs[index >= excludedIndex && excludedIndex >= 0 ? index + 1 : index];
+    if (positiveDocs.length < 6) {
+      const middle = Math.floor(peerCount / 2);
+      return peerCount % 2 ? peerAt(middle) : peerAt(middle - 1).plus(peerAt(middle)).div(2);
+    }
+    return peerAt(Math.ceil(peerCount * 0.95) - 1);
+  };
+  const thresholdFor = (candidate: Decimal): Decimal => Decimal.max(params.outlier.min_units,
+    Decimal.min(medianMonth.times(params.outlier.k_month), peerStat(candidate).times(params.outlier.k_doc)));
+  const referenceDoc = positiveDocs.at(-1) ?? new Decimal(0);
+  const p95Doc = peerStat(referenceDoc);
+  const threshold = thresholdFor(referenceDoc);
   const byMonth = new Map<string, Decimal>();
   const worldDelta = new Map<string, Decimal>();
   const excludedFromFile = new Map<string, Decimal>();
   const excluded: { doc_no: string; ym: string; qty: number; threshold: number }[] = [];
   for (const doc of docGroups.values()) {
     const state = outlierState.get(`${doc.doc_no}|${doc.ym}`);
-    if (state === "excluded" || (state !== "kept" && doc.qty.gt(threshold))) {
-      excluded.push({ doc_no: doc.doc_no, ym: doc.ym, qty: numeric(doc.qty), threshold: numeric(threshold) });
+    const docThreshold = thresholdFor(doc.qty);
+    if (state === "excluded" || (state !== "kept" && doc.qty.gt(docThreshold))) {
+      excluded.push({ doc_no: doc.doc_no, ym: doc.ym, qty: numeric(doc.qty), threshold: numeric(docThreshold) });
       if (doc.source !== "judge") excludedFromFile.set(doc.ym, (excludedFromFile.get(doc.ym) ?? new Decimal(0)).plus(doc.qty));
       continue;
     }

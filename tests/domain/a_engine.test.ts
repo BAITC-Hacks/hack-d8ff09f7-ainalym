@@ -98,6 +98,18 @@ describe("deterministic replenishment need", () => {
     expect(spiked.rationale_ru).toContain("ONEOFF");
   });
 
+  it("uses peer documents for a sparse SKU with no cached statistics", async () => {
+    const database = fixture();
+    database.prepare("UPDATE sku SET median_month_qty=NULL,p95_doc_qty=NULL WHERE code_1c='TEST'").run();
+    database.prepare("UPDATE sales_month SET qty_file='10000' WHERE code_1c='TEST'").run();
+    database.prepare("DELETE FROM sales_line WHERE code_1c='TEST' AND at<'2025-07-01'").run();
+    const before = await computeNeed("TEST", params, context(database));
+    database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty,source) VALUES ('TEST','SPARSE-5000','2025-08-20','5000','judge')").run();
+    const after = await computeNeed("TEST", params, context(database));
+    expect(after.components.outliers_excluded).toEqual(expect.arrayContaining([expect.objectContaining({ doc_no: "SPARSE-5000", threshold: 50 })]));
+    expect(after.components.base_rate).toBe(before.components.base_rate);
+  });
+
   it("excludes the eval document and a 5000-unit injection on a high-volume SKU", async () => {
     const database = fixture();
     database.prepare("UPDATE sku SET median_month_qty='14502',p95_doc_qty='144' WHERE code_1c='TEST'").run();
@@ -105,7 +117,7 @@ describe("deterministic replenishment need", () => {
     const before = await computeNeed("TEST", params, context(database));
     database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty,source) VALUES ('TEST','INJECTED','2025-08-20','5000','judge')").run();
     const after = await computeNeed("TEST", params, context(database));
-    expect(after.components.outlier_threshold).toBe(720);
+    expect(after.components.outlier_threshold).toBe(50);
     expect(after.components.outliers_excluded).toEqual(expect.arrayContaining([
       expect.objectContaining({ doc_no: "20000099834" }), expect.objectContaining({ doc_no: "INJECTED" }),
     ]));

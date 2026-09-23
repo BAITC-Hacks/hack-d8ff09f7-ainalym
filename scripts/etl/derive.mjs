@@ -32,7 +32,7 @@ try {
     if(prior>=2)stockoutUpdate.run(r.code_1c,r.ym);
   }
   const docQty=new Map();
-  for(const r of d.prepare("SELECT code_1c,CAST(qty AS REAL) qty FROM sales_line WHERE doc_type='Расходная накладная' AND CAST(qty AS REAL)>0 ORDER BY code_1c").iterate()){
+  for(const r of d.prepare("SELECT code_1c,SUM(CAST(qty AS REAL)) qty FROM sales_line WHERE doc_type='Расходная накладная' GROUP BY code_1c,COALESCE(doc_no,'line:'||id),substr(at,1,7) HAVING qty>0 ORDER BY code_1c").iterate()){
     if(!docQty.has(r.code_1c))docQty.set(r.code_1c,[]);docQty.get(r.code_1c).push(r.qty);
   }
   const updateSku=d.prepare('UPDATE sku SET first_sale_ym=?,months_with_sales=?,median_month_qty=?,p95_doc_qty=? WHERE code_1c=?');
