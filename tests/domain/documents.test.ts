@@ -25,7 +25,7 @@ describe("document intake", () => {
     const invoice = fixture();
     expect(invoice.number).toBe("IEK-DEMO-0923");
     expect(invoice.lines).toHaveLength(10);
-    expect(invoice.lines[0].code_1c).toMatch(/\d+_?/);
+    expect(invoice.lines[0].code_1c).toMatch(/^\d{9}_$/);
     expect(invoice.lines.reduce((sum, line) => sum + Number(line.amount), 0).toFixed(2)).toBe("354750.00");
     const poLines = invoice.lines.map((line, index) => ({ code_1c: line.code_1c!, article: line.article, name: line.name,
       qty: index === 0 ? 100 : 20, unit_cost: String(1000 + index * 125) }));

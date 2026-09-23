@@ -54,7 +54,7 @@ if (!d.prepare("SELECT id FROM purchase_order WHERE id=?").get(demoPo)) {
 // Synthetic invoice fixture subject: real IEK catalog codes, illustrative prices and quantities.
 const invoicePo = "PO-DEMO-IEK-DOCUMENTS";
 if (!d.prepare("SELECT id FROM purchase_order WHERE id=?").get(invoicePo)) {
-  const skus = d.prepare("SELECT code_1c FROM sku WHERE supplier_id='IEK' AND article IS NOT NULL AND article<>'' ORDER BY code_1c LIMIT 10").all();
+  const skus = d.prepare("SELECT code_1c FROM sku WHERE supplier_id='IEK' AND length(code_1c)>=8 AND name<>'0' AND article IS NOT NULL AND article<>'' ORDER BY code_1c LIMIT 10").all();
   if (skus.length !== 10) throw new Error("IEK document fixture needs 10 catalog rows");
   d.exec("BEGIN");
   try {
