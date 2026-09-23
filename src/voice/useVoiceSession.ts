@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AutomaticResponseGate, TranscriptGate, VoiceTurnGate, mentionedSupplier } from "./transport";
+import { compactVoiceToolResult, spokenFollowUpResponse } from "./summary";
+import type { ToolResult } from "./tools";
 
 export type VoiceState = "idle" | "connecting" | "listening" | "checking" | "preparing" | "waiting_review" | "ended" | "unavailable";
 export interface Caption { who: "user" | "assistant" | "tool"; text: string }
@@ -87,12 +89,20 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       .catch(() => { if (audio.current === speaker) setAudioBlocked(true); });
   }, []);
 
+  const resumeAudio = useCallback(() => {
+    const speaker = audio.current;
+    if (!speaker?.srcObject) return;
+    speaker.muted = false;
+    void speaker.play().then(() => { if (audio.current === speaker) setAudioBlocked(false); })
+      .catch(() => { if (audio.current === speaker) setAudioBlocked(true); });
+  }, []);
+
   const handleEvent = useCallback(async (event: RealtimeEvent, sessionGeneration: number) => {
     if (sessionGeneration !== generation.current) return;
-    if (event.type === "response.created" && event.response?.id) turn.current.created(event.response.id);
+    if (event.type === "response.created" && event.response?.id) { turn.current.created(event.response.id); resumeAudio(); }
     if (event.type === "conversation.item.input_audio_transcription.completed" && event.transcript?.trim()) {
-      transcript.current.completed(event.item_id, event.transcript);
-      setCaptions(lines => [...lines, { who: "user", text: event.transcript!.trim() }]);
+      if (transcript.current.completed(event.item_id, event.transcript))
+        setCaptions(lines => [...lines, { who: "user", text: event.transcript!.trim() }]);
     }
     if (event.type === "response.output_audio_transcript.done" && event.transcript?.trim()) {
       setCaptions(lines => [...lines, { who: "assistant", text: event.transcript!.trim() }]);
@@ -114,7 +124,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
         const reservation = await fetch("/api/voice/turn", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turn_id: id }) });
         if (sessionGeneration !== generation.current || inputTurnId.current !== id) return;
         if (!reservation.ok) { release(); setReason("Сегодня ответы закончились"); setState("unavailable"); return; }
-        send({ type: "response.create" });
+        send({ type: "response.create", response: { tool_choice: "required", output_modalities: ["text"], instructions: "Сразу вызови подходящий инструмент. Если запрос неоднозначен, задай один уточняющий вопрос без вводной фразы." } });
       } catch {
         if (sessionGeneration === generation.current && inputTurnId.current === id) { release(); setReason("Не удалось начать ответ"); setState("unavailable"); }
       }
@@ -173,7 +183,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       }
       if (controller.signal.aborted || sessionGeneration !== generation.current || !turn.current.isCurrent(callEpoch)) return;
       if (output.ok && typeof output.state_version === "number") {
-        window.dispatchEvent(new CustomEvent("ainalym:voice-tool-result", { detail: { request_id: call.call_id, tool: call.name, result: output } }));
+        window.dispatchEvent(new CustomEvent("ainalym:voice-tool-result", { detail: { request_id: call.call_id, tool: call.name, result: output, render: output.render } }));
         void fetch("/api/state", { cache: "no-store" }).then(async response => {
           if (!response.ok) return;
           const snapshot = await response.json();
@@ -184,10 +194,10 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       }
       if (call.name === "recommend_for" && output.ok && Array.isArray(output.proposal_ids) && output.proposal_ids.length > 0) setState("waiting_review");
       else setState("listening");
-      send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: call.call_id, output: JSON.stringify(output) } });
-      if (automatic.current.followUp()) send({ type: "response.create", response: { tool_choice: "none" } });
+      send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: call.call_id, output: JSON.stringify(compactVoiceToolResult(call.name, output as unknown as ToolResult)) } });
+      if (automatic.current.followUp()) send({ type: "response.create", response: spokenFollowUpResponse() });
     }
-  }, [release, router, send]);
+  }, [release, resumeAudio, router, send]);
 
   const start = useCallback(async () => {
     if (starting.current || peer.current || !scopeRef.current.org_id) return;
@@ -222,7 +232,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       const connection = new RTCPeerConnection();
       peer.current = connection;
       connection.ontrack = e => {
-        if (sessionGeneration === generation.current && audio.current === speaker) { speaker.srcObject = e.streams[0]; setRemoteStream(e.streams[0] ?? null); }
+        if (sessionGeneration === generation.current && audio.current === speaker) { speaker.srcObject = e.streams[0]; setRemoteStream(e.streams[0] ?? null); resumeAudio(); }
       };
       connection.onconnectionstatechange = () => {
         if (sessionGeneration !== generation.current) return;
@@ -258,7 +268,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       setReason("Provider unavailable");
       setState("unavailable");
     }
-  }, [handleEvent, release]);
+  }, [handleEvent, release, resumeAudio]);
 
   useEffect(() => () => { generation.current++; release(); }, [release]);
   return { state, reason, audioBlocked, enableAudio, localStream, remoteStream, start, stop, mute, interrupt, captions };

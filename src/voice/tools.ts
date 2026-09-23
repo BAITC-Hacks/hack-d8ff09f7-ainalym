@@ -9,7 +9,13 @@ export const toolNames = ["what_needs_me", "what_changed", "recommend_for", "exp
 export type ToolName = typeof toolNames[number];
 export interface ToolScope { org_id: string; supplier_id?: string; code_1c?: string }
 export interface ToolCall { request_id: string; scope: ToolScope; args: Record<string, unknown> }
-export interface ToolResult { ok: boolean; state_version: number; labels: Record<string, string>; replayed?: boolean; [key: string]: unknown }
+export type VoiceRender =
+  | { kind: "queue"; title: string; items: Record<string, unknown>[]; purpose?: "approvals" | "changes" }
+  | { kind: "sku_explain"; code_1c: string; name: string; qty: number; unit: string; urgency: string | null; rationale_ru: string | null; components: Record<string, unknown>; outliers_excluded: unknown[]; stockout_months: unknown[]; forecast: unknown }
+  | { kind: "calc_result"; total: number; items: { code_1c: string; name: string; qty: number; unit: string; urgency: string | null }[]; proposal_ids: string[] }
+  | { kind: "urgent_list"; items: Record<string, unknown>[] }
+  | { kind: "cashflow"; items: Record<string, unknown>[] };
+export interface ToolResult { ok: boolean; state_version: number; labels: Record<string, string>; render?: VoiceRender; replayed?: boolean; [key: string]: unknown }
 
 const labels = { provenance: "Partner data · anonymised", ai: "Rules, no LLM", external: "Export for 1C (file)" };
 const draftLabels = { ...labels, draft: "Draft — not sent" };
@@ -72,7 +78,7 @@ async function run(name: ToolName, call: ToolCall): Promise<{ status: number; re
       id: item.id, kind: item.kind, title: item.title, money_at_stake: item.money_at_stake,
       href: item.kind === "proposal" ? `/review/${encodeURIComponent(String(item.id))}` : "/review",
     }));
-    return { status: 200, result: { ok: true, items, state_version: version, labels } };
+    return { status: 200, result: { ok: true, items, render: { kind: "queue", purpose: "approvals", title: "Требуют решения", items }, state_version: version, labels } };
   }
   if (name === "what_changed") {
     const since = call.args.since;
@@ -89,7 +95,7 @@ async function run(name: ToolName, call: ToolCall): Promise<{ status: number; re
     d.prepare("INSERT OR IGNORE INTO voice_change_cursor (org_id, version, last_rowid) VALUES (?, ?, ?)").run(call.scope.org_id, version, latest.n);
     const changes = rows.map(row => ({ object: row.kind, id: row.subject_ref ?? row.id, field: "summary_ru", before: null, after: row.summary_ru }));
     const summary_ru = rows.length ? rows.map(row => row.summary_ru).join("; ") : "Подтверждённых действий агента пока нет.";
-    return { status: 200, result: { ok: true, summary_ru, changes, state_version: version, labels } };
+    return { status: 200, result: { ok: true, summary_ru, changes, render: { kind: "queue", purpose: "changes", title: "Подтверждённые изменения", items: changes.map(change => ({ ...change, title: change.after })) }, state_version: version, labels } };
   }
   if (name === "explain_sku") {
     const code = String(call.args.code_1c ?? call.scope.code_1c);
@@ -104,13 +110,16 @@ async function run(name: ToolName, call: ToolCall): Promise<{ status: number; re
     const outliers = Array.isArray(components.outliers_excluded) ? components.outliers_excluded : series.flatMap(month => Array.isArray(month.outliers) ? month.outliers.filter(own).filter(row => row.state === "excluded") : []);
     const stockoutMonths = Array.isArray(components.stockout_months) ? components.stockout_months : series.filter(month => month.stockout === 1).map(month => month.ym);
     const forecast = own(view.forecast) ? view.forecast : null;
-    const result = {
+    const sku = d.prepare("SELECT name, COALESCE(unit, 'шт') AS unit FROM sku WHERE code_1c = ?").get(code) as { name: string; unit: string };
+    const result: ToolResult = {
       ok: true, code_1c: code,
       rationale_ru: recommendation.rationale_ru ?? null,
       components,
       outliers_excluded: outliers,
       stockout_months: stockoutMonths,
-      forecast, state_version: version, labels,
+      forecast, render: { kind: "sku_explain", code_1c: code, name: sku.name, qty: Number(recommendation.qty_adjusted ?? recommendation.qty_recommended ?? 0), unit: sku.unit,
+        urgency: typeof recommendation.urgency === "string" ? recommendation.urgency : null, rationale_ru: typeof recommendation.rationale_ru === "string" ? recommendation.rationale_ru : null,
+        components, outliers_excluded: outliers, stockout_months: stockoutMonths, forecast }, state_version: version, labels,
     };
     return { status: 200, result };
   }
@@ -127,8 +136,9 @@ async function run(name: ToolName, call: ToolCall): Promise<{ status: number; re
   } catch {
     return err("dependency_unavailable", "Calculation could not complete", 503, version);
   }
-  const top = d.prepare("SELECT code_1c, qty_recommended AS qty, urgency FROM recommendation WHERE run_id = ? AND qty_recommended > 0 ORDER BY qty_recommended DESC LIMIT 5").all(calculated.run_id);
-  return { status: 200, result: { ok: true, run_id: calculated.run_id, recommended: calculated.recommended, top, proposal_ids: calculated.proposals.map(row => row.id), task_ids: calculated.tasks.map(row => row.id), state_version: stateVersion(d), labels: calculated.proposals.length ? draftLabels : labels } };
+  const items = d.prepare("SELECT r.code_1c, s.name, r.qty_recommended AS qty, COALESCE(s.unit, 'шт') AS unit, r.urgency FROM recommendation r JOIN sku s ON s.code_1c = r.code_1c WHERE r.run_id = ? AND r.qty_recommended > 0 ORDER BY CASE r.urgency WHEN 'critical' THEN 0 WHEN 'soon' THEN 1 ELSE 2 END, r.qty_recommended DESC").all(calculated.run_id) as { code_1c: string; name: string; qty: number; unit: string; urgency: string | null }[];
+  const proposal_ids = calculated.proposals.map(row => String(row.id));
+  return { status: 200, result: { ok: true, run_id: calculated.run_id, recommended: calculated.recommended, top: items.slice(0, 5), proposal_ids, task_ids: calculated.tasks.map(row => row.id), render: { kind: "calc_result", total: calculated.recommended, items, proposal_ids }, state_version: stateVersion(d), labels: calculated.proposals.length ? draftLabels : labels } };
 }
 
 export async function executeVoiceTool(name: string, raw: unknown): Promise<{ status: number; result: ToolResult }> {

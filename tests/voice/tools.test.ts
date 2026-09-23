@@ -40,8 +40,10 @@ describe("voice tool bridge", () => {
     expect(calculated.result).toMatchObject({ ok: true, recommended: 1 });
     const queue = await executeVoiceTool("what_needs_me", { request_id: "canonical-queue", scope, args: { code_1c: "CODE-1" } });
     expect(queue.result.items).toHaveLength(1);
+    expect(queue.result.render).toMatchObject({ kind: "queue", purpose: "approvals", items: [{ kind: "proposal" }] });
     const explanation = await executeVoiceTool("explain_sku", { request_id: "canonical-explain", scope, args: { code_1c: "CODE-1" } });
     expect(explanation.result).toMatchObject({ ok: true, code_1c: "CODE-1_" });
+    expect(explanation.result.render).toMatchObject({ kind: "sku_explain", code_1c: "CODE-1_", name: "Деталь" });
   });
   it("reads only confirmed ledger actions for a status question", async () => {
     db().prepare("INSERT INTO agent_action (id, run_id, org_id, kind, summary_ru, at) VALUES (?, ?, ?, ?, ?, ?)")
@@ -50,6 +52,7 @@ describe("voice tool bridge", () => {
     expect(response.status).toBe(200);
     expect(response.result.summary_ru).toBe("Расчёт сохранён");
     expect(response.result.changes).toHaveLength(1);
+    expect(response.result.render).toMatchObject({ kind: "queue", purpose: "changes", items: [{ after: "Расчёт сохранён" }] });
     const since = response.result.state_version;
     db().prepare("INSERT INTO agent_action (id, run_id, org_id, kind, summary_ru, at) VALUES (?, ?, ?, ?, ?, ?)")
       .run("AR-2", "RUN-1", "ORG-1", "order_drafted", "Черновик создан", "2026-09-23T01:00:00Z");
@@ -66,6 +69,7 @@ describe("voice tool bridge", () => {
       executeVoiceTool("recommend_for", call), executeVoiceTool("recommend_for", call),
     ]);
     expect(first.result).toMatchObject({ ok: true, recommended: 1 });
+    expect(first.result.render).toMatchObject({ kind: "calc_result", total: 1, items: [{ name: "Деталь", unit: "шт" }] });
     expect(second.result).toMatchObject({ ok: true, run_id: first.result.run_id, replayed: true });
     const changedArgs = await executeVoiceTool("recommend_for", { ...call, args: { supplier_id: "SE", category: "different" } });
     expect(changedArgs.result).toMatchObject({ run_id: first.result.run_id, replayed: true });
