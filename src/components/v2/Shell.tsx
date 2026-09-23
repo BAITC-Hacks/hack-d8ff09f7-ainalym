@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { House, Package, ClipboardCheck, Truck, Boxes, Wallet, Activity, Settings2, AudioLines, Search, Bell, WifiOff, Menu, X } from "lucide-react";
+import { House, Package, ClipboardCheck, FileText, Truck, Boxes, Wallet, Activity, Settings2, AudioLines, Search, Bell, WifiOff, Menu, X } from "lucide-react";
+import { useDocumentsAttention } from "@/components/documents/client";
 import { useApi, useApiSync } from "@/components/shell/api";
 import styles from "./shell.module.css";
 import { LoadRibbon } from "./loading";
@@ -11,6 +12,7 @@ const NAV = [
   { href: "/today", label: "Сегодня", icon: House, count: "queue" as const },
   { href: "/replenishment", label: "Закупки", icon: Package, count: "recs" as const },
   { href: "/orders", label: "Заказы", icon: ClipboardCheck, count: null },
+  { href: "/documents", label: "Документы", icon: FileText, count: "docs" as const },
   { href: "/suppliers", label: "Поставщики", icon: Truck, count: null },
   { href: "/skus", label: "Товары", icon: Boxes, count: null },
   { href: "/money", label: "Деньги", icon: Wallet, count: null },
@@ -30,6 +32,7 @@ export function V2Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { offline, syncError } = useApiSync();
   const today = useApi<Today>("/api/today");
+  const docs = useDocumentsAttention();
   const [open, setOpen] = useState(false);
   const search = useRef<HTMLInputElement>(null);
 
@@ -46,9 +49,10 @@ export function V2Shell({ children }: { children: ReactNode }) {
   }, [open]);
   useEffect(() => { setOpen(false); }, [pathname]);
 
-  const counts: Record<"queue" | "recs", number | undefined> = {
+  const counts: Record<"queue" | "recs" | "docs", number | undefined> = {
     queue: today.data?.queue_count,
     recs: today.data?.pulse?.stockout_risk?.count,
+    docs,
   };
 
   return (
