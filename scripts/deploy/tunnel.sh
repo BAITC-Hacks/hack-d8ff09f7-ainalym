@@ -14,6 +14,7 @@ export PORT=3000
 scripts/start_prod.sh >/dev/null 2>&1 &
 app_pid=$!
 cleanup() {
+  pkill -TERM -P "$app_pid" 2>/dev/null || true
   kill "$app_pid" 2>/dev/null || true
   wait "$app_pid" 2>/dev/null || true
 }

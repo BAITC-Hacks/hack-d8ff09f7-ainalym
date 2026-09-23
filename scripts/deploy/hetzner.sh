@@ -43,14 +43,23 @@ ssh_opts="-i $ssh_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
 remote="root@$ip"
 
 # Build in a clean directory so .env.local and all credentials stay out of the bundle.
-stage=$(mktemp -d)
-trap 'rm -rf "$stage"' EXIT INT TERM
+stage=$(mktemp -d /tmp/ainalym-deploy.XXXXXX)
+trap 'if [ -d "$stage" ]; then rm -r "$stage"; fi' EXIT INT TERM
 rsync -a --exclude='.env*' --exclude='.git' --exclude='node_modules' --exclude='.next' \
   package.json package-lock.json next.config.ts tsconfig.json src public fixtures scripts "$stage/"
+# Standalone is a build-only setting. Keep the tracked Next config unchanged.
+node - "$stage/next.config.ts" <<'STANDALONE_CONFIG'
+const fs = require("node:fs");
+const path = process.argv[2];
+const source = fs.readFileSync(path, "utf8");
+const marker = /const nextConfig:\s*NextConfig\s*=\s*\{/;
+if (!marker.test(source)) throw new Error("Cannot set standalone output in staged config");
+fs.writeFileSync(path, source.replace(marker, (match) => `${match}\n  output: "standalone",`));
+STANDALONE_CONFIG
 (
   cd "$stage"
   npm ci
-  npm run build
+  env -u OPENAI_API_KEY -u AI_GATEWAY_API_KEY -u TYPESAFE_API_KEY -u NVIDIA_API_KEY -u DEMO_ACCESS_CODE npm run build
 )
 
 # Install the runtime and reverse proxy once. The remote box never runs next build.
@@ -82,10 +91,12 @@ REMOTE_BOOTSTRAP
 
 # rsync's source list is explicit: no .env files, git data, or local database.
 # shellcheck disable=SC2086
-rsync -az --delete -e "ssh $ssh_opts" \
-  "$stage/.next" "$stage/public" "$stage/src" "$stage/fixtures" "$stage/scripts" \
-  "$stage/package.json" "$stage/package-lock.json" "$stage/next.config.ts" \
-  "$remote:/opt/ainalym/releases/$release/"
+rsync -az --delete -e "ssh $ssh_opts" "$stage/.next/standalone/" "$remote:/opt/ainalym/releases/$release/"
+# shellcheck disable=SC2086
+rsync -az -e "ssh $ssh_opts" "$stage/.next/static/" "$remote:/opt/ainalym/releases/$release/.next/static/"
+# shellcheck disable=SC2086
+rsync -az -e "ssh $ssh_opts" "$stage/public" "$stage/src" "$stage/fixtures" "$stage/scripts" \
+  "$stage/package.json" "$stage/package-lock.json" "$remote:/opt/ainalym/releases/$release/"
 # shellcheck disable=SC2086
 scp $ssh_opts -q "$AINALYM_DEPLOY_ENV_FILE" "$remote:/etc/ainalym.env.new"
 
@@ -124,7 +135,8 @@ Environment=AINALYM_MODE=live
 Environment=AINALYM_WORKER=1
 EnvironmentFile=/etc/ainalym.env
 ExecStartPre=/opt/ainalym/current/scripts/deploy/first_etl.sh
-ExecStart=/usr/bin/npm start -- --hostname 127.0.0.1
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=3
 NoNewPrivileges=yes
