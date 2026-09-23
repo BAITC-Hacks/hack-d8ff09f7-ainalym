@@ -4,10 +4,6 @@ import { db, bumpStateVersion } from "../db/client";
 import { startRun, recordAction, finishRun } from "../server/ledger";
 import type { EngineParams } from "./engine";
 
-const startRunIn = startRun as (input: Parameters<typeof startRun>[0], database: DatabaseSync) => ReturnType<typeof startRun>;
-const recordActionIn = recordAction as (runId: string, action: Parameters<typeof recordAction>[1], database: DatabaseSync) => ReturnType<typeof recordAction>;
-const finishRunIn = finishRun as (runId: string, state: "done" | "failed", database: DatabaseSync) => ReturnType<typeof finishRun>;
-
 export const DEFAULT_PARAMS: EngineParams = {
   lead_time_days: 40,
   review_days: 30,
@@ -56,10 +52,10 @@ export async function proposeParamChange(supplierId: string, changes: Partial<En
     JSON.stringify({ supplier_id: supplierId, changes }), JSON.stringify([supplierId]), "needs_review", rationale,
     JSON.stringify([`supplier:${supplierId}`, `supplier_version:${current.version}`]), new Date().toISOString());
   bumpStateVersion(database);
-  const runId = await startRunIn({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id }, database);
-  await recordActionIn(runId, { kind: "escalation", subject_ref: id, summary_ru: `Нужно утвердить параметры ${supplierId}`,
+  const runId = await startRun({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id }, database);
+  await recordAction(runId, { kind: "escalation", subject_ref: id, summary_ru: `Нужно утвердить параметры ${supplierId}`,
     rationale_ru: rationale, sources: [`supplier:${supplierId}`], autonomy: "escalated", result: "needs_owner",
     idempotency_key: `param_change:${id}` }, database);
-  await finishRunIn(runId, "done", database);
+  await finishRun(runId, "done", database);
   return { id, proposed, replayed: false };
 }
