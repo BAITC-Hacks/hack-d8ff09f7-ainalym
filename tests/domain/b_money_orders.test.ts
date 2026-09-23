@@ -6,6 +6,7 @@ import { moneyView } from "../../src/domain/cashflow";
 import { applyWorldEvent } from "../../src/domain/events";
 import { skuView } from "../../src/domain/skus";
 import { recomputeAffected } from "../../src/domain/recompute";
+import { GET as getMoney } from "../../src/app/api/money/route";
 
 const q = (sql: string, ...args: (string | number | null)[]) => db().prepare(sql).run(...args);
 const one = (sql: string, ...args: (string | number | null)[]) => db().prepare(sql).get(...args) as Record<string, unknown> | undefined;
@@ -113,6 +114,24 @@ describe("money derived from ledger rows", () => {
     approveOrder("PO-1", 2);
     const view = await moneyView("ORG", new Date("2026-09-23T00:00:00Z"));
     expect(view.next_60d.out.map(r => r.amount).sort()).toEqual(["300.00", "700.00"]);
+  });
+  it("GET /api/money schedules priced installments when another PO line has unknown cost", async () => {
+    q("INSERT INTO sku(code_1c,supplier_id,name,unit_cost,moq) VALUES ('SE-2','SE','Unpriced',NULL,1)");
+    q("INSERT INTO purchase_order_line(po_id,code_1c,qty,unit_cost) VALUES ('PO-1','SE-2',2,NULL)");
+    const eta = new Date(Date.now() + 30 * 86400000).toISOString();
+    q("UPDATE purchase_order SET eta=? WHERE id='PO-1'", eta);
+    approveOrder("PO-1", 2);
+    const response = await getMoney(new Request("http://localhost/api/money"));
+    expect(response.status).toBe(200);
+    const view = await response.json();
+    expect(view.next_60d.out).toEqual(expect.arrayContaining([
+      expect.objectContaining({ po_id: "PO-1", kind: "supplier_prepayment", amount: "300.00" }),
+      expect.objectContaining({ po_id: "PO-1", kind: "supplier_balance", amount: "700.00", at: eta }),
+    ]));
+    expect(view.next_60d.out).toHaveLength(2);
+    expect(view.committed_by_supplier).toEqual(expect.arrayContaining([
+      expect.objectContaining({ supplier_id: "SE", amount: "1000.00", unknown_cost_lines: 1 }),
+    ]));
   });
   it("keeps an overdue open prepayment visible", async () => {
     approveOrder("PO-1", 2);
