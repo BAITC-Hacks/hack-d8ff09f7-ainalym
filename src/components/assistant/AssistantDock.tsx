@@ -2,8 +2,9 @@
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowUp, ExternalLink, Mic, Sparkles, Square, Volume2, X } from "lucide-react";
+import { ArrowUp, ExternalLink, Mic, MicOff, Sparkles, Volume2, X } from "lucide-react";
 import { ResultCard } from "./ResultCard";
+import { isRenderSpec, StructuredCard } from "./StructuredCard";
 import { VoiceWave } from "./VoiceWave";
 import { useAssistantVoice } from "./useAssistantVoice";
 import { contextTitle, detectBase, encodeContext, pageContext, suggestedPrompts, type AssistantContext } from "./context";
@@ -125,20 +126,20 @@ export function AssistantDock({ base: baseProp }: { base?: string }) {
           ? <div key={entry.id} className={`${styles.msg} ${entry.say.who === "user" ? styles.msgUser : styles.msgBot}`}><p className={styles.bubble}>{entry.say.text}</p></div>
           : <div key={entry.id} className={styles.exchange}>
               <div className={`${styles.msg} ${styles.msgUser}`}><p className={styles.bubble}>{entry.question}</p></div>
-              <div className={`${styles.msg} ${styles.msgBot}`}><div className={styles.answer}><ResultCard title={entry.question ?? ""} response={entry.response ?? { ok: false, reply_ru: CANNOT_ANSWER }} plain base={base} hideTitle /></div></div>
+              <div className={`${styles.msg} ${styles.msgBot}`}><div className={styles.answer}>{isRenderSpec(entry.render) ? <StructuredCard title={entry.question ?? ""} render={entry.render} base={base} /> : <ResultCard title={entry.question ?? ""} response={entry.response ?? { ok: false, reply_ru: CANNOT_ANSWER }} plain base={base} hideTitle />}</div></div>
             </div>)}
         {busy && <div className={`${styles.msg} ${styles.msgBot}`}><p className={`${styles.bubble} ${styles.typing}`} role="status" aria-label="Помощник готовит ответ"><i /><i /><i /><span>Смотрю данные…</span></p></div>}
       </div>
       <div className={styles.foot}>
-        {live && <div className={styles.live}><VoiceWave local={voice.local} remote={voice.remote} state={voice.mic === "idle" ? "listening" : voice.mic} size="mini" /><span role="status">{voice.label}</span>{voice.audioBlocked && voice.enableAudio && <button type="button" className={styles.linkBtn} onClick={voice.enableAudio}><Volume2 size={12} aria-hidden="true" /> Включить звук</button>}</div>}
+        {live && <div className={styles.live}><VoiceWave local={voice.local} remote={voice.remote} state={voice.mic === "idle" ? "listening" : voice.mic} size="mini" /><span role="status">{voice.label}</span><button type="button" className={styles.linkBtn} onClick={voice.stop}>Завершить</button>{voice.audioBlocked && voice.enableAudio && <button type="button" className={styles.linkBtn} onClick={voice.enableAudio}><Volume2 size={12} aria-hidden="true" /> Включить звук</button>}</div>}
         <div className={styles.chips} aria-label="Подсказки">{chips.map(chip => <button key={chip.id} type="button" className={styles.chip} disabled={busy} onClick={() => void ask(chip.text)}>{chip.text}</button>)}</div>
         <form className={styles.composer} onSubmit={event => { event.preventDefault(); void ask(text); }}>
-          <button type="button" className={styles.mic} data-state={voice.mic} aria-pressed={live} aria-label={live ? "Остановить разговор (Esc)" : "Говорить с ассистентом"} title={voice.label} disabled={voice.unavailable} onClick={voice.toggle}>{live ? <Square size={14} aria-hidden="true" /> : <Mic size={16} aria-hidden="true" />}</button>
+          <button type="button" className={styles.mic} data-state={voice.micOn ? voice.mic : "off"} aria-pressed={voice.micOn} aria-label="Микрофон вкл/выкл" title={voice.unavailable ? voice.label : voice.micOn ? "Выключить микрофон" : "Включить микрофон"} disabled={voice.unavailable} onClick={voice.toggleMic}>{voice.micOn ? <Mic size={16} aria-hidden="true" /> : <MicOff size={16} aria-hidden="true" />}</button>
           <textarea ref={input} rows={1} value={text} maxLength={2000} aria-label="Вопрос ассистенту" placeholder="Спросите о странице…" onChange={event => setText(event.target.value)}
             onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void ask(text); } }} />
           <button type="submit" className={styles.send} aria-label="Отправить" disabled={busy || !text.trim()}><ArrowUp size={16} aria-hidden="true" /></button>
         </form>
-        <div className={styles.hint}><span>Enter — отправить · Esc — {live ? "стоп" : "закрыть"}</span>{entries.length > 0 && <button type="button" className={styles.linkBtn} onClick={clear}>Очистить</button>}</div>
+        <div className={styles.hint}><span>Enter — отправить · Esc — {live ? "завершить разговор" : "закрыть"}</span>{entries.length > 0 && <button type="button" className={styles.linkBtn} onClick={clear}>Очистить</button>}</div>
       </div>
     </aside></div>}
   </>;

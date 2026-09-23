@@ -53,3 +53,16 @@
 }
 @media (prefers-reduced-motion: no-preference) { .voiceState[data-state=listening] svg { animation: listening 1s ease-in-out infinite alternate; } }
 @keyframes listening { from { opacity: 1; } to { opacity: .6; } }
+/* Structured tool-result card (voice + typed): summary line, item rows with tabular numerals, expander, next-step button. */
+.summaryLine { margin: 0; font: var(--t-row-title); }
+.structList { list-style: none; padding: 0; margin: 0; display: grid; gap: 0; border-top: 1px solid var(--line); }
+.structList li { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.structName { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.structName a { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; }
+.structQty { flex: none; font-variant-numeric: tabular-nums; white-space: nowrap; font: var(--t-meta); color: var(--ink); }
+.expander { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; padding: 4px 0; color: var(--muted); font: var(--t-meta); cursor: pointer; justify-self: start; }
+.expander:hover { color: var(--ink); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.actionBtn { display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border-radius: 999px; background: var(--ink); color: var(--panel) !important; font: var(--t-row-title); text-decoration: none !important; }
+.actionBtn:hover { opacity: .9; }
+@media (max-width: 767px) { .structName { white-space: normal; } .structList li { flex-wrap: wrap; } }
