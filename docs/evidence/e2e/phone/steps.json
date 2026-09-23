@@ -1,0 +1,62 @@
+[
+  {
+    "step": "01 access and Today shell",
+    "status": "PASS",
+    "detail": "7818 ms; "
+  },
+  {
+    "step": "02 Pulse numbers",
+    "status": "FAIL",
+    "detail": "13394 ms; expect(locator).toBeVisible() failed  Locator: locator('main') Expected: visible Timeout: 8000ms Error: element(s) not found  "
+  },
+  {
+    "step": "03 supplier groups and SKU links",
+    "status": "FAIL",
+    "detail": "9982 ms; expect(locator).toBeVisible() failed  Locator: locator('main') Expected: visible Timeout: 8000ms Error: element(s) not found  "
+  },
+  {
+    "step": "04 SKU chart sources and facts",
+    "status": "FAIL",
+    "detail": "790 ms; P1: supplier-row navigation unavailable; direct real-SKU diagnostic fallback; P1: SKU only reachable by direct diagnostic navigation; supplier-row path blocked"
+  },
+  {
+    "step": "05 adjust recommendation and ledger",
+    "status": "FAIL",
+    "detail": "9288 ms; expect(locator).toBeEnabled() failed  Locator:  getByRole('form', { name: 'Изменить количество 010300008_' }).getByRole('button', { name: 'Сохранить количество' }) Expected: enabled Received: disabled Timeout:  8000ms  "
+  },
+  {
+    "step": "06 approve proposal draft and export",
+    "status": "FAIL",
+    "detail": "8268 ms; expect(locator).toBeVisible() failed  Locator: locator('a[href=\"/review/PR-505049c6-9fbc-482d-bfc8-c0508bf80fb1\"]').first() Expected: visible Timeout: 8000ms Error: element(s) not found  "
+  },
+  {
+    "step": "07 money cash and commitments",
+    "status": "FAIL",
+    "detail": "8076 ms; expect(locator).toBeVisible() failed  Locator: locator('main') Expected: visible Timeout: 8000ms Error: element(s) not found  "
+  },
+  {
+    "step": "08 world in-transit update and Play",
+    "status": "FAIL",
+    "detail": "429 ms; P1: no recommendation above 100 with MOQ ≤100 to verify in-transit effect"
+  },
+  {
+    "step": "09 typed assistant truth-labelled result",
+    "status": "PASS",
+    "detail": "1412 ms; "
+  },
+  {
+    "step": "10 keyboard visible focus",
+    "status": "PASS",
+    "detail": "1066 ms; [{\"tag\":\"A\",\"visible\":true,\"ring\":true},{\"tag\":\"BUTTON\",\"visible\":true,\"ring\":true},{\"tag\":\"BUTTON\",\"visible\":true,\"ring\":true},{\"tag\":\"A\",\"visible\":true,\"ring\":true},{\"tag\":\"SELECT\",\"visible\":true,\"ring\":true},{\"tag\":\"INPUT\",\"visible\":true,\"ring\":true},{\"tag\":\"BUTTON\",\"visible\":true,\"ring\":true},{\"tag\":\"BUTTON\",\"visible\":true,\"ring\":true}]"
+  },
+  {
+    "step": "11 phone overflow and primary targets",
+    "status": "PASS",
+    "detail": "3004 ms; /today: width 390/390; primary buttons 1; 324×44; /replenishment: width 390/390; primary buttons 1; 172.484375×44; /money: width 390/390; primary buttons 0; ; /world: width 390/390; primary buttons 0; ; /assistant: width 390/390; primary buttons 1; 44×44"
+  },
+  {
+    "step": "12 latency and browser errors",
+    "status": "FAIL",
+    "detail": "16 ms; Console/page errors: 6; write actions: 1; slow pages: none; slow APIs: /api/today 7731ms, /api/state 7732ms, /api/agent/ledger 7742ms, /api/assistant/message 1123ms; P2: browser errors or requested latency thresholds exceeded"
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "step": "01 access and Today shell",
+    "status": "PASS",
+    "detail": "5799 ms; "
+  },
+  {
+    "step": "02 Pulse numbers",
+    "status": "FAIL",
+    "detail": "8956 ms; P2: Pulse metrics contain nonnumeric values: Нет обязательств / Не запланирован / 144 117 720,71 ₸ / 636"
+  },
+  {
+    "step": "03 supplier groups and SKU links",
+    "status": "PASS",
+    "detail": "982 ms; "
+  },
+  {
+    "step": "04 SKU chart sources and facts",
+    "status": "FAIL",
+    "detail": "769 ms; P1: supplier-row navigation unavailable; direct real-SKU diagnostic fallback; P1: SKU only reachable by direct diagnostic navigation; supplier-row path blocked"
+  },
+  {
+    "step": "05 adjust recommendation and ledger",
+    "status": "FAIL",
+    "detail": "9144 ms; expect(locator).toBeEnabled() failed  Locator:  getByRole('form', { name: 'Изменить количество 010300008_' }).getByRole('button', { name: 'Сохранить количество' }) Expected: enabled Received: disabled Timeout:  8000ms  "
+  },
+  {
+    "step": "06 approve proposal draft and export",
+    "status": "SKIP",
+    "detail": "378 ms; No supplier proposal present; approval/export unverified"
+  },
+  {
+    "step": "07 money cash and commitments",
+    "status": "PASS",
+    "detail": "1153 ms; Cash records: 0; supplier commitments: 0; empty cash is disclosed by UI"
+  },
+  {
+    "step": "08 world in-transit update and Play",
+    "status": "PASS",
+    "detail": "1659 ms; 010300016_: 198 → 98; compose may process immediately"
+  },
+  {
+    "step": "09 typed assistant truth-labelled result",
+    "status": "PASS",
+    "detail": "4233 ms; "
+  },
+  {
+    "step": "10 keyboard visible focus",
+    "status": "PASS",
+    "detail": "1091 ms; [{\"tag\":\"A\",\"visible\":true,\"ring\":true},{\"tag\":\"A\",\"visible\":true,\"ring\":true},{\"tag\":\"A\",\"visible\":true,\"ring\":true},{\"tag\":\"A\",\"visible\":true,\"ring\":true},{\"tag\":\"A\",\"visible\":true,\"ring\":true},{\"tag\":\"BUTTON\",\"visible\":true,\"ring\":true},{\"tag\":\"A\",\"visible\":true,\"ring\":true},{\"tag\":\"A\",\"visible\":true,\"ring\":true}]"
+  },
+  {
+    "step": "11 phone overflow and primary targets",
+    "status": "SKIP",
+    "detail": "39 ms; Phone-only checks"
+  },
+  {
+    "step": "12 latency and browser errors",
+    "status": "FAIL",
+    "detail": "29 ms; Console/page errors: 1; write actions: 3; slow pages: /today TTFB 1666ms; slow APIs: /api/today 3519ms, /api/state 3522ms, /api/agent/ledger 3535ms, /api/modes 3536ms, /api/today 3583ms, /api/state 3584ms, /api/agent/ledger 3592ms, /api/modes 3595ms, /api/assistant/message 3934ms; P2: browser errors or requested latency thresholds exceeded"
+  }
+]

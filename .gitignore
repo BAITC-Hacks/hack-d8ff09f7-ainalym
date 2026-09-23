@@ -50,3 +50,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 !.env.example
+
+# Hosted E2E transient output (may contain application state)
+/test-results/
+/playwright-report/
