@@ -51,9 +51,9 @@ export async function judgeOutlier(doc: unknown, stats: unknown): Promise<Outlie
 /** Short factual text for ledger/voice; the typed judgment supplies only direction. */
 export async function summarizeChanges(run_id: string): Promise<string> {
   const d = db();
-  const run = d.prepare("SELECT id,started_at,agent_run_id FROM calc_run WHERE id=?").get(run_id) as { id: string; started_at: string; agent_run_id: string | null } | undefined;
+  const run = d.prepare("SELECT id,agent_run_id FROM calc_run WHERE id=?").get(run_id) as { id: string; agent_run_id: string | null } | undefined;
   if (!run) return "Расчёт не найден.";
-  const previous = d.prepare("SELECT id FROM calc_run WHERE started_at < ? ORDER BY started_at DESC LIMIT 1").get(run.started_at) as { id: string } | undefined;
+  const previous = d.prepare("SELECT id FROM calc_run WHERE rowid < (SELECT rowid FROM calc_run WHERE id=?) ORDER BY rowid DESC LIMIT 1").get(run_id) as { id: string } | undefined;
   if (!previous) return "Первый расчёт; сравнение пока недоступно.";
   const total = (id: string) => (d.prepare("SELECT COALESCE(SUM(qty_recommended),0) AS qty FROM recommendation WHERE run_id=?").get(id) as { qty: number }).qty;
   const before = total(previous.id);
