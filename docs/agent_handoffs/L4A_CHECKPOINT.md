@@ -1,9 +1,9 @@
-# L4a checkpoint 3 — tier 1 state gate
-Done: shell + Pulse; loading/empty/unavailable/pending/failure/offline/stale; exact-currency formatting; visible-only 5s sync and input/focus preservation.
-Checks: `npm run check -- ui` → passed=18 failed=0; scoped ESLint + TypeScript pass; production build verified.
-Renders: docs/evidence/ui/today_1440_unavailable.png and today_390_unavailable.png; real absent-API state; no overflow; phone targets ≥44px.
-Evidence: docs/evidence/ui/today_verification.md names measured and unmeasured surfaces.
-Deps added: jsdom, @testing-library/react (dev only); local font provenance in public/fonts/README.md.
-Imports: `@/components/labels`, `@/components/shell` as checkpoint 1; no voice or other UI lane paths changed.
-Undone: tier-2 money; integration with pending today/queue/ledger/world/modes routes is externally-unverified. Gate: RED until integration runs.
-Resumable: merge latest main, verify contract payloads, then money. Pulse mechanism sha: 7caf1ab; this gates sha: resolve commit of this file.
+# L4a checkpoint 4 — money
+Done: tier 1 shell/Pulse/states plus `/money`: cash per currency, dated 60-day schedule, supplier commitments, SE stock value and unknown-cost risks.
+Done: closest payment links from Pulse; supplier amounts with zero known-cost lines stay unknown, never zero.
+Checks: UI passed=20 failed=0; production build, scoped ESLint and TypeScript pass.
+Renders: Pulse desktop + phone available in docs/evidence/ui; integrated populated render pending the route merges.
+Shared imports remain `@/components/labels`, `@/components/shell`; money uses the same API sync and decimal formatting.
+Resumable: current main merged; validate today/queue/modes/ledger/world payloads when available and run the integrated feed→ledger→queue check.
+Unverified: integrated live-refresh scenario; performance timing/CLS not measured. Gate: RED until integration runs.
+sha: state/render cut a0ca77b; money commit resolves this file. Fresh independent review in L4A_REVIEW_SPEC.md is running.

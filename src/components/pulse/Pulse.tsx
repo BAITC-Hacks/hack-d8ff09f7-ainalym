@@ -1,6 +1,7 @@
 "use client";
 import { useApi, LoadError, type ModesResponse } from "@/components/shell";
 import { TruthAxisLabels } from "@/components/labels";
+import { DueStrip } from "./DueStrip";
 import { MoneyStrip } from "./MoneyStrip";
 import { DecisionQueue } from "./DecisionQueue";
 import { CalculationComposer } from "./CalculationComposer";
@@ -18,6 +19,7 @@ export function Pulse({ initial, initialQueue, initialLedger, initialModes, date
     <p className={styles.lead}>{data?.lead || (today.loading ? "Загружаем состояние закупок…" : today.error ? "Состояние закупок пока недоступно." : "Каждый заказ начинается с обоснованного расчёта.")}</p>
     <div className={styles.columns}><div className={styles.mainColumn}>
       <DecisionQueue {...queue} axes={axes} />
+      <DueStrip money={data?.pulse?.money} />
       <CalculationComposer />
       <WorldFeed axes={axes} />
       <Commitments rows={data?.commitments} loading={today.loading} />
