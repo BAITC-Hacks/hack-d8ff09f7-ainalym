@@ -1,0 +1,4 @@
+/* Popup (page mode): the conversation is the whole window — no sidebar, no top bar, no page padding. */
+html[data-assistant-page] .v2 aside[aria-label="Разделы"], html[data-assistant-page] .v2 header { display: none; }
+html[data-assistant-page] .v2 main { padding: 0; max-width: none; }
+html[data-assistant-page] .v2 > div { display: block; min-height: 0; }
