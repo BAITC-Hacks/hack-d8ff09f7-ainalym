@@ -164,6 +164,7 @@ NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
 ReadWritePaths=/var/lib/ainalym /opt/ainalym/current/.next
+PrivateTmp=yes
 
 [Install]
 WantedBy=multi-user.target
