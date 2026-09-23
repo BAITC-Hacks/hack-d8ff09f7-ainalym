@@ -1,15 +1,16 @@
 "use client";
 import { useEffect, useRef, useState, type RefObject } from "react";
-/** Keep an API record mounted while its controls own focus. New records stay in an explicit pending snapshot. */
+/** Keep an API region mounted while its controls own focus. New records stay in an explicit pending snapshot. */
 export function useFocusSnapshot<T>(incoming: T, region: RefObject<HTMLElement | null>) {
   const [shown, setShown] = useState(incoming); const [pending, setPending] = useState(false);
   const latest = useRef(incoming); const shownRef = useRef(incoming);
   useEffect(() => {
     let cancelled = false; latest.current = incoming;
     queueMicrotask(() => {
-      if (cancelled || JSON.stringify(shownRef.current) === JSON.stringify(incoming)) return;
+      if (cancelled) return;
+      if (JSON.stringify(shownRef.current) === JSON.stringify(incoming)) { setPending(false); return; }
       const focused = document.activeElement;
-      if (focused instanceof HTMLElement && focused.closest("[data-result-record]") && region.current?.contains(focused)) { setPending(true); return; }
+      if (focused instanceof HTMLElement && focused !== region.current && region.current?.contains(focused)) { setPending(true); return; }
       shownRef.current = incoming; setShown(incoming); setPending(false);
     });
     return () => { cancelled = true; };
@@ -18,7 +19,7 @@ export function useFocusSnapshot<T>(incoming: T, region: RefObject<HTMLElement |
     const root = region.current;
     const settle = () => queueMicrotask(() => {
       const focused = document.activeElement;
-      if (focused instanceof HTMLElement && focused.closest("[data-result-record]") && root?.contains(focused)) return;
+      if (focused instanceof HTMLElement && focused !== root && root?.contains(focused)) return;
       shownRef.current = latest.current; setShown(latest.current); setPending(false);
     });
     root?.addEventListener("focusout", settle); return () => root?.removeEventListener("focusout", settle);

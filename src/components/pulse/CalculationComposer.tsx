@@ -13,6 +13,6 @@ export function CalculationComposer() {
       <label>Поставщик<select value={supplier} onChange={e => setSupplier(e.target.value)} disabled={action.busy}><option value="">Все поставщики</option><option value="IEK">IEK</option><option value="SE">SE</option></select></label>
       <label>Категория<input value={category} onChange={e => setCategory(e.target.value)} placeholder="Все категории" disabled={action.busy} /></label>
       <Button variant="primary" type="submit" busy={action.busy}><Calculator size={16} />Запустить расчёт</Button>
-    </form><ActionStatus error={action.error} receipt={action.receipt} />{action.receipt && <TruthAxisLabels axes={axes} />}{runId && <Link className={styles.inlineLink} href={`/purchases?run_id=${encodeURIComponent(runId)}`}>Открыть рекомендации расчёта</Link>}
+    </form><ActionStatus error={action.error} receipt={action.receipt} />{action.receipt && <TruthAxisLabels axes={axes} />}{runId && <Link className={styles.inlineLink} href={`/replenishment?run_id=${encodeURIComponent(runId)}`}>Открыть рекомендации расчёта</Link>}
   </section>;
 }
