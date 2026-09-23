@@ -21,6 +21,15 @@ function inTx<T>(database: DatabaseSync, fn: () => T): T {
   catch (error) { database.exec("ROLLBACK"); throw error; }
 }
 
+function reasonRu(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/stock source missing/i.test(message)) return "нет подтверждённого остатка";
+  if (/uncensored sales source missing/i.test(message)) return "нет месяцев продаж без дефицита";
+  if (/sales source missing/i.test(message)) return "нет истории продаж";
+  if (/invalid engine parameters/i.test(message)) return "неверные параметры расчёта";
+  return "ошибка расчёта; проверьте данные артикула";
+}
+
 /** Computes and persists a full run before preparing human approval proposals. */
 export async function runCalculation(scope: CalcScope = {}, overrides: Partial<EngineParams> = {}, ctx: CalcContext = {}) {
   const database = ctx.database ?? db();
@@ -31,17 +40,15 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
   const computed: { sku: Sku; result: NeedResult; params: EngineParams }[] = [];
   const unresolved: { code_1c: string; supplier_id: string; reason: string }[] = [];
   for (const sku of skus) {
-    const params = paramsForSupplier(sku.supplier_id, database, overrides);
     try {
+      const params = paramsForSupplier(sku.supplier_id, database, overrides);
       const result = await computeNeed(sku.code_1c, params, { database, as_of: ctx.as_of });
       if (result.components.stock_stale) unresolved.push({ code_1c: sku.code_1c, supplier_id: sku.supplier_id,
-        reason: `stock source missing for ${sku.code_1c}: latest confirmed month ${result.components.stock_month}` });
+        reason: `не рассчитано: нет актуального остатка; последний подтверждённый месяц ${result.components.stock_month}` });
       else computed.push({ sku, params, result });
     }
     catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      if (!/source missing/i.test(reason)) throw error;
-      unresolved.push({ code_1c: sku.code_1c, supplier_id: sku.supplier_id, reason });
+      unresolved.push({ code_1c: sku.code_1c, supplier_id: sku.supplier_id, reason: `не рассчитано: ${reasonRu(error)}` });
     }
   }
   const id = `RUN-${randomUUID()}`;
@@ -83,7 +90,8 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
       sources: gaps.map((row) => row.code_1c), autonomy: "escalated", result: "needs_owner", idempotency_key: `source-gap:${id}:${supplierId}` }, database);
   }
   if (!ctx.agent_run_id) await finishRun(agentRunId, "done", database);
-  return { run_id: id, skus: skus.length, recommended: computed.filter(({ result }) => result.need > 0).length, unresolved, ...applied };
+  return { run_id: id, skus: skus.length, computed: computed.length, not_computed: unresolved.length,
+    recommended: computed.filter(({ result }) => result.need > 0).length, unresolved, ...applied };
 }
 
 /** One supplier order proposal per supplier; replay and newer runs are safe. */
