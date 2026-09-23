@@ -101,7 +101,7 @@ export function AssistantPanel({ scope = DEFAULT_SCOPE, onClose, variant = "pane
         <textarea ref={composer} id={`${id}-text`} rows={2} value={text} maxLength={4000} onChange={event => setText(event.target.value)} placeholder="Спросите о пополнении склада…" onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void sendText(); } }} />
         <div className={styles.composerActions}><span className={styles.meta}>Enter — отправить</span><Button type="button" aria-label={activeVoice ? "Завершить голосовой разговор" : "Начать голосовой разговор"} disabled={unavailable} onClick={() => { setMuted(false); if (activeVoice) voice.stop(); else void voice.start(); }}>{activeVoice ? <Square size={16} /> : <Mic size={18} />}</Button>{activeVoice && <Button type="button" aria-label={muted ? "Включить микрофон" : "Выключить микрофон"} aria-pressed={muted} onClick={() => { voice.mute(!muted); setMuted(!muted); }}>{muted ? <MicOff size={18} /> : <Mic size={18} />}</Button>}<Button type="submit" variant="primary" aria-label="Отправить сообщение" busy={action.busy}><ArrowUp size={18} /></Button></div>
       </form>
-      <div className={styles.voiceMeta}><span>Realtime + async speech</span>{unavailable && <Chip title={voice.reason}>Provider unavailable</Chip>}</div>
+      <div className={styles.voiceMeta}><span>Голос и текст</span>{unavailable && <Chip>Голос сейчас недоступен — печатайте</Chip>}</div>
     </div>
   </section>;
 }
