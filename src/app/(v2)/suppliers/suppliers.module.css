@@ -6,6 +6,8 @@
 .name small { font: var(--v2-meta); color: var(--v2-muted); }
 .origin { margin: 4px 0 0; font: var(--v2-meta); color: var(--v2-muted); }
 .big { font: 500 20px/24px var(--v2-font); letter-spacing: -.02em; }
+.big[data-stake="medium"] { background: var(--v2-well); border-radius: 4px; padding: 0 6px; }
+.big[data-stake="strong"] { background: var(--v2-alert-row); border-radius: 4px; padding: 0 6px; font-weight: 600; }
 .unit { font: var(--v2-meta); color: var(--v2-muted); margin-left: 4px; }
 .nocost { font: var(--v2-meta); color: var(--v2-warn); }
 .block { display: flex; flex-direction: column; gap: 8px; }

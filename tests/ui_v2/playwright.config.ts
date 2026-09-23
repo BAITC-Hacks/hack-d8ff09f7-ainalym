@@ -13,6 +13,7 @@ export default defineConfig({
     { name: "desktop", testMatch: /screens\.spec\.ts/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "mobile", testMatch: /screens\.spec\.ts/, use: { ...devices["Desktop Chrome"], viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
     { name: "sku-money-supplier", testMatch: /fable_ui_2\.spec\.ts/, use: { ...devices["Desktop Chrome"], deviceScaleFactor: 1 } },
+    { name: "uxfix_a", testMatch: /uxfix_a\.spec\.ts/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 } },
     { name: "proof", testMatch: /approve\.spec\.ts/, dependencies: ["desktop", "mobile"], timeout: 240_000, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
   ],
 });

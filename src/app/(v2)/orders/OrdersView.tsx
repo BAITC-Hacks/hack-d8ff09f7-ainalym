@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ClipboardList, FileSpreadsheet, FileText, Mail, Truck } from "lucide-react";
 import { useApi } from "@/components/shell";
 import { Card, Empty, Kpis, Loading, PageHead, Pill, Section, Truth, Unavailable, fmtDate, fmtMoney, fmtNum } from "@/components/v2/ui";
+import { stakeTier } from "@/components/v2/primitives";
 import { buildPipeline, daysLabel, ddmm, type FeedIn, type LedgerIn, type MoneyOutIn, type OrderIn, type PipelineRow, type TransitIn } from "./pipeline";
 import styles from "./orders.module.css";
 
@@ -37,8 +38,9 @@ function OrderRow({ row, selected, onSelect }: { row: PipelineRow; selected: boo
           </div>
         </div>
         <div className={styles.sum}>
-          {row.arrival.date ? <strong>{row.arrival.label}</strong> : row.kind === "system" && row.total_cost ? <strong>{fmtMoney(row.total_cost)}</strong> : <span>{row.kind === "system" ? "себестоимость не задана" : "в пути · дата не указана"}</span>}
-          {days ? <span>{days}</span> : null}
+          {row.arrival.date ? <strong data-due={row.arrival.days != null && row.arrival.days < 0 ? "overdue" : row.arrival.days != null && row.arrival.days <= 3 ? "soon" : undefined}>{row.arrival.label}</strong> : row.kind === "system" && row.total_cost ? <strong data-stake={stakeTier(row.total_cost)}>{fmtMoney(row.total_cost)}</strong> : <span>{row.kind === "system" ? "себестоимость не задана" : "в пути · дата не указана"}</span>}
+          {days ? <span data-due={row.arrival.days != null && row.arrival.days < 0 ? "overdue" : row.arrival.days != null && row.arrival.days <= 3 ? "soon" : undefined}>{days}</span> : null}
+          {row.arrival.date && row.kind === "system" && row.total_cost ? <span data-stake={stakeTier(row.total_cost)}>{fmtMoney(row.total_cost)}</span> : null}
           {row.customs ? <span className={styles.policy}>{row.customs}</span> : null}
         </div>
       </div>

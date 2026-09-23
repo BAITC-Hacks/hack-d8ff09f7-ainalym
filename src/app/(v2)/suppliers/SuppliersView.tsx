@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useApi } from "@/components/shell";
 import { Card, Empty, Kpis, Loading, PageHead, Pill, Row, Rows, Section, StaleBanner, Truth, Unavailable, fmtDate, fmtMoney, fmtMoneyShort, fmtNum } from "@/components/v2/ui";
+import { stakeTier } from "@/components/v2/primitives";
 import styles from "./suppliers.module.css";
 
 type SupplierCard = {
@@ -41,7 +42,7 @@ function Supplier({ c }: { c: SupplierCard }) {
       <Row label="В пути" meta={c.in_transit.shipments ? `${fmtNum(c.in_transit.shipments)} ${plural(c.in_transit.shipments, "поставка", "поставки", "поставок")}${c.in_transit.next_eta ? ` · ближайшая ${fmtDate(c.in_transit.next_eta)}` : ""}` : "ничего не едет"}
         value={<span className={styles.big}>{fmtNum(c.in_transit.units)}<span className={styles.unit}>шт</span></span>} />
       <Row label="Обязательства" meta={c.committed ? `${fmtNum(c.committed.lines)} ${plural(c.committed.lines, "строка", "строки", "строк")} · цена известна для ${fmtNum(c.committed.cost_known_lines)}` : "появятся после утверждения заказа"}
-        value={c.committed?.amount ? <span className={styles.big}>{fmtMoneyShort(c.committed.amount, c.committed.currency)}</span> : c.committed ? <span className={styles.nocost}>себестоимость не задана</span> : <span className={styles.big}>нет</span>}
+        value={c.committed?.amount ? <span className={styles.big} data-stake={stakeTier(c.committed.amount)}>{fmtMoneyShort(c.committed.amount, c.committed.currency)}</span> : c.committed ? <span className={styles.nocost}>себестоимость не задана</span> : <span className={styles.big}>нет</span>}
         valueMeta={c.committed?.amount ? fmtMoney(c.committed.amount, c.committed.currency) : undefined} />
       {c.next_payment && <Row label={payKind} meta={c.next_payment.at ? `к ${fmtDate(c.next_payment.at)}` : undefined} value={<span className={styles.big}>−{fmtMoney(c.next_payment.amount, c.next_payment.currency)}</span>} />}
     </Rows>

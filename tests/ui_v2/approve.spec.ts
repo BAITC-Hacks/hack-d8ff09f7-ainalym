@@ -21,8 +21,8 @@ test.describe("Replenishment proof", () => {
     await first.click();
     const input = page.getByLabel("Скорректировать количество");
     await input.fill(String(before + 3));
-    await page.getByRole("button", { name: "В черновик" }).click();
-    await expect(first).toContainText("черновик");
+    await page.getByRole("button", { name: "Добавить в корзину" }).click();
+    await expect(first).toContainText("в корзине");
     await shot(page, "replenishment_adjust_before");
     const versionBefore = (await getJson(request, "/api/proposals?state=needs_review")).proposals.find((p: { subject_id: string }) => p.subject_id === "SE");
     await page.getByRole("button", { name: /Подготовить заказ SE/ }).click();
