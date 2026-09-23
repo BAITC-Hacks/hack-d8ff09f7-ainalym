@@ -208,6 +208,7 @@
 /* chart + sku */
 .oa-chart { width: 100%; height: auto; display: block; }
 .oa-chart text { font: 400 11px/1 var(--oa-font); fill: var(--oa-muted); }
+@media (max-width: 767px) { .oa-chart text { font-size: 16px; } }
 .oa-legend { display: flex; flex-wrap: wrap; gap: 16px; font: var(--oa-meta); color: var(--oa-ink-2); }
 .oa-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .oa-legend i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
