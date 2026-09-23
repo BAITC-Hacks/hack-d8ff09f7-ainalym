@@ -1,5 +1,5 @@
-# L7 checkpoint — 11:15Z (main @ 220d777 merged)
-- VERIFIED keyless clean clone 220d777: clean_clone_check PASS 287/0/7/7; nine routes 200, / → /today; calc SE 560/307; 300200745_ 126 (→ 24 after +100 verified on 9b01fcb); demo URL /api/health 200.
-- done: README v2.0 («Экраны», demo URL, ENGINE-1/WORLD-2 methodology) · TASK_MAP · SUBMISSION_RU v2 · clean_clone_check.sh.
-- next: GitHub-remote clean clone ≈12:10Z → README §8; README final + closeout ≈12:40Z; freeze 12:55Z.
-- queue: done 001–120 (per runner); drafts 140 (refreshed), 145 methodology refresh, 150–170 drip.
+# L7 checkpoint — 12:25Z (final; main 8d00ac4 merged)
+- done: README v2.3 final, verified on keyless clean clone 8d00ac4 (335/0/7/7, scenario 11×PASS); GitHub clean clone 230b038 PASS at 11:58Z.
+- done: TASK_MAP final · SUBMISSION_RU v2.1 · clean_clone_check.sh · closeout L7_REVIEWER_PATH_CLOSEOUT.md.
+- queue: 17 co-founder documents; 150/160/170/175 released and waiting for the runner.
+- nothing after freeze 12:55Z.

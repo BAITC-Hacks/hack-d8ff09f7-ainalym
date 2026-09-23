@@ -2,7 +2,7 @@
 
 Единственный источник статусов для README. Статус ставится только по коду на `main` и проверке L7 (чистый клон без ключей) или закрытиям в `docs/agent_handoffs/*`. Обновляется после каждого слияния (L7).
 
-Наблюдение: **2026-09-23 12:00Z**, `main` @ `230b038` (= GitHub `origin/main` на 11:57Z) (после MERGE-2, L5 voice, L4a/L4b/L4c, L6, L3, L8, INTEG-1). Чистый клон: `/tmp`, `.env.local` из `.env.example` + `DATABASE_PATH=./data/partner.db`, без ключей.
+Наблюдение: **2026-09-23 12:24Z**, `main` @ `8d00ac4` (финальный); API-числа строк M5/F1 — чистый клон `230b038`, 12:00Z.
 
 Статусы: `GREEN` — проверено командой в это время · `PARTIAL` — есть код, проверка неполная · `RED` — проверка падает · `PENDING` — нет на `main` · `UNVERIFIED` — нужен внешний ресурс (ключ, микрофон).
 
@@ -30,10 +30,10 @@
 | P1 | Экспорт для 1С и канал поставщика | `/api/peers/onec-export/*` · `/supplier/:po_id` | API: страница поставщика — «Черновик заказа — не отправлен» | GREEN · 09:48Z |
 | S1 | Карточка артикула | `GET /api/skus/:code` · `/skus/:code` | API: рекомендация, в пути, журнал | GREEN · 09:48Z |
 | V1 | Голос: Realtime-сессия, инструменты; текстовый путь без ключа | `src/voice/*` · `/api/voice/*` · `/api/assistant/message` · `/assistant` | `npm run check` (voice) | PARTIAL · 09:48Z (живой микрофон — UNVERIFIED, 2 проверки пропущены) |
-| U1 | Экраны: Сегодня, Закупки, Проверка, Заказы, Поставщики, Товары, Деньги, Лента, Связи, Помощник | `/today` `/replenishment` `/review/:id` `/orders` `/suppliers` `/skus` `/money` `/world` `/connections` `/assistant` | клон `220d777`: все 200; кнопки «Проверить», «Утвердить заказ» — в коде `230b038`; снимки `docs/evidence/shell/*.png` | PARTIAL · 12:00Z (L7 проверял ответы, подписи в коде и API, не вёрстку глазами) |
-| C2 | Сводная проверка | `scripts/check.mjs` | `npm run etl && npm run check` → `check: passed=325 failed=0 skipped=7 externally-unverified=7` | GREEN · 11:58Z (клон с GitHub `230b038`) |
-| C3 | Чистый клон с GitHub | `scripts/clean_clone_check.sh https://github.com/BAITC-Hacks/hack-d8ff09f7-ainalym.git main` | `CLEAN-CLONE: PASS @ 230b038` (325/0/7/7) | GREEN · 11:58Z |
+| U1 | Экраны: Сегодня, Закупки (+ корзина), Проверка, Заказы, Документы, Поставщики, Товары, Деньги, События, Настройки, ИИ-Помощник; лендинг | `/today` `/replenishment` `/review/:id` `/orders` `/documents` `/suppliers` `/skus` `/money` `/world` `/settings` `/assistant` `/landing` | названия разделов и кнопок — в коде `8d00ac4` (`src/components/v2/Shell.tsx`); снимки `docs/evidence/shell/*.png` | PARTIAL · 12:24Z (L7 проверял ответы 200 на `220d777`, подписи в коде и API; вёрстку и ролики лендинга глазами не проверял) |
+| C2 | Сводная проверка | `scripts/check.mjs` | `npm run etl && npm run check` → `check: passed=335 failed=0 skipped=7 externally-unverified=7` | GREEN · 12:24Z (чистый клон `8d00ac4`) |
+| C3 | Чистый клон | `scripts/clean_clone_check.sh <remote> main` | GitHub `230b038` → PASS (325/0/7/7, 11:58Z); финальный `8d00ac4` → PASS (335/0/7/7) | GREEN · 12:24Z |
 | C5 | Пересборка демо-базы | `scripts/demo_reset.mjs` · `POST /api/demo/reset` | `npm run demo:reset` | GREEN · 09:3xZ |
 | H1 | Хостинг-демо: код доступа, лимиты | `src/middleware.ts` · `src/server/demo_guard.ts` · `scripts/deploy/*` · https://65.109.172.188.sslip.io | `curl <URL>/api/health` → 200 | GREEN · 11:20Z |
-| R1 | README: методика, выбросы, запуск, экраны | `README.md` §4, §7, §8, «Экраны» | клон с GitHub по §7–8 | GREEN (v2.1) · 12:00Z |
+| R1 | README: методика, выбросы, запуск, экраны, документы | `README.md` | чистый клон по §7–8 | GREEN (v2.3) · 12:24Z |
 | R2 | Без ключей — «Правила без LLM» | `AI_PROVIDER` auto → `rules` | `GET /api/health` → `"ai_provider":"rules"`, провайдеры `missing` | GREEN · 09:48Z |
