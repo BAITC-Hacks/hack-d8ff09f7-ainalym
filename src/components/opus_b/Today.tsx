@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ArrowRight, CircleDashed, RefreshCw, Truck } from "lucide-react";
 import { ApiError, apiRequest, useApi, useApiSync } from "@/components/shell/api";
 import { AgentsLabel, ProposalStateChip, TaskStateChip } from "@/components/labels";
-import { Btn, btnClass, Pill, Receipt, Skel, StateBlock, Truth } from "./ui";
+import { Btn, btnClass, Mark, Pill, Receipt, Skel, StateBlock, Truth } from "./ui";
 import { ago, dayShort, int, moneyShort, plural, qty, type Money } from "./format";
 import type { LedgerResponse, ProposalDetail, QueueItem, QueueResponse, TodayResponse } from "./types";
 import s from "./today.module.css";
@@ -24,6 +24,8 @@ function Strip({ today, queue }: { today: TodayResponse; queue?: QueueResponse }
   const unpriced = proposals.filter(p => !p.money_at_stake).length;
   const committed = perCurrency(today.pulse.money.committed_by_supplier.map(c => ({ amount: c.amount, currency: c.currency })));
   const next = [...today.pulse.money.next_60d.out].sort((a, b) => a.at.localeCompare(b.at))[0];
+  const split = proposals.map(p => { const m = p.title.match(/поставщику\s+([^:\s]+):\s*(\d+)/); return m ? { id: m[1], n: Number(m[2]) } : null; }).filter((x): x is { id: string; n: number } => x !== null);
+  const splitTotal = Math.max(split.reduce((a, b) => a + b.n, 0), 1);
   const { auto, needs_you } = today.pulse.agents;
   const total = Math.max(auto + needs_you, 1);
   return <section className={s.strip} aria-label="Главное за день">
@@ -35,7 +37,8 @@ function Strip({ today, queue }: { today: TodayResponse; queue?: QueueResponse }
     <a href="#decisions" className={s.stat}>
       <span className={s.statLabel}>Ждёт вашего решения</span>
       <span className={s.statValue}>{atStake.length ? atStake.map(m => moneyShort(m)).join(" · ") : int(proposals.length)}{!atStake.length && <span className={s.statUnit}>{plural(proposals.length, "заказ", "заказа", "заказов")}</span>}<ArrowRight size={18} aria-hidden /></span>
-      <span className={s.statSub}>{int(proposals.length)} {plural(proposals.length, "заказ", "заказа", "заказов")} поставщикам{unpriced ? ` · ${unpriced} без себестоимости (IEK)` : ""}</span>
+      {split.length > 0 && <span className={s.split} aria-hidden>{split.map(x => <span key={x.id} data-supplier={x.id} style={{ width: `${(x.n / splitTotal) * 100}%` }} />)}</span>}
+      <span className={s.statSub}>{split.length ? split.map(x => `${x.id} ${int(x.n)} поз.`).join(" · ") : `${int(proposals.length)} ${plural(proposals.length, "заказ", "заказа", "заказов")}`}{unpriced ? ` · ${unpriced} без себестоимости` : ""}</span>
     </a>
     <div className={s.stat}>
       <span className={s.statLabel}>Обязательства · 60 дней</span>
@@ -74,8 +77,9 @@ function ProposalCard({ item, lead, onReceipt }: { item: QueueItem; lead: boolea
       else setProblem({ stale: false, text: error instanceof ApiError ? error.message : "Не удалось сохранить решение." });
     } finally { setBusy(null); }
   };
+  const supplier = proposal?.subject_id ?? item.title.match(/поставщику\s+([^:\s]+)/)?.[1];
   return <li className={`${s.card} ${lead ? s.cardLead : ""}`}>
-    <span className={s.icon} aria-hidden><Truck size={18} /></span>
+    <span className={s.icon} aria-hidden>{supplier ? <Mark id={supplier} /> : <Truck size={18} />}</span>
     <div className={s.cardTop}>
       <h3 className={s.cardTitle}>{item.title}</h3>
       {item.money_at_stake ? <span className={s.cardMoney}>{moneyShort(item.money_at_stake)}</span> : <span className={s.cardMoneyMuted}>себестоимость не задана</span>}
