@@ -1,7 +1,6 @@
-L9 checkpoint — zero-sum fix
-Done: loader, derived series, eval SKUs, 45 world events, provenance, reset test.
-Months without positive outgoing lines now have qty_lines=0; line aggregation reuses one statement.
-SKU union is 3909 (IEK 3185, SE 724), above the estimated gate; all-file union retained.
-Reset test: passed twice in 12.56 s with identical counts and all five eval SKUs.
-Undone: final gate queries and closeout.
-Resume: check stockouts, season mean, ratios and JSONL; write closeout.
+L9 checkpoint — closeout
+Done: loader, derivation, eval, 45 events, provenance, reset test, gate queries.
+Counts: 248915 lines, 3909 SKUs, 99634 sales months, 117282 stock months, 313 transit.
+Reset test: two identical reloads; 1596 stockouts; each supplier season mean 1.
+Yellow: all-file SKU union exceeds approximate gate; engine M1–M5 belongs to other lanes.
+Closeout: docs/agent_handoffs/L9_ETL_CLOSEOUT.md.
