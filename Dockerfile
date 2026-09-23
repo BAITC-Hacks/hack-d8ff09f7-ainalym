@@ -4,10 +4,11 @@ WORKDIR /app
 ENV NODE_ENV=production \
     DATABASE_PATH=/data/ainalym.db \
     PORT=3000 \
-    HOSTNAME=0.0.0.0
+    HOSTNAME=0.0.0.0 \
+    NEXT_TELEMETRY_DISABLED=1
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --include=dev
 COPY next.config.ts tsconfig.json ./
 COPY public ./public
 COPY src ./src

@@ -77,6 +77,7 @@ function budgetDb(): DatabaseSync {
   const path = budgetPath();
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const database = new DatabaseSync(path);
+  database.exec("PRAGMA busy_timeout = 3000");
   database.exec("CREATE TABLE IF NOT EXISTS demo_daily_budget (day TEXT PRIMARY KEY, used INTEGER NOT NULL)");
   return database;
 }

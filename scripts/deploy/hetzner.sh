@@ -13,7 +13,7 @@ set -- $ip
 IFS=$old_ifs
 if [ "$#" -ne 4 ]; then printf 'Expected an IPv4 address.\n' >&2; exit 2; fi
 for octet do
-  if [ "$octet" -gt 255 ] 2>/dev/null; then printf 'Invalid IPv4 address.\n' >&2; exit 2; fi
+  if [ -z "$octet" ] || [ "$octet" -gt 255 ] 2>/dev/null; then printf 'Invalid IPv4 address.\n' >&2; exit 2; fi
 done
 : "${AINALYM_DEPLOY_ENV_FILE:?Point to the Keychain-built environment file}"
 test -r "$AINALYM_DEPLOY_ENV_FILE"
@@ -27,8 +27,9 @@ awk -F= '
     if (name == "AI_GATEWAY_API_KEY" && length($2) > 0) gateway=1
   }
   END { exit (bad || !access || !openai || !gateway) }
-' "$AINALYM_DEPLOY_ENV_FILE" || { printf 'Deployment environment contains an unexpected variable name.\n' >&2; exit 2; }
+' "$AINALYM_DEPLOY_ENV_FILE" || { printf 'Deployment environment is missing required names or contains an unexpected name.\n' >&2; exit 2; }
 test -f package-lock.json
+if [ -n "$(git status --porcelain)" ]; then printf 'Commit the release before deployment.\n' >&2; exit 2; fi
 command -v rsync >/dev/null
 command -v ssh >/dev/null
 command -v scp >/dev/null
@@ -101,6 +102,8 @@ install -o root -g root -m 600 /etc/ainalym.env.new /etc/ainalym.env
 rm -f /etc/ainalym.env.new
 
 previous=$(readlink "$app/current" || true)
+if [ -f /etc/ainalym.env ]; then cp -p /etc/ainalym.env /etc/ainalym.env.previous; fi
+if [ -f /etc/caddy/Caddyfile ]; then cp -p /etc/caddy/Caddyfile /etc/caddy/Caddyfile.previous; fi
 ln -sfn "$app/releases/$release" "$app/current.new"
 mv -Tf "$app/current.new" "$app/current"
 cat >/etc/systemd/system/ainalym.service <<'UNIT'
@@ -144,11 +147,14 @@ for _attempt in $(seq 1 24); do
   sleep 5
 done
 if [ "$healthy" -ne 1 ]; then
+  if [ -f /etc/ainalym.env.previous ]; then cp -p /etc/ainalym.env.previous /etc/ainalym.env; fi
+  if [ -f /etc/caddy/Caddyfile.previous ]; then cp -p /etc/caddy/Caddyfile.previous /etc/caddy/Caddyfile; fi
   if [ -n "$previous" ]; then
     ln -sfn "$previous" "$app/current.new"
     mv -Tf "$app/current.new" "$app/current"
     systemctl restart ainalym
   fi
+  systemctl restart caddy
   printf 'Deployment health failed; previous release restored when available.\n' >&2
   exit 1
 fi

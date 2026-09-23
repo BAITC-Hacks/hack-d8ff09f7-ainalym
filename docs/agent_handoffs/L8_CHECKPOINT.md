@@ -1,5 +1,5 @@
-L8 checkpoint 3 — 2026-09-23
-Done: container, guard, Hetzner release/rollback deploy, tunnel fallback, platform handover note.
-Undone: L3/L5 provider-boundary cap wiring; container/offline proof; live integration.
-Resumable: run demo tests/build; deploy after L1/L9 merge; owner supplies env through shell only.
-sha: 81c6ac2 (previous checkpoint); this checkpoint = git rev-parse HEAD
+L8 checkpoint 4 — 2026-09-23
+Done: image builds; local containers healthy; access page/cookie pass; six tests pass; Hetzner/tunnel scripts.
+Undone: L1/L9 routes+ETL (offline scenario 404), L3/L5 live-cap hook, check script, external integration.
+Resumable: merge main at T+45, rebuild, rerun example+today, check -- demo, then deploy from root.
+sha: 9c42d90 (previous checkpoint); this checkpoint = git rev-parse HEAD
