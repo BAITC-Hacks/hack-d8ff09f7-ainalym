@@ -37,6 +37,7 @@ describe("ephemeral voice session", () => {
     expect(body.expires_at).toBeLessThanOrEqual(now + 60);
     expect(body.tools.map((tool: { name: string }) => tool.name).sort()).toEqual(["explain_sku", "recommend_for", "what_changed", "what_needs_me"]);
     expect(fetcher.mock.calls[0][0]).toBe("https://api.openai.com/v1/realtime/client_secrets");
+    expect(fetcher.mock.calls[0][1].headers["OpenAI-Safety-Identifier"]).toMatch(/^[0-9a-f]{64}$/);
     expect(JSON.parse(fetcher.mock.calls[0][1].body).session.tools).toHaveLength(4);
     expect(JSON.stringify(body)).not.toContain("unit-test-only");
   });

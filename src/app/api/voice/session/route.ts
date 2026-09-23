@@ -1,9 +1,11 @@
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { reserveLiveCall } from "../../../../server/demo_guard";
 
 export const runtime = "nodejs";
 export const REALTIME_MODEL = "gpt-realtime-2.1";
 const endpoint = "https://api.openai.com/v1/realtime/client_secrets";
+const safetyIdentifier = createHash("sha256").update("ainalym-partner-demo-guest").digest("hex");
 
 export const voiceTools = [
   { type: "function", name: "what_needs_me", description: "Read the current approval queue. Never claim approval or sending.", parameters: { type: "object", properties: {}, additionalProperties: false } },
@@ -21,7 +23,7 @@ export async function POST() {
     if (!reserveLiveCall().allowed) throw new Error("live call budget exhausted");
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "OpenAI-Safety-Identifier": safetyIdentifier },
       body: JSON.stringify({ session: {
         type: "realtime", model: REALTIME_MODEL, instructions,
         output_modalities: ["audio"], audio: { output: { voice: "marin" }, input: { transcription: { model: "gpt-4o-mini-transcribe" } } },
