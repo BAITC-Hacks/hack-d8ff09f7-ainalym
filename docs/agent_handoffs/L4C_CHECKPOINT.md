@@ -1,8 +1,8 @@
-# L4c checkpoint 3 — tier-1 states and renders
-done: assistant + eight voice states + scoped drafts + spoken-result event; Связи; full world console; 7 desktop/phone captures; finite independent review resolved.
-checks: npm run check -- ui passed=49 failed=0 (23 c_*); npx tsc --noEmit + npm run build passed.
-deps: jsdom + @types/jsdom dev-only (checkpoint 2); no new production dependency.
-undone: integrated modes/state/source metadata/run detail; actual spoken-result microphone gate; tier-2 work follows.
-resumable: L4C_INTEGRATION_NOTES.md names owning seams; ETL-only DB has no organization, tool failure shown honestly.
-Gate: RED — missing integrated label/source routes; live spoken result externally-unverified.
+# L4c checkpoint 4 — tier-2 purchase and document lists
+done: /sales purchase-order register; /documents recorded 1C exports + artifact-list boundary; no trading invoices or fabricated amounts.
+checks: npm run check -- ui, npx tsc --noEmit and npm run build passed; list states cover failed refresh and unavailable list routes.
+deps: no new dependencies.
+undone: notifications/search checkpoints; landing last; artifact collection route belongs to L3 and is absent.
+resumable: unknown order currency is disclosed; downloads use recorded export IDs; see L4C_INTEGRATION_NOTES.md for tier-1 integration gaps.
+Gate: RED — integrated modes/source metadata and actual spoken-result gate remain incomplete.
 sha: this checkpoint commit (git log -1 --format=%H -- docs/agent_handoffs/L4C_CHECKPOINT.md).

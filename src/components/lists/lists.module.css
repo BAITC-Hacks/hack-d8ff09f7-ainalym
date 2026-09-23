@@ -1,0 +1,23 @@
+.page { display: grid; gap: 28px; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.header > div { display: grid; gap: 12px; }
+.eyebrow { color: var(--muted); font: var(--t-caption); letter-spacing: .08em; }
+.subtitle { color: var(--muted); line-height: 1.5; max-width: 68ch; }
+.meta { color: var(--muted); font: var(--t-meta); line-height: 1.45; }
+.toolbar { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 16px; }
+.toolbar label { display: grid; gap: 6px; font: var(--t-meta); }
+.toolbar select,.toolbar input { padding: 8px 12px; min-height: var(--control-h); border: 1px solid var(--muted); background: var(--panel); }
+.toolbar > span { padding-block: 12px; }.toolbar > button { margin-inline-start: auto; }
+.rows { list-style: none; padding: 0; margin: 16px 0 0; }
+.order { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 24px; padding-block: 20px; border-top: 1px solid var(--line); }
+.rowMain { display: grid; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.rowHead { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.rowHead h2 { font: var(--t-section); }
+.rowAside { display: grid; align-content: start; justify-items: end; gap: 12px; }
+.rowAside strong { font: var(--t-row-title); }
+.rowAside a,.actionLink,.downloads a { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; font: var(--t-button); }
+.document { display: grid; grid-template-columns: 20px minmax(0,1fr) auto; gap: 16px; padding-block: 20px; border-top: 1px solid var(--line); }
+.document > svg { color: var(--muted); margin-top: 2px; }
+.downloads { display: flex; gap: 20px; }
+.empty { display: grid; justify-items: start; gap: 12px; }
+@media (max-width:767px) { .header { flex-wrap: wrap; gap: 16px; } .order { grid-template-columns: 1fr; gap: 12px; } .rowAside { justify-items: start; } .rowAside a,.actionLink,.downloads a { min-height: 44px; }.document { grid-template-columns: 20px minmax(0,1fr); gap: 12px; } .document > .downloads,.document > a { grid-column: 2; } .rowHead a { display: inline-flex; align-items: center; min-height: 44px; } }
