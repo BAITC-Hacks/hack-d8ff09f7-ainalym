@@ -6,7 +6,7 @@ const OUT = "docs/evidence/v2/suppliers";
 
 test("suppliers — desktop 1440×900, IEK / SE cards from real data, no technical terms", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(`${BASE}/v2/suppliers`);
+  await page.goto(`${BASE}/suppliers`);
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByRole("heading", { level: 2, name: /IEK/ })).toBeVisible({ timeout: 15_000 }); await page.waitForTimeout(700);
   await expect(page.getByRole("heading", { level: 1, name: "Поставщики" })).toBeVisible();
