@@ -1,5 +1,5 @@
-# L2a checkpoint — main integration
-Done: latest main merged with on-hand snapshot and L2b money formatting; named M1–M5 pass; domain check 74 pass/2 fail; strict no-float and L2b recompute tests now pass; TypeScript passes.
-Undone: two ledger tests await L1's persisted ledger on main; queue/today HTTP after L1 merge; L3 tick still uses its own scheduled check.
-Resumable: merge L1 main checkpoint, rerun domain/HTTP gates and scenario; closeout with final evidence.
-SHA: this merge commit (parent 7862095).
+# L2a checkpoint — engine, decisions and views
+Done: money, need engine, proposals, tasks, schedule and views committed; main through ed943f1 merged. Named M1–M5 and all 10 scenario checks pass; peers 9/9; domain 74/76 including strict no-float scan.
+Undone: two ledger tests await L1's persisted ledger on main; queue/today HTTP needs L1 routes and a server; L3 tick still calls its own schedule.
+Resumable: merge main when L1 lands, rerun domain and HTTP gates, then refresh closeout evidence.
+SHA: c028e27 (latest implementation commit before this checkpoint).
