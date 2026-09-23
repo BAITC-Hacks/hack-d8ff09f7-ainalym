@@ -1,0 +1,1179 @@
+[
+  {
+    "name": "replenishment-390",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 358
+      }
+    ],
+    "heading": "Пополнение",
+    "labels": [],
+    "overflow": [],
+    "scrollWidth": 390,
+    "values": [],
+    "width": 390
+  },
+  {
+    "name": "orders-390",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 358
+      }
+    ],
+    "heading": "Заказы",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 390,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 390
+  },
+  {
+    "name": "suppliers-390",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 358
+      }
+    ],
+    "heading": "Поставщики",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 390,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 390
+  },
+  {
+    "name": "money-390",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 358
+      },
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 358
+      }
+    ],
+    "heading": "Деньги",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 390,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 390
+  },
+  {
+    "name": "skus-390",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 358
+      }
+    ],
+    "heading": "Товары",
+    "labels": [],
+    "overflow": [],
+    "scrollWidth": 390,
+    "values": [],
+    "width": 390
+  },
+  {
+    "name": "sku-detail-390",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 358
+      },
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 358
+      }
+    ],
+    "heading": "УЗО АД 12  (2ф) 10А IEK (5/40)",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 390,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 390
+  },
+  {
+    "name": "settings-390",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 358
+      },
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 358
+      }
+    ],
+    "heading": "Настройки",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 390,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 390
+  },
+  {
+    "name": "world-390",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 358
+      }
+    ],
+    "heading": "Консоль мира",
+    "labels": [],
+    "overflow": [],
+    "scrollWidth": 390,
+    "values": [],
+    "width": 390
+  },
+  {
+    "name": "today-390",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 358
+      }
+    ],
+    "heading": "Сегодня",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [
+      {
+        "class": "today-module__3FVR2a__decisions",
+        "tag": "SECTION",
+        "text": "Требует вашего решения4Заказ поставщику SE: 317 позицийЗаказ SE: 317 позиций. Стоимость из"
+      },
+      {
+        "class": "today-module__3FVR2a__sectionHead",
+        "tag": "DIV",
+        "text": "Требует вашего решения4"
+      },
+      {
+        "class": "today-module__3FVR2a__card",
+        "tag": "ARTICLE",
+        "text": "Заказ поставщику SE: 317 позицийЗаказ SE: 317 позиций. Стоимость известна для 281 из 317 п"
+      },
+      {
+        "class": "today-module__3FVR2a__cardRow",
+        "tag": "DIV",
+        "text": "Заказ поставщику SE: 317 позицийЗаказ SE: 317 позиций. Стоимость известна для 281 из 317 п"
+      },
+      {
+        "class": "today-module__3FVR2a__cardMain",
+        "tag": "DIV",
+        "text": "Заказ поставщику SE: 317 позицийЗаказ SE: 317 позиций. Стоимость известна для 281 из 317 п"
+      },
+      {
+        "class": "today-module__3FVR2a__cardTitle",
+        "tag": "H3",
+        "text": "Заказ поставщику SE: 317 позиций"
+      },
+      {
+        "class": "today-module__3FVR2a__cardWhy",
+        "tag": "P",
+        "text": "Заказ SE: 317 позиций. Стоимость известна для 281 из 317 позиций; неизвестные цены требуют"
+      },
+      {
+        "class": "today-module__3FVR2a__sources",
+        "tag": "DETAILS",
+        "text": "Источники · 1 · с 05:02 · версия 1proposal:предложение"
+      }
+    ],
+    "scrollWidth": 443,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 390
+  },
+  {
+    "name": "today-1280",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 952
+      }
+    ],
+    "heading": "Сегодня",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 1280,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "name": "replenishment-1280",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 952
+      }
+    ],
+    "heading": "Пополнение",
+    "labels": [],
+    "overflow": [],
+    "scrollWidth": 1280,
+    "values": [],
+    "width": 1280
+  },
+  {
+    "name": "orders-1280",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 952
+      }
+    ],
+    "heading": "Заказы",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 1280,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "name": "suppliers-1280",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 952
+      }
+    ],
+    "heading": "Поставщики",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 1280,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "name": "skus-1280",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 952
+      }
+    ],
+    "heading": "Товары",
+    "labels": [],
+    "overflow": [],
+    "scrollWidth": 1280,
+    "values": [],
+    "width": 1280
+  },
+  {
+    "name": "sku-detail-1280",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 952
+      },
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 380
+      }
+    ],
+    "heading": "УЗО АД 12  (2ф) 10А IEK (5/40)",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 1280,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "name": "money-1280",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 952
+      },
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 952
+      }
+    ],
+    "heading": "Деньги",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 1280,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "name": "world-1280",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 952
+      }
+    ],
+    "heading": "Консоль мира",
+    "labels": [],
+    "overflow": [],
+    "scrollWidth": 1280,
+    "values": [],
+    "width": 1280
+  },
+  {
+    "name": "settings-1280",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 880
+      },
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 880
+      }
+    ],
+    "heading": "Настройки",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 1280,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "name": "settings-cost-1280",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 880
+      },
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 880
+      }
+    ],
+    "heading": "Настройки",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 1280,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 1280
+  },
+  {
+    "name": "settings-cost-390",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 358
+      },
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 358
+      }
+    ],
+    "heading": "Настройки",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 390,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 390
+  },
+  {
+    "name": "world-compose-390",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 358
+      }
+    ],
+    "heading": "Консоль мира",
+    "labels": [],
+    "overflow": [],
+    "scrollWidth": 390,
+    "values": [],
+    "width": 390
+  },
+  {
+    "name": "today-1440",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 1112
+      }
+    ],
+    "heading": "Сегодня",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 1440,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 1440
+  },
+  {
+    "name": "replenishment-1440",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 1112
+      }
+    ],
+    "heading": "Пополнение",
+    "labels": [],
+    "overflow": [],
+    "scrollWidth": 1440,
+    "values": [],
+    "width": 1440
+  },
+  {
+    "name": "orders-1440",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 1112
+      }
+    ],
+    "heading": "Заказы",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 1440,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 1440
+  },
+  {
+    "name": "suppliers-1440",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 1112
+      }
+    ],
+    "heading": "Поставщики",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 1440,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 1440
+  },
+  {
+    "name": "skus-1440",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 1112
+      }
+    ],
+    "heading": "Товары",
+    "labels": [],
+    "overflow": [],
+    "scrollWidth": 1440,
+    "values": [],
+    "width": 1440
+  },
+  {
+    "name": "sku-detail-1440",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 1112
+      },
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 380
+      }
+    ],
+    "heading": "УЗО АД 12  (2ф) 10А IEK (5/40)",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 1440,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 1440
+  },
+  {
+    "name": "money-1440",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 1112
+      },
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 1112
+      }
+    ],
+    "heading": "Деньги",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      },
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 1440,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      },
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 1440
+  },
+  {
+    "name": "world-1440",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 1112
+      }
+    ],
+    "heading": "Консоль мира",
+    "labels": [],
+    "overflow": [],
+    "scrollWidth": 1440,
+    "values": [],
+    "width": 1440
+  },
+  {
+    "name": "settings-1440",
+    "cards": [
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 880
+      },
+      {
+        "border": "1px",
+        "fill": "rgb(255, 255, 255)",
+        "shadow": "rgba(19, 19, 17, 0.02) 0px 1px 2px 0px, rgba(19, 19, 17, 0.024) 0px 4px 12px 0px",
+        "width": 880
+      }
+    ],
+    "heading": "Настройки",
+    "labels": [
+      {
+        "color": "rgb(109, 107, 100)",
+        "font": "13px"
+      }
+    ],
+    "overflow": [],
+    "scrollWidth": 1440,
+    "values": [
+      {
+        "figures": "tabular-nums",
+        "weight": "600"
+      }
+    ],
+    "width": 1440
+  }
+]
