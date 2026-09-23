@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-09-23",
+  "source": "fixtures/partner/*.xlsx; derived by npm run etl",
+  "counts": {
+    "supplier": 2,
+    "sku": 3909,
+    "sales_line": 248915,
+    "sales_month": 99634,
+    "stock_month": 117282,
+    "in_transit": 313,
+    "seasonality": 66,
+    "season_index": 24
+  },
+  "skus": {
+    "seasonal": {
+      "code_1c": "130300027_",
+      "supplier_id": "SE",
+      "name": "Сжим У 733M (16-35/1,5-10)  Sch El (140)",
+      "qualifying_stat": { "sales_months_2024_2025": 24, "cv_2024_2025": 0.907, "peak_quarter_2024": 3, "peak_quarter_2025": 3 }
+    },
+    "stockout": {
+      "code_1c": "130200032_",
+      "supplier_id": "IEK",
+      "name": "Розетка на дин-рейку РАр10-3-ОП с заземлением IEK NEW",
+      "qualifying_stat": { "stockout_months_2025_2026": 8, "sales_before_stockout": true }
+    },
+    "oneoff": {
+      "code_1c": "010500008_",
+      "supplier_id": "IEK",
+      "name": "ВА47-29 (1ф) 25А IEK (12/144)",
+      "qualifying_stat": { "doc_no": "20000099834", "doc_qty": 7488, "p95_doc_qty": 144, "multiple_of_p95": 52 }
+    },
+    "intransit": {
+      "code_1c": "010500006_",
+      "supplier_id": "IEK",
+      "name": "ВА47-29 (1ф) 16А IEK (12/144)",
+      "qualifying_stat": { "in_transit_qty": 30000, "sales_months_2026": 9 }
+    },
+    "nocost": {
+      "code_1c": "200400085_",
+      "supplier_id": "IEK",
+      "name": "F/UTP (24 AWG), кат.5Е экран, 4 пары, серый  305м ITK ЗАКУПАЮТСЯ БУХТАМИ, САДЯТСЯ МЕТРАЖОМ",
+      "qualifying_stat": { "unit_cost": null, "months_with_sales": 33 }
+    }
+  },
+  "properties": {
+    "M1": ["For intransit, adding 100 units in transit reduces unrounded need by 100", "Removing any required source makes the run refuse and name that source"],
+    "M2": ["Seasonal forecast max/min across months is at least 1.3", "Forecast peak quarter matches the SKU's own Q3 in 2024 and 2025"],
+    "M3": ["For stockout, adjusted need is greater than raw need"],
+    "M4": ["An injected 5000-unit document dated last month changes oneoff regular quantity by less than 10%", "The injected document appears in excluded outliers"],
+    "M5": ["Every recommendation has nonempty rationale_ru and supplier_id", "Export has a Код 1с column"]
+  }
+}
