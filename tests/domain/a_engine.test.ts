@@ -49,6 +49,18 @@ function eightyFixture() {
 const eightyParams: EngineParams = { ...params, lead_time_days: 30, review_days: 0 };
 
 describe("deterministic replenishment need", () => {
+  it("keeps a sole legitimate 100-unit document instead of excluding it at threshold 20", async () => {
+    const database = eightyFixture();
+    database.prepare("DELETE FROM sales_line WHERE code_1c='EIGHTY'").run();
+    database.prepare("UPDATE sales_month SET qty_file='100' WHERE code_1c='EIGHTY'").run();
+    database.prepare("INSERT INTO sales_line(code_1c,doc_no,at,qty) VALUES ('EIGHTY','ONLY','2025-01-15','100')").run();
+    const result = await computeNeed("EIGHTY", eightyParams, context(database, "2025-02-01"));
+    expect(result.components.outlier_threshold).toBe(20);
+    expect(result.components.outliers_excluded).toEqual([]);
+    expect(result.components.outliers_pending_review).toEqual([expect.objectContaining({ doc_no: "ONLY", qty: 100 })]);
+    expect(result.flags).toContain("проверить вручную");
+    expect(result.need).toBe(100);
+  });
   it("deduplicates 30 approved units already represented by matching 30 in transit: 20 to 50", async () => {
     const database = eightyFixture();
     database.prepare("INSERT INTO in_transit(code_1c,po_ref,qty,expected_at) VALUES ('EIGHTY','PO-30','30','2025-02-10')").run();
