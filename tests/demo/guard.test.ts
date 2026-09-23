@@ -15,6 +15,7 @@ beforeEach(() => {
   process.env.DEMO_ACCESS_CODE = "test";
   process.env.DEMO_DAILY_LIVE_CALLS = "2";
   process.env.AINALYM_MODE = "live";
+  process.env.DEMO_PROXY = "caddy";
 });
 
 afterEach(() => {
@@ -22,6 +23,7 @@ afterEach(() => {
   process.env.DEMO_ACCESS_CODE = previous.DEMO_ACCESS_CODE;
   process.env.DEMO_DAILY_LIVE_CALLS = previous.DEMO_DAILY_LIVE_CALLS;
   process.env.AINALYM_MODE = previous.AINALYM_MODE;
+  process.env.DEMO_PROXY = previous.DEMO_PROXY;
   rmSync(temporary, { recursive: true, force: true });
 });
 
@@ -44,10 +46,15 @@ describe("demo access", () => {
       method: "POST", body: new URLSearchParams({ code: "test", next: "/\\outside.invalid" }),
     }));
     expect(unsafe.headers.get("location")).toBe("http://localhost:3000/");
+    const secure = await middleware(new NextRequest("http://localhost:3000/__demo_access", {
+      method: "POST", body, headers: { "x-forwarded-proto": "https" },
+    }));
+    expect(secure.headers.get("set-cookie")).toContain("Secure");
   });
 
   it("limits all API requests to a refillable 60 per IP", async () => {
-    const request = () => new NextRequest("http://localhost:3000/api/decisions", { headers: { "x-real-ip": "test-api-ip" } });
+    let spoof = 0;
+    const request = () => new NextRequest("http://localhost:3000/api/decisions", { headers: { "x-forwarded-for": "test-api-ip", "cf-connecting-ip": `spoof-${spoof++}` } });
     for (let i = 0; i < 60; i++) expect((await middleware(request())).status).toBe(401);
     expect((await middleware(request())).status).toBe(429);
     expect(allowApiRequest("test-api-ip", Date.now() + 1000)).toBe(true);

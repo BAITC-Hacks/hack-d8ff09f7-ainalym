@@ -9,4 +9,4 @@ if [ ! -s "$DATABASE_PATH" ] && node -e "process.exit(require('./package.json').
 fi
 
 npm run build
-exec npm start
+exec npm start -- --hostname "${HOSTNAME:-127.0.0.1}"

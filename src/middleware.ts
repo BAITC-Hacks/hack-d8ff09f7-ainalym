@@ -14,7 +14,8 @@ import {
 } from "./server/demo_guard";
 
 function ipFor(request: NextRequest): string {
-  return request.headers.get("cf-connecting-ip") || request.headers.get("x-real-ip") || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (process.env.DEMO_PROXY === "cloudflare") return request.headers.get("cf-connecting-ip") || "unknown";
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 }
 
 function safeNext(value: string | null): string {
@@ -60,7 +61,7 @@ export async function middleware(request: NextRequest) {
     const next = safeNext(typeof form.get("next") === "string" ? String(form.get("next")) : null);
     if (typeof candidate !== "string" || !validCode(candidate, code)) return codePage(next, true);
     const response = NextResponse.redirect(new URL(next, request.url), { status: 303 });
-    response.cookies.set(ACCESS_COOKIE, issueAccessCookie(code), { httpOnly: true, sameSite: "lax", secure: request.nextUrl.protocol === "https:", path: "/", maxAge: ACCESS_DAYS * 86_400 });
+    response.cookies.set(ACCESS_COOKIE, issueAccessCookie(code), { httpOnly: true, sameSite: "lax", secure: request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto") === "https", path: "/", maxAge: ACCESS_DAYS * 86_400 });
     response.headers.set("Cache-Control", "no-store");
     return response;
   }

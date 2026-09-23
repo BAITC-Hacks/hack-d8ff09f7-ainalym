@@ -153,6 +153,7 @@ Environment=PORT=3000
 Environment=DATABASE_PATH=/var/lib/ainalym/ainalym.db
 Environment=AINALYM_MODE=live
 Environment=AINALYM_WORKER=1
+Environment=DEMO_PROXY=caddy
 EnvironmentFile=/etc/ainalym.env
 ExecStartPre=/opt/ainalym/current/scripts/deploy/first_etl.sh
 Environment=HOSTNAME=127.0.0.1
