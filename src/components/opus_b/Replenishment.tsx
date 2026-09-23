@@ -256,7 +256,7 @@ export function Replenishment() {
     setCalc({ busy: true });
     try {
       const res = await apiRequest<{ skus: number; recommended: number }>("/api/calc/run", { method: "POST", body: JSON.stringify({ scope: tab === "all" ? {} : { supplier: tab } }) });
-      setCalc({ busy: false, tone: "ok", text: `Расчёт готов: прочитано ${int(res.skus)} SKU, к заказу ${int(res.recommended)}.` });
+      setCalc({ busy: false, tone: "ok", text: `Расчёт готов: прочитано ${int(res.skus)} артикулов, к заказу ${int(res.recommended)}.` });
       recs.reload();
     } catch (error) { setCalc({ busy: false, tone: "bad", text: error instanceof Error ? error.message : "Расчёт не выполнен" }); }
   };

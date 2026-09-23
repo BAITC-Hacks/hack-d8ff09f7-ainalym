@@ -61,8 +61,8 @@ export function OaShell({ children }: { children: ReactNode }) {
   const demoSku = "130200122_";
   const nav = [
     { href: "/opus_a/today", label: "Сегодня", icon: <Home size={17} aria-hidden />, count: decisions, title: "ждут вашего решения" },
-    { href: "/opus_a/replenishment", label: "Пополнение", icon: <Layers size={17} aria-hidden />, count: atRisk, title: "SKU под риском дефицита" },
-    { href: `/opus_a/skus/${demoSku}`, label: "Карточка SKU", icon: <PackageSearch size={17} aria-hidden />, match: "/opus_a/skus/" },
+    { href: "/opus_a/replenishment", label: "Пополнение", icon: <Layers size={17} aria-hidden />, count: atRisk, title: "Артикулы под риском дефицита" },
+    { href: `/opus_a/skus/${demoSku}`, label: "Карточка артикула", icon: <PackageSearch size={17} aria-hidden />, match: "/opus_a/skus/" },
   ];
   return <div className="oa">
     <aside className="oa-rail" aria-label="Разделы">

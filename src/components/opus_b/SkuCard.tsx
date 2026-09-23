@@ -106,7 +106,7 @@ export function SkuCard({ code }: { code: string }) {
             <ul className={s.list}>{transit.map(t => <li key={t.id} className={s.transit}>
               <span className={s.icon} aria-hidden><Truck size={15} /></span>
               <span className={s.two}><b>{t.po_ref}</b><small><FileSpreadsheet size={12} aria-hidden /> {base(t.source_file)}</small></span>
-              <span className={s.num}>{qty(t.qty)} шт<small>ETA {day(t.expected_at)}</small></span>
+              <span className={s.num}>{qty(t.qty)} шт<small>Дата поставки: {day(t.expected_at)}</small></span>
             </li>)}</ul>}
         </section>
 

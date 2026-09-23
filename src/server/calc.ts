@@ -28,7 +28,13 @@ export async function runCalculation(request: CalcRunRequest) {
   const missing_sales = rows.filter(row => !row.has_sales).length;
   const missing_stock = rows.filter(row => row.has_sales && !row.has_stock).length;
   const result = await runDomainCalculation({ ...request.scope, codes, full_catalog: !request.scope.supplier && !request.scope.category }, request.params || {}, { org_id: orgId() });
+  const unresolved = [
+    ...rows.filter(row => !row.has_sales).map(row => ({ code_1c: row.code_1c, reason: "нет истории продаж" })),
+    ...rows.filter(row => row.has_sales && !row.has_stock).map(row => ({ code_1c: row.code_1c, reason: "нет подтверждённого остатка" })),
+    ...result.unresolved.map(row => ({ code_1c: row.code_1c, reason: row.reason })),
+  ];
   const proposals = result.proposals.map(proposal => ({ id: proposal.id, kind: proposal.kind, subject_id: proposal.subject_id,
     state: proposal.state, money_at_stake: proposal.money_at_stake ? JSON.parse(String(proposal.money_at_stake)) : null }));
-  return { run_id: result.run_id, skus: result.skus, recommended: result.recommended, proposals, excluded: { missing_sales, missing_stock } };
+  return { run_id: result.run_id, skus: rows.length, recommended: result.recommended, proposals,
+    partial: unresolved.length > 0, unresolved, excluded: { missing_sales, missing_stock } };
 }

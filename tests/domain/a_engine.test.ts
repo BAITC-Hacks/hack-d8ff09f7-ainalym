@@ -104,6 +104,7 @@ describe("deterministic replenishment need", () => {
     const base = await computeNeed("TEST", params, context(fixture()));
     const supplied = await computeNeed("TEST", params, context(fixture({ inTransit: 2 })));
     expect(base.need - supplied.need).toBe(2);
+    expect(supplied.rationale_ru).toContain("Срок прибытия не указан — учтено в горизонте");
   });
 
   it("counts only transit due within the horizon and names its arrival date", async () => {

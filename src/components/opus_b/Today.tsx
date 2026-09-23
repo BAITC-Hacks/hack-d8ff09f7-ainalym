@@ -31,7 +31,7 @@ function Strip({ today, queue }: { today: TodayResponse; queue?: QueueResponse }
   return <section className={s.strip} aria-label="Главное за день">
     <Link href="/opus_b/replenishment" className={`${s.stat} ${risk.count > 0 ? s.statBad : ""}`}>
       <span className={s.statLabel}>Под риском дефицита</span>
-      <span className={s.statValue}>{int(risk.count)}<span className={s.statUnit}>SKU</span><ArrowRight size={18} aria-hidden /></span>
+      <span className={s.statValue}>{int(risk.count)}<span className={s.statUnit}>артикулов</span><ArrowRight size={18} aria-hidden /></span>
       <span className={s.statSub}>запаса меньше, чем срок поставки плюс период заказа</span>
     </Link>
     <a href="#decisions" className={s.stat}>
@@ -185,7 +185,7 @@ export function Today() {
   const [calc, setCalc] = useState<{ busy: boolean; text: string; bad: boolean }>({ busy: false, text: "", bad: false });
   const recalc = async () => {
     setCalc({ busy: true, text: "", bad: false });
-    try { const r = await apiRequest<{ skus: number; recommended: number }>("/api/calc/run", { method: "POST", body: JSON.stringify({ scope: {} }) }); setCalc({ busy: false, bad: false, text: `Пересчитано: ${int(r.skus)} SKU, ${int(r.recommended)} рекомендаций.` }); refresh(); }
+    try { const r = await apiRequest<{ skus: number; recommended: number }>("/api/calc/run", { method: "POST", body: JSON.stringify({ scope: {} }) }); setCalc({ busy: false, bad: false, text: `Пересчитано: ${int(r.skus)} артикулов, ${int(r.recommended)} рекомендаций.` }); refresh(); }
     catch (e) { setCalc({ busy: false, bad: true, text: e instanceof ApiError ? e.message : "Расчёт не выполнен." }); }
   };
   return <div className={s.page}>

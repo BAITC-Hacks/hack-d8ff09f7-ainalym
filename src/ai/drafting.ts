@@ -130,7 +130,7 @@ export async function prepareRunSummary(run_id: string): Promise<Artifact> {
   const title = `Сводка расчёта ${run_id}`;
   const render = (intro: string) => [
     `# ${title}`, "", "**Черновик заказа — не отправлен**", "", intro, "",
-    `Обработано SKU: ${run.skus}. Рекомендовано к заказу: ${run.recommended}.`, "",
+    `Обработано артикулов: ${run.skus}. Рекомендовано к заказу: ${run.recommended}.`, "",
     ...details, "", `Источник: ${run_id}. Решение по заказам остаётся за менеджером.`,
   ].join("\n");
   let markdown = render(generated.object.intro_ru);

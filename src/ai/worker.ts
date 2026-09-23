@@ -9,8 +9,8 @@ import { decide } from "./decisions";
 import { judgeOutlier, summarizeChanges } from "./interpret";
 import { proposeSupplierReply } from "./supplier-reply";
 
-export interface ProcessResult { run_id: string | null; actions: number; escalations: number; reason?: string }
-export interface TickResult { runs: string[]; processed: number }
+export interface ProcessResult { run_id: string | null; actions: number; escalations: number; reason?: string; partial?: boolean; unresolved?: string[] }
+export interface TickResult { runs: string[]; processed: number; partial: number; unresolved: string[] }
 interface EventRow { id: string; org_id: string; seq: number | null; kind: string; actor_id: string | null; code_1c: string | null; po_id: string | null; source_id: string; text: string | null; payload: string; at: string | null; state: string; run_id: string | null; claimed_at: string | null; attempt: number; processing_stage: string; affected_codes: string }
 const CLAIM_TIMEOUT_MS = 5 * 60_000;
 const processing = new Map<string, Promise<ProcessResult>>();
@@ -126,20 +126,20 @@ async function maybeSemanticDecisions(row: EventRow, payload: Record<string, unk
   return review;
 }
 
-async function recomputeAffected(row: EventRow, codes: string[], runId: string): Promise<string | null> {
+async function recomputeAffected(row: EventRow, codes: string[], runId: string): Promise<{ calcId: string | null; unresolved: string[] }> {
   const unique = [...new Set(codes.filter(Boolean))];
-  if (!unique.length) return null;
+  if (!unique.length) return { calcId: null, unresolved: [] };
   const d = db();
   const recomputed = await domainRecompute(unique, runId, row.id);
   if (recomputed.affected_codes.length !== unique.length) throw new Error("affected_sku_missing");
-  const computed: { code: string; result: typeof recomputed.results[string] }[] = [];
-  for (const code of recomputed.affected_codes) {
-    const result = recomputed.results[code];
-    if (!result) throw new Error(`engine_unavailable:${code}`);
-    computed.push({ code, result });
-  }
+  const computed = recomputed.affected_codes.filter(code => !!recomputed.results[code]);
+  for (const gap of recomputed.unresolved) await recordAction(runId, {
+    kind: "escalation", subject_ref: gap.code_1c, code_1c: gap.code_1c, world_event_id: row.id,
+    summary_ru: `Артикул ${gap.code_1c}: ${gap.reason}`, sources: [row.id, gap.code_1c],
+    autonomy: "escalated", result: "needs_owner", idempotency_key: `worker:${row.id}:unresolved:${gap.code_1c}`,
+  });
   const calcId = recomputed.run_id!;
-  for (const { code } of computed) {
+  for (const code of computed) {
     const sku = d.prepare("SELECT supplier_id,name,category FROM sku WHERE code_1c=?").get(code) as { supplier_id: string; name: string; category: string | null } | undefined;
     if (sku?.supplier_id === "IEK" && !sku.category) {
       await recordDecision(runId, row.id, "category_hint", code, { name: sku.name, org_id: row.org_id });
@@ -156,7 +156,7 @@ async function recomputeAffected(row: EventRow, codes: string[], runId: string):
     kind: "status_change", subject_ref: calcId, world_event_id: row.id, summary_ru: summary,
     sources: [calcId], idempotency_key: `worker:${row.id}:change_summary`,
   });
-  return calcId;
+  return { calcId, unresolved: recomputed.unresolved.map(gap => gap.code_1c) };
 }
 
 async function runEvent(id: string, orgId?: string): Promise<ProcessResult> {
@@ -191,14 +191,15 @@ async function runEvent(id: string, orgId?: string): Promise<ProcessResult> {
     });
     if (row.kind === "supplier_reply") await proposeSupplierReply(row, payload, runId);
     if (review) await proposeOutlierReview(row, runId, review.subject, review.answer, review.decisionId, review.at);
-    await recomputeAffected(row, applied.affected_codes, runId);
+    const recomputed = await recomputeAffected(row, applied.affected_codes, runId);
     withTx(tx => {
       tx.prepare("UPDATE world_event SET state='processed',processing_stage='finished',run_id=?,processed_at=? WHERE id=?").run(runId, new Date().toISOString(), id);
       bumpStateVersion(tx);
     });
     await finishRun(runId, "done");
     const count = db().prepare("SELECT actions_count,escalations_count FROM agent_run WHERE id=?").get(runId) as { actions_count: number; escalations_count: number } | undefined;
-    return { run_id: runId, actions: count?.actions_count ?? 0, escalations: count?.escalations_count ?? 0 };
+    return { run_id: runId, actions: count?.actions_count ?? 0, escalations: count?.escalations_count ?? 0,
+      partial: recomputed.unresolved.length > 0, unresolved: recomputed.unresolved };
   } catch (error) {
     const reason = error instanceof Error ? error.message : "worker_failed";
     await recordAction(runId, {
@@ -253,6 +254,8 @@ export function tick(orgId?: string): Promise<TickResult> {
   const work = (async () => {
     const runs: string[] = [];
     let processed = 0;
+    let partial = 0;
+    const unresolved = new Set<string>();
     while (true) {
       const event = db().prepare("SELECT id FROM world_event WHERE state='pending' AND (run_id IS NULL OR claimed_at IS NULL OR claimed_at<=?) AND (? IS NULL OR org_id=?) ORDER BY seq,id LIMIT 1")
         .get(new Date(Date.now() - CLAIM_TIMEOUT_MS).toISOString(), orgId ?? null, orgId ?? null) as { id: string } | undefined;
@@ -260,10 +263,11 @@ export function tick(orgId?: string): Promise<TickResult> {
       const result = await processEvent(event.id, orgId);
       if (result.run_id) runs.push(result.run_id);
       if (!result.reason) processed++;
+      if (result.partial) { partial++; for (const code of result.unresolved ?? []) unresolved.add(code); }
       if (result.reason === "claimed_by_another_worker") break;
     }
     if (!orgId) runs.push(...await runScheduledChecks(new Date()));
-    return { runs, processed };
+    return { runs, processed, partial, unresolved: [...unresolved] };
   })().finally(() => { ticking.delete(key); });
   ticking.set(key, work);
   return work;

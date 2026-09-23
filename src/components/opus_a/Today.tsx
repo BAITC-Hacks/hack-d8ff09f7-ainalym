@@ -102,7 +102,7 @@ function whyRu(item: QueueItem): string {
   const gaps = [...item.why.matchAll(/(\S+_): stock source missing for \S+: latest confirmed month (\d{4}-\d{2})/g)];
   if (item.kind !== "proposal" && gaps.length) {
     const first = gaps.slice(0, 3).map(g => `${g[1]} — остаток на ${monthLong(g[2])}`).join("; ");
-    return `Нет свежего остатка по ${qty(item.sources.length)} SKU — проверьте склад перед заказом. Например: ${first}.`;
+    return `Нет свежего остатка по ${qty(item.sources.length)} артикулам — проверьте склад перед заказом. Например: ${first}.`;
   }
   return item.why.length > 220 ? `${item.why.slice(0, 220)}…` : item.why;
 }
@@ -147,7 +147,7 @@ export function TodayView() {
     {today.error && !t ? <ErrorState error={today.error} onRetry={today.reload} /> : null}
 
     <section className="oa-strip" aria-label="Главные цифры">
-      <Metric loading={!t} label="Под риском дефицита" href="/opus_a/replenishment" value={qty(t?.pulse.stockout_risk.count)} unit="SKU" sub="запаса меньше, чем на срок поставки" />
+      <Metric loading={!t} label="Под риском дефицита" href="/opus_a/replenishment" value={qty(t?.pulse.stockout_risk.count)} unit="артикулов" sub="запаса меньше, чем на срок поставки" />
       <Metric loading={!t || !queue.data} label="Ждут вашего решения" value={qty(t?.queue_count)} unit={plural(t?.queue_count ?? 0, "решение", "решения", "решений")} sub={`${qty(proposals.length)} ${plural(proposals.length, "заказ", "заказа", "заказов")} поставщикам · ${qty(tasks)} ${plural(tasks, "задача", "задачи", "задач")}`} />
       <Metric loading={!queue.data} label="Заказы к утверждению" value={proposals.length ? formatMinor(atStake) : "—"} sub={unpriced.length ? <>+ {unpriced.join(", ")}: <span className="oa-nocost">себестоимость не задана</span></> : "все цены известны"} />
       <Metric loading={!t} label="Агенты сделали сами" value={qty(t?.pulse.agents.auto)} unit={plural(t?.pulse.agents.auto ?? 0, "действие", "действия", "действий")} sub={t ? `${pct(t.pulse.agents.ratio)} без вас · ${qty(t.pulse.agents.needs_you)} ждут вас` : undefined}>
@@ -167,9 +167,9 @@ export function TodayView() {
         </section>
 
         <section style={{ display: "grid", gap: 14 }} aria-labelledby="oa-risk">
-          <div className="oa-section-head"><h2 className="oa-h2" id="oa-risk">Риск дефицита <small>{t ? `${qty(t.pulse.stockout_risk.count)} SKU, самые срочные` : ""}</small></h2><Link className="oa-link" href="/opus_a/replenishment">Все рекомендации</Link></div>
+          <div className="oa-section-head"><h2 className="oa-h2" id="oa-risk">Риск дефицита <small>{t ? `${qty(t.pulse.stockout_risk.count)} артикулов, самые срочные` : ""}</small></h2><Link className="oa-link" href="/opus_a/replenishment">Все рекомендации</Link></div>
           {!t && today.loading ? <ul className="oa-risk">{[0, 1, 2, 3].map(i => <li key={i}><div style={{ padding: 18 }}><Skel h={18} /></div></li>)}</ul> : null}
-          {t && t.pulse.stockout_risk.top.length === 0 ? <State kind="empty" title="Риска дефицита нет">Все SKU покрыты на срок поставки.</State> : null}
+          {t && t.pulse.stockout_risk.top.length === 0 ? <State kind="empty" title="Риска дефицита нет">Все артикулы покрыты на срок поставки.</State> : null}
           {t && t.pulse.stockout_risk.top.length ? <ul className="oa-risk">{t.pulse.stockout_risk.top.map(r => <li key={r.code_1c}>
             <Link href={`/opus_a/skus/${encodeURIComponent(r.code_1c)}`}>
               <div style={{ minWidth: 0 }}><div className="n">{r.name}</div><div className="muted" style={{ font: "var(--oa-meta)" }}>{r.code_1c}</div></div>

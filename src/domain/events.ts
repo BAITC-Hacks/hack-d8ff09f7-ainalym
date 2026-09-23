@@ -80,7 +80,7 @@ export async function applyWorldEvent(event: WorldEventRow): Promise<ApplyEventR
             tx.prepare(`INSERT INTO sales_month(code_1c,ym,qty_lines) VALUES (?,?,?)
               ON CONFLICT(code_1c,ym) DO UPDATE SET qty_lines=excluded.qty_lines`).run(code, month(at), next);
             add(event.kind === "judge_message" ? "outlier_flagged" : "recompute", code,
-              event.kind === "judge_message" ? "Разовый заказ отмечен для проверки" : "Получен день продаж; требуется пересчёт SKU");
+              event.kind === "judge_message" ? "Разовый заказ отмечен для проверки" : "Получен день продаж; требуется пересчёт артикула");
           }
           break;
         }
@@ -94,7 +94,7 @@ export async function applyWorldEvent(event: WorldEventRow): Promise<ApplyEventR
             tx.prepare(`INSERT INTO stock_month(code_1c,ym,opening_qty,known) VALUES (?,?,?,?)
               ON CONFLICT(code_1c,ym) DO UPDATE SET opening_qty=excluded.opening_qty,known=excluded.known`)
               .run(code, ym, known ? asQty(opening) : null, known);
-            add("recompute", code, "Обновлён остаток склада; требуется пересчёт SKU");
+            add("recompute", code, "Обновлён остаток склада; требуется пересчёт артикула");
           }
           break;
         }
@@ -110,7 +110,7 @@ export async function applyWorldEvent(event: WorldEventRow): Promise<ApplyEventR
             if (old) tx.prepare("UPDATE in_transit SET qty=?,expected_at=? WHERE id=?").run(qty, item.expected_at === undefined ? old.expected_at : item.expected_at ? String(item.expected_at) : null, old.id);
             else tx.prepare("INSERT INTO in_transit(code_1c,po_ref,qty,expected_at,source_file) VALUES (?,?,?,?,?)")
               .run(code, po_ref, qty, item.expected_at ? String(item.expected_at) : null, "world_event");
-            add("recompute", code, "Обновлён товар в пути; требуется пересчёт SKU");
+            add("recompute", code, "Обновлён товар в пути; требуется пересчёт артикула");
           }
           break;
         }
@@ -121,7 +121,7 @@ export async function applyWorldEvent(event: WorldEventRow): Promise<ApplyEventR
             const cost = new Decimal(String(item.unit_cost ?? item.price ?? item.to));
             if (!cost.isFinite() || cost.isNegative()) throw new Error("invalid_unit_cost");
             tx.prepare("UPDATE sku SET unit_cost=?,version=version+1 WHERE code_1c=?").run(Money.of(cost.toDecimalPlaces(2)).amount, code);
-            add("recompute", code, "Изменена себестоимость SKU");
+            add("recompute", code, "Изменена себестоимость артикула");
           }
           break;
         }
