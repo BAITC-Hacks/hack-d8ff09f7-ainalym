@@ -8,7 +8,7 @@ export async function GET(request: Request): Promise<Response> {
     const query = new URL(request.url).searchParams;
     const runId = query.get("run_id") || (db().prepare("SELECT id FROM calc_run ORDER BY started_at DESC LIMIT 1").get() as { id: string } | undefined)?.id;
     if (!runId) return ok({ groups: [] });
-    const clauses = ["r.run_id = ?"];
+    const clauses = ["r.run_id = ?", "COALESCE(r.qty_adjusted, r.qty_recommended) > 0"];
     const args: string[] = [runId];
     for (const [param, column] of [["supplier", "r.supplier_id"], ["category", "s.category"], ["urgency", "r.urgency"]]) {
       const value = query.get(param);
