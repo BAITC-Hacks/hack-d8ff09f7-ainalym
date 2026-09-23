@@ -1,0 +1,385 @@
+{
+  "timings": [
+    {
+      "page": "/replenishment",
+      "ttfb": 81.29999995231628,
+      "load": 218.09999990463257
+    },
+    {
+      "page": "/skus/010400432_",
+      "ttfb": 87.39999997615814,
+      "load": 213.09999990463257
+    },
+    {
+      "page": "/replenishment",
+      "ttfb": 74.19999992847443,
+      "load": 195
+    },
+    {
+      "page": "/review",
+      "ttfb": 63.299999952316284,
+      "load": 185.19999992847443
+    },
+    {
+      "page": "/world",
+      "ttfb": 131.39999997615814,
+      "load": 257.10000002384186
+    },
+    {
+      "page": "/assistant",
+      "ttfb": 62.60000002384186,
+      "load": 201
+    },
+    {
+      "page": "/today",
+      "ttfb": 906.1000000238419,
+      "load": 1028.8999999761581
+    },
+    {
+      "page": "/today",
+      "ttfb": 100.60000002384186,
+      "load": 226.89999997615814
+    },
+    {
+      "page": "/replenishment",
+      "ttfb": 83.29999995231628,
+      "load": 200.29999995231628
+    },
+    {
+      "page": "/money",
+      "ttfb": 85.89999997615814,
+      "load": 208
+    },
+    {
+      "page": "/world",
+      "ttfb": 62.60000002384186,
+      "load": 179.29999995231628
+    },
+    {
+      "page": "/assistant",
+      "ttfb": 60.89999997615814,
+      "load": 207.30000007152557
+    }
+  ],
+  "api": [
+    {
+      "path": "/api/world/feed",
+      "status": 200,
+      "ms": 66.683
+    },
+    {
+      "path": "/api/queue",
+      "status": 200,
+      "ms": 70.86
+    },
+    {
+      "path": "/api/today",
+      "status": 200,
+      "ms": 7730.542
+    },
+    {
+      "path": "/api/state",
+      "status": 200,
+      "ms": 7732.155
+    },
+    {
+      "path": "/api/agent/ledger",
+      "status": 200,
+      "ms": 7741.741
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 190.913
+    },
+    {
+      "path": "/api/agent/ledger",
+      "status": 200,
+      "ms": 206.598
+    },
+    {
+      "path": "/api/state",
+      "status": 200,
+      "ms": 211.311
+    },
+    {
+      "path": "/api/skus/010400432_",
+      "status": 200,
+      "ms": 68.387
+    },
+    {
+      "path": "/api/state",
+      "status": 200,
+      "ms": 71.06
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 75.853
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 61.803
+    },
+    {
+      "path": "/api/agent/ledger",
+      "status": 200,
+      "ms": 83.426
+    },
+    {
+      "path": "/api/state",
+      "status": 200,
+      "ms": 153.387
+    },
+    {
+      "path": "/api/agent/ledger",
+      "status": 200,
+      "ms": 162.007
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 163.694
+    },
+    {
+      "path": "/api/recommendations",
+      "status": 200,
+      "ms": 332.356
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 62.232
+    },
+    {
+      "path": "/api/state",
+      "status": 200,
+      "ms": 63.39
+    },
+    {
+      "path": "/api/state",
+      "status": 200,
+      "ms": 62.629
+    },
+    {
+      "path": "/api/queue",
+      "status": 200,
+      "ms": 61.928
+    },
+    {
+      "path": "/api/orders",
+      "status": 200,
+      "ms": 65.067
+    },
+    {
+      "path": "/api/state",
+      "status": 200,
+      "ms": 65.025
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 68.05
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 60.125
+    },
+    {
+      "path": "/api/state",
+      "status": 502,
+      "ms": 56.697
+    },
+    {
+      "path": "/api/state",
+      "status": 502,
+      "ms": 57.565
+    },
+    {
+      "path": "/api/world/feed",
+      "status": 200,
+      "ms": 92.81
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 111.448
+    },
+    {
+      "path": "/api/state",
+      "status": 200,
+      "ms": 117.345
+    },
+    {
+      "path": "/api/health",
+      "status": 200,
+      "ms": 72.573
+    },
+    {
+      "path": "/api/state",
+      "status": 200,
+      "ms": 78.674
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 84.716
+    },
+    {
+      "path": "/api/assistant/message",
+      "status": 200,
+      "ms": 1122.78
+    },
+    {
+      "path": "/api/health",
+      "status": 200,
+      "ms": 60.917
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 63.729
+    },
+    {
+      "path": "/api/world/feed",
+      "status": 200,
+      "ms": 67.846
+    },
+    {
+      "path": "/api/queue",
+      "status": 200,
+      "ms": 76.181
+    },
+    {
+      "path": "/api/today",
+      "status": 200,
+      "ms": 247.94
+    },
+    {
+      "path": "/api/agent/ledger",
+      "status": 200,
+      "ms": 253.252
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 253.999
+    },
+    {
+      "path": "/api/state",
+      "status": 200,
+      "ms": 256.045
+    },
+    {
+      "path": "/api/world/feed",
+      "status": 200,
+      "ms": 64.109
+    },
+    {
+      "path": "/api/today",
+      "status": 200,
+      "ms": 242.185
+    },
+    {
+      "path": "/api/queue",
+      "status": 200,
+      "ms": 244.88
+    },
+    {
+      "path": "/api/state",
+      "status": 200,
+      "ms": 245.564
+    },
+    {
+      "path": "/api/agent/ledger",
+      "status": 200,
+      "ms": 247.77
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 250.637
+    },
+    {
+      "path": "/api/recommendations",
+      "status": 200,
+      "ms": 64.871
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 77.286
+    },
+    {
+      "path": "/api/agent/ledger",
+      "status": 200,
+      "ms": 83.563
+    },
+    {
+      "path": "/api/state",
+      "status": 200,
+      "ms": 87.835
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 60.05
+    },
+    {
+      "path": "/api/money",
+      "status": 200,
+      "ms": 163.162
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 165.84
+    },
+    {
+      "path": "/api/state",
+      "status": 200,
+      "ms": 166.911
+    },
+    {
+      "path": "/api/world/feed",
+      "status": 200,
+      "ms": 63.5
+    },
+    {
+      "path": "/api/state",
+      "status": 200,
+      "ms": 67.192
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 71.955
+    },
+    {
+      "path": "/api/state",
+      "status": 200,
+      "ms": 67.498
+    },
+    {
+      "path": "/api/health",
+      "status": 200,
+      "ms": 71.868
+    },
+    {
+      "path": "/api/modes",
+      "status": 200,
+      "ms": 75.5
+    }
+  ],
+  "consoleErrors": [
+    "console error",
+    "console error",
+    "console error",
+    "console error",
+    "console error",
+    "console error"
+  ],
+  "writeActions": 1
+}

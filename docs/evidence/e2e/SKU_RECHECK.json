@@ -1,0 +1,13 @@
+[
+  {
+    "project": "desktop",
+    "status": "FAIL",
+    "ms": 6212,
+    "detail": "Read-only SKU navigation recheck failed; see screenshot"
+  },
+  {
+    "project": "phone",
+    "status": "PASS",
+    "ms": 7717
+  }
+]

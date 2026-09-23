@@ -10,7 +10,8 @@
     "test": "vitest run",
     "check": "node scripts/check.mjs",
     "demo:reset": "node scripts/demo_reset.mjs",
-    "etl": "node scripts/etl/load.mjs"
+    "etl": "node scripts/etl/load.mjs",
+    "e2e": "playwright test tests/e2e"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^4.0.89",
@@ -24,8 +25,9 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/jsdom": "^30.0.0",
+    "@playwright/test": "^1.63.0",
     "@testing-library/react": "^16.3.3",
+    "@types/jsdom": "^30.0.0",
     "@types/node": "^24.13.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
