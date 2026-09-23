@@ -12,6 +12,7 @@ export interface ToolResult { ok: boolean; state_version: number; labels: Record
 const labels = { provenance: "Partner data · anonymised", ai: "Rules, no LLM", external: "Export for 1C (file)" };
 const draftLabels = { ...labels, draft: "Draft — not sent" };
 const ttlSeconds = 600;
+const pendingExecutions = new Map<string, Promise<{ status: number; result: ToolResult }>>();
 const own = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const err = (code: string, message: string, status: number, version = stateVersion()) => ({ status, result: { ok: false, code, message, state_version: version, labels } as ToolResult });
 export function ambiguousQuantity(text: string): boolean {
@@ -146,13 +147,23 @@ export async function executeVoiceTool(name: string, raw: unknown): Promise<{ st
         const saved = JSON.parse(row.result_json) as { status: number; result: ToolResult };
         return { status: saved.status, result: { ...saved.result, replayed: true } };
       }
+      const pending = pendingExecutions.get(call.request_id);
+      if (pending) {
+        const saved = await pending;
+        return { status: saved.status, result: { ...saved.result, replayed: true } };
+      }
       await new Promise(resolve => setTimeout(resolve, 50));
     }
     return err("request_pending", "Original call is still in progress", 409);
   }
-  let executed: { status: number; result: ToolResult };
-  try { executed = await run(name as ToolName, call); }
-  catch { executed = err("tool_unavailable", "Tool execution failed", 503); }
-  d.prepare("UPDATE voice_tool_call SET state = 'done', result_json = ? WHERE request_id = ?").run(JSON.stringify(executed), call.request_id);
-  return executed;
+  const execution = Promise.resolve().then(async () => {
+    let executed: { status: number; result: ToolResult };
+    try { executed = await run(name as ToolName, call); }
+    catch { executed = err("tool_unavailable", "Tool execution failed", 503); }
+    d.prepare("UPDATE voice_tool_call SET state = 'done', result_json = ? WHERE request_id = ?").run(JSON.stringify(executed), call.request_id);
+    return executed;
+  });
+  pendingExecutions.set(call.request_id, execution);
+  try { return await execution; }
+  finally { pendingExecutions.delete(call.request_id); }
 }
