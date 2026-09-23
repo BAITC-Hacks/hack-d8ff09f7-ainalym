@@ -87,5 +87,27 @@
     ],
     "assistantRequests": 0,
     "waitingCut": false
+  },
+  "assistant": {
+    "width": 1280,
+    "height": 800,
+    "durationSeconds": 9,
+    "audio": false,
+    "files": [
+      {
+        "file": "assistant.webm",
+        "bytes": 704460
+      },
+      {
+        "file": "assistant.mp4",
+        "bytes": 150223
+      },
+      {
+        "file": "assistant.png",
+        "bytes": 141361
+      }
+    ],
+    "assistantRequests": 1,
+    "waitingCut": false
   }
 }
