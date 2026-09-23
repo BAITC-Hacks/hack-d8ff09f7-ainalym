@@ -65,5 +65,27 @@
     "assistantRequests": 0,
     "waitingCut": false,
     "reviewRoute": "/orders/[order]"
+  },
+  "money": {
+    "width": 1280,
+    "height": 800,
+    "durationSeconds": 9,
+    "audio": false,
+    "files": [
+      {
+        "file": "money.webm",
+        "bytes": 991883
+      },
+      {
+        "file": "money.mp4",
+        "bytes": 512161
+      },
+      {
+        "file": "money.png",
+        "bytes": 165378
+      }
+    ],
+    "assistantRequests": 0,
+    "waitingCut": false
   }
 }
