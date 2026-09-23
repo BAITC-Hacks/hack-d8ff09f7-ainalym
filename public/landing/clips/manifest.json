@@ -1,0 +1,24 @@
+{
+  "today": {
+    "width": 1280,
+    "height": 800,
+    "durationSeconds": 9,
+    "audio": false,
+    "files": [
+      {
+        "file": "today.webm",
+        "bytes": 983057
+      },
+      {
+        "file": "today.mp4",
+        "bytes": 378144
+      },
+      {
+        "file": "today.png",
+        "bytes": 110353
+      }
+    ],
+    "assistantRequests": 0,
+    "waitingCut": false
+  }
+}
