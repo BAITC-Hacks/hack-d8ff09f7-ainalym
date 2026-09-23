@@ -2,7 +2,7 @@
 
 Единственный источник статусов для README. Статус ставится только по коду на `main` и проверке L7 (чистый клон без ключей) или закрытиям в `docs/agent_handoffs/*`. Обновляется после каждого слияния (L7).
 
-Наблюдение: **2026-09-23 11:10Z**, `main` @ `9b01fcb` (после MERGE-2, L5 voice, L4a/L4b/L4c, L6, L3, L8, INTEG-1). Чистый клон: `/tmp`, `.env.local` из `.env.example` + `DATABASE_PATH=./data/partner.db`, без ключей.
+Наблюдение: **2026-09-23 11:20Z**, `main` @ `220d777` (после MERGE-2, L5 voice, L4a/L4b/L4c, L6, L3, L8, INTEG-1). Чистый клон: `/tmp`, `.env.local` из `.env.example` + `DATABASE_PATH=./data/partner.db`, без ключей.
 
 Статусы: `GREEN` — проверено командой в это время · `PARTIAL` — есть код, проверка неполная · `RED` — проверка падает · `PENDING` — нет на `main` · `UNVERIFIED` — нужен внешний ресурс (ключ, микрофон).
 
@@ -30,10 +30,10 @@
 | P1 | Экспорт для 1С и канал поставщика | `/api/peers/onec-export/*` · `/supplier/:po_id` | API: страница поставщика — «Черновик заказа — не отправлен» | GREEN · 09:48Z |
 | S1 | Карточка артикула | `GET /api/skus/:code` · `/skus/:code` | API: рекомендация, в пути, журнал | GREEN · 09:48Z |
 | V1 | Голос: Realtime-сессия, инструменты; текстовый путь без ключа | `src/voice/*` · `/api/voice/*` · `/api/assistant/message` · `/assistant` | `npm run check` (voice) | PARTIAL · 09:48Z (живой микрофон — UNVERIFIED, 2 проверки пропущены) |
-| U1 | Экраны | `/today` `/replenishment` `/skus/:code` `/review` `/orders/:id` `/money` `/connections` `/assistant` `/world` `/peers` `/supplier/:po_id` | HTTP 200 на чистом клоне; снимки — `docs/evidence/ui`, `docs/evidence/peers`, `docs/evidence/voice` | PARTIAL · 09:48Z (L7 проверил ответы 200, не вёрстку; L4b/L4c: снимки не всех экранов) |
-| C2 | Сводная проверка | `scripts/check.mjs` | `npm run etl && npm run check` → `check: passed=267 failed=0 skipped=7 externally-unverified=7` | GREEN · 11:10Z (чистый клон `9b01fcb`) |
-| C3 | Чистый клон | `scripts/clean_clone_check.sh` (клон → install → etl → check) | локальный клон `9b01fcb` → `CLEAN-CLONE: PASS` (passed=267 failed=0 skipped=7 externally-unverified=7) | GREEN · 11:10Z (GitHub-remote — ≈12:10Z) |
+| U1 | Экраны: Сегодня, Закупки, Заказы, Поставщики, Товары, Деньги, Лента, Связи, Помощник | `/today` `/replenishment` `/orders` `/suppliers` `/skus` `/skus/:code` `/money` `/world` `/connections` `/assistant` | чистый клон `220d777`: все 200, `/` → 307 на `/today`; снимки `docs/evidence/shell/*.png` | GREEN · 11:19Z (ответы и снимки; вёрстку L7 глазами не проверял) |
+| C2 | Сводная проверка | `scripts/check.mjs` | `npm run etl && npm run check` → `check: passed=287 failed=0 skipped=7 externally-unverified=7` | GREEN · 11:18Z (чистый клон `220d777`) |
+| C3 | Чистый клон | `scripts/clean_clone_check.sh` (клон → install → etl → check) | локальный клон `220d777` → `CLEAN-CLONE: PASS` (287/0/7/7) | GREEN · 11:18Z (GitHub-remote — ≈12:10Z) |
 | C5 | Пересборка демо-базы | `scripts/demo_reset.mjs` · `POST /api/demo/reset` | `npm run demo:reset` | GREEN · 09:3xZ |
-| H1 | Хостинг-демо | `src/middleware.ts` · `src/server/demo_guard.ts` · `scripts/deploy/*` | `GET <URL>/api/health` → 200 | PARTIAL · 09:48Z (по данным корня; URL — через платформу) |
-| R1 | README: методика, выбросы, запуск | `README.md` §4, §7, §8 | чистый клон по §7–8 | GREEN (v1.7) · 09:48Z |
+| H1 | Хостинг-демо: код доступа, лимиты | `src/middleware.ts` · `src/server/demo_guard.ts` · `scripts/deploy/*` · https://65.109.172.188.sslip.io | `curl <URL>/api/health` → 200 | GREEN · 11:20Z |
+| R1 | README: методика, выбросы, запуск, экраны | `README.md` §4, §7, §8, «Экраны» | чистый клон по §7–8 | GREEN (v2.0) · 11:20Z |
 | R2 | Без ключей — «Правила без LLM» | `AI_PROVIDER` auto → `rules` | `GET /api/health` → `"ai_provider":"rules"`, провайдеры `missing` | GREEN · 09:48Z |

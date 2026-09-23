@@ -2,7 +2,7 @@
 
 Кейс HackAlem AI (трек «Логистика», партнёр ТОО «Электрокомплект», ekt.kz). Ниже — только то, что подтверждается текущим репозиторием. Статус каждой возможности с временем проверки (UTC) — в [`docs/TASK_MAP.md`](docs/TASK_MAP.md); README не утверждает ничего сверх этой таблицы.
 
-> Состояние README: **v1.9**, основа `main` @ `9b01fcb`, наблюдение 2026-09-23 11:10Z; шаги разделов 7–8 пройдены на чистом клоне этого коммита без ключей. Разделы, помеченные «ожидается», описывают контракт (`docs/CONTRACTS.md`), а не работающий код; они обновляются по мере слияния веток.
+> Состояние README: **v2.0**, основа `main` @ `220d777`, наблюдение 2026-09-23 11:15Z; шаги разделов 7–8 пройдены на чистом клоне этого коммита без ключей. Разделы, помеченные «ожидается», описывают контракт (`docs/CONTRACTS.md`), а не работающий код; они обновляются по мере слияния веток.
 
 ## 1. Название
 
@@ -21,7 +21,7 @@
 
 ## 3. Что реализовано
 
-Наблюдение: 2026-09-23 11:10Z, `main` @ `9b01fcb`, чистый клон без ключей. Подтверждено кодом и проверками:
+Наблюдение: 2026-09-23 11:15Z, `main` @ `220d777`, чистый клон без ключей. Подтверждено кодом и проверками:
 
 - **данные:** 12 выгрузок партнёра (`fixtures/partner/`) → SQLite командой `npm run etl` (≈ 7 с): 3 909 артикулов, 248 915 строк продаж, 313 строк товара в пути, 1 591 месяц дефицита; текущий остаток на 22.09.2026 (SE — «Свободный остаток», IEK — остаток на начало сентября минус отгрузки сентября);
 - **расчёт M1–M5 на данных партнёра:** `node scripts/scenario.mjs` → 11 строк `[PASS]` (M1, M1-active, M1-source, M2, M2-peak, M3, M4, M5-full, M5, Money, World); `POST /api/calc/run` по поставщику или категории → рекомендации по каждому артикулу с обоснованием (`GET /api/recommendations`), предложение «Заказ поставщику …» в очереди (`GET /api/queue`, `/api/proposals/:id/approve|reject`);
@@ -29,10 +29,10 @@
 - **заказы и деньги:** черновик заказа по поставщику, утверждение по версии, обязательства 30 % / 70 %, экспорт `GET /api/orders/:id/export.xlsx|csv` и файл для 1С (`/api/peers/onec-export/:po_id`) с ключом «Номенклатура.Код» (код 1С); деньги по поставщикам без выдуманной себестоимости для IEK (`GET /api/money`);
 - **агенты и лента:** события (`/api/world/feed|play|compose`, пресеты жюри) применяются один раз; воркер пересчитывает только затронутые артикулы и пишет журнал (`/api/agent/ledger`, `/api/agent/runs`); ответ поставщика о частичной отгрузке или задержке превращается в предложение разделить или ускорить заказ (раздел 4, «Ответ поставщика»); пульс `GET /api/today`, состояние `GET /api/state`, метки `GET /api/modes`;
 - **AI:** типизированные решения `jev` (TypeSafe → Vercel AI Gateway) / `openai` / `rules` / воспроизведение; черновики письма поставщику и сводки расчёта (`/api/drafts`); голос — Realtime-сессия и инструменты (`/api/voice/*`) и текстовый путь `/api/assistant/message`, работающий без ключа;
-- **экраны:** «Сегодня» `/today`, «Закупки» `/replenishment`, карточка `/skus/:code`, «Проверка» `/review`, заказ `/orders/:id`, «Деньги» `/money`, «Связи» `/connections`, «Помощник» `/assistant`, лента `/world`, поставщик `/supplier/:po_id`, `/peers`;
+- **экраны:** одна оболочка из девяти разделов — Сегодня, Закупки, Заказы, Поставщики, Товары, Деньги, Лента, Связи, Помощник (раздел «Экраны» ниже); корень `/` ведёт на «Сегодня»;
 - **хостинг-демо:** код доступа, лимиты запросов и живых вызовов (`src/middleware.ts`, `src/server/demo_guard.ts`), контейнер и скрипты развёртывания.
 
-Проверки на 10:25Z (чистый клон `9b01fcb`, без ключей, после `npm run etl`): `npm run check` → `check: passed=267 failed=0 skipped=7 externally-unverified=7` — 7 `UNVERIFIED`: три живых провайдера, живой черновик письма и живой каталог ekt.kz (включаются `AINALYM_LIVE_SMOKE=1` и ключами), две проверки живого голоса с микрофоном; `node scripts/scenario.mjs` → 11 × `[PASS]`.
+Проверки на 10:25Z (чистый клон `220d777`, без ключей, после `npm run etl`): `npm run check` → `check: passed=287 failed=0 skipped=7 externally-unverified=7` — 7 `UNVERIFIED`: три живых провайдера, живой черновик письма и живой каталог ekt.kz (включаются `AINALYM_LIVE_SMOKE=1` и ключами), две проверки живого голоса с микрофоном; `node scripts/scenario.mjs` → 11 × `[PASS]`.
 
 Не подтверждено (статус — `docs/TASK_MAP.md`): живой голос с микрофоном, снимки экранов части страниц, отправка поставщику (её нет по замыслу — только черновик).
 
@@ -111,7 +111,7 @@ fixtures/partner/*.xlsx ──npm run etl──▶ SQLite (src/db/schema.sql)
 
 ## 7. Установка и запуск
 
-Требуется Node.js ≥ 24 и npm. Проверено 09:48Z на чистом клоне `9b01fcb` без ключей.
+Требуется Node.js ≥ 24 и npm. Проверено 09:48Z на чистом клоне `220d777` без ключей.
 
 ```bash
 git clone https://github.com/BAITC-Hacks/hack-d8ff09f7-ainalym.git ainalym
@@ -124,7 +124,7 @@ npm run dev        # http://localhost:3000 → /today
 
 База: и `npm run etl` / `npm run demo:reset`, и приложение используют один путь — `DATABASE_PATH` из окружения, по умолчанию `./data/ainalym.db` (как в `.env.example`). Если меняете `DATABASE_PATH`, меняйте его для всех команд.
 
-Без ключей приложение работает в режиме «Правила без LLM»: `GET /api/health` → `"ai_provider":"rules"`, `"mode":"offline"`, провайдеры `missing`; метки режима видны в интерфейсе. Ключи (если есть) добавляются только в `.env.local`, никогда в репозиторий.
+Без ключей приложение работает в режиме «Правила без LLM»: `GET /api/health` → `"ai_provider":"rules"`, `"mode":"offline"`, провайдеры `missing`; в интерфейсе режим подписан «Локальный режим» (подсказка — «Правила без LLM»). Ключи (если есть) добавляются только в `.env.local`, никогда в репозиторий.
 
 Команды: `npm run etl` — загрузка данных; `npm run demo:reset` — пересборка базы; `npm run check` — все проверки; `node scripts/scenario.mjs` — пять проверок ТЗ на данных партнёра; `bash scripts/clean_clone_check.sh` — проверка чистого клона.
 
@@ -165,12 +165,12 @@ npm run dev        # http://localhost:3000 → /today
 
 ## 8. Как проверить
 
-Без ключей, на данных партнёра, после шагов раздела 7. Ожидаемый вывод — наблюдение 10:25Z на чистом клоне `9b01fcb`.
+Без ключей, на данных партнёра, после шагов раздела 7. Ожидаемый вывод — наблюдение 10:25Z на чистом клоне `220d777`.
 
 **Командами**
 
 1. `npm run etl` — строки `sku: 3909`, `sales_line: 248915`, `sales_month: 99634`, `stock_month: 117282`, `in_transit: 313`, `season_index: 24`, `stockout months: 1591`.
-2. `npm run etl && npm run check` (проверки данных партнёра без базы не проходят) — итоговая строка `check: passed=267 failed=0 skipped=7 externally-unverified=7` (`UNVERIFIED` — живые провайдеры и микрофон, раздел 3).
+2. `npm run etl && npm run check` (проверки данных партнёра без базы не проходят) — итоговая строка `check: passed=287 failed=0 skipped=7 externally-unverified=7` (`UNVERIFIED` — живые провайдеры и микрофон, раздел 3).
 3. `node scripts/scenario.mjs` — пять проверок ТЗ на эталонных артикулах:
    - `[PASS] M1 — Товар в пути +100 уменьшает чистую потребность …` (IEK `010500006_`, Δ = 100), `[PASS] M1-active — При дефиците +100 в пути снижает потребность до кратности на 100 (SKU=010300095_, Δ=100.000)` и `[PASS] M1-source — Отсутствующий обязательный источник назван`;
    - `[PASS] M2 — Сезонный профиль SKU меняет прогноз по месяцам (max/min=10.41)` и `[PASS] M2-peak — … (peak quarter=3)` (SE `130300027_`);
@@ -189,7 +189,7 @@ npm run dev        # http://localhost:3000 → /today
 8a. **Правка количества менеджером:** `GET /api/recommendations?supplier=SE` → строка `300200745_` (`id`, `version`: 1, 126 шт) → `POST /api/recommendations/:id/adjust` с `{"qty": 132, "reason": "объект клиента сдвинулся на октябрь", "version": 1}` → `qty_recommended` остаётся 126, `qty_adjusted` = 132, состояние `adjusted`, версия 2; повтор с `"version": 1` → **409** `{"ok":false,"code":"stale_version","current_version":2}` — устаревшая версия не перезаписывает правку.
 9. **M5 — заказ по поставщикам:** `GET /api/recommendations` / `/replenishment` — группы IEK и SE, у каждой строки срочность и обоснование → очередь `GET /api/queue`: «Заказ поставщику SE: 307 позиций» → текущая версия предложения — `GET /api/proposals/:id` (поле `proposal.version`; события ленты её повышают) → `POST /api/proposals/:id/approve` с `{"proposal_version": <текущая версия>}` → черновик заказа `GET /api/orders/:id` (SE, 70 933 шт, 70 810 601,71 KZT; себестоимость известна для 271 из 307 строк) → `POST /api/orders/:id/approve` с `{"version": <версия заказа>}` → экспорт `GET /api/orders/:id/export.xlsx` — файл «Заказ_поставщику_SE_2026-09-23.xlsx» в форме документа 1С «Заказ поставщику»: 307 строк, колонки «Номенклатура.Код», «Номенклатура», «Артикул», «Ед.», «Количество», «Цена», «Поставщик», «Дата поставки (ETA)», «Срочность», «Обоснование»; срочность по строкам: критично 66, скоро 99, планово 142 → `/supplier/:po_id` показывает «Черновик заказа — не отправлен» → `GET /api/money`: обязательства по SE — предоплата 21 243 180,51 KZT сегодня и остаток 49 567 421,20 KZT к 12.11.2026.
 
-Вывод проверки чистого клона (`bash scripts/clean_clone_check.sh`: клон → `npm install` → `.env.local` из `.env.example` → `npm run etl` → `npm run check`) на 11:10Z: `CLEAN-CLONE: check: passed=267 failed=0 skipped=7 externally-unverified=7` → `CLEAN-CLONE: PASS @ 9b01fcb` (локальный клон `main`). Финальный прогон против GitHub — ≈ 12:10Z, вывод будет здесь.
+Вывод проверки чистого клона (`bash scripts/clean_clone_check.sh`: клон → `npm install` → `.env.local` из `.env.example` → `npm run etl` → `npm run check`) на 11:15Z: `CLEAN-CLONE: check: passed=287 failed=0 skipped=7 externally-unverified=7` → `CLEAN-CLONE: PASS @ 220d777` (локальный клон `main`). Финальный прогон против GitHub — ≈ 12:10Z, вывод будет здесь.
 
 ## 9. Данные и интеграции
 
@@ -234,9 +234,29 @@ npm run dev        # http://localhost:3000 → /today
 
 ## 11. Ссылка на деплой
 
-Предоставляется через платформу вместе с кодом доступа. Код доступа и ключи в репозитории не хранятся.
+https://65.109.172.188.sslip.io — код доступа передан через платформу (`GET /api/health` → 200, проверено 11:15Z). Код доступа и ключи в репозитории не хранятся.
 
 ---
+
+## Экраны
+
+Что менеджер по закупу делает на каждом экране (адреса — от корня приложения):
+
+| Экран | Адрес | Что здесь делает менеджер |
+|---|---|---|
+| Сегодня | `/today` | Видит, что требует его решения, какие позиции под риском дефицита, сколько денег уже заморожено в заказах и что агенты сделали без него. |
+| Закупки | `/replenishment` | Запускает расчёт по поставщику или категории, просматривает рекомендации по поставщикам с объяснением каждой цифры, правит количество с причиной, отправляет заказ на утверждение. |
+| Заказы | `/orders` | Ведёт каждый заказ поставщику по этапам: черновик → утверждён → письмо подготовлено → ответ поставщика → в пути → получен. |
+| Поставщики | `/suppliers` | Смотрит карточки IEK и SE: срок поставки, условия оплаты 30/70, открытые заказы, товар в пути, замороженные деньги, последний ответ. |
+| Товары | `/skus`, `/skus/:code` | Открывает карточку товара: история продаж, прогноз по месяцам, остаток, товар в пути, исключённые разовые продажи и объяснение рекомендации. |
+| Деньги | `/money` | Видит, сколько денег заморожено по каждому поставщику и когда платить: предоплата сейчас, остаток к поставке. |
+| Лента | `/world` | Видит новые события (продажи, остатки, поставки) и может добавить своё — например, «товар в пути +100»; система пересчитает только то, что изменилось. |
+| Связи | `/connections` | Проверяет, откуда пришли данные и куда уходит результат: отчёты 1С на входе, файл заказа для 1С на выходе. |
+| Помощник | `/assistant` | Спрашивает текстом или голосом — например, «что нужно заказать по категории 2?» — и получает ответ по тем же цифрам, что на экранах. |
+
+Демо в интернете: https://65.109.172.188.sslip.io — код доступа передан через платформу.
+
+Снимки экранов (1440 × 900): `docs/evidence/shell/today_1440x900.png`, `orders_1440x900.png`, `suppliers_1440x900.png`, `skus_1440x900.png`, `sku_1440x900.png`, `orders_loading_ribbon_1440x900.png`.
 
 ## Соответствие ТЗ
 
@@ -256,7 +276,7 @@ npm run dev        # http://localhost:3000 → /today
 
 ## Демо-доступ
 
-Локально: без ключей, режим «Правила без LLM» (раздел 7). Хостинг-демо: URL, код доступа и, при необходимости, ограниченный ключ OpenAI передаются через форму платформы — не через этот репозиторий.
+Локально: без ключей, режим «Правила без LLM» (раздел 7). Хостинг-демо: https://65.109.172.188.sslip.io; код доступа и, при необходимости, ограниченный ключ OpenAI передаются через форму платформы — не через этот репозиторий. Учётные записи команды для проверки не нужны.
 
 ## Раскрытие
 
@@ -272,4 +292,4 @@ npm run dev        # http://localhost:3000 → /today
 
 ## EN summary
 
-Ainalym is a financial operations OS for trading businesses; agents run the commercial cycle, you decide. First vertical: automatic supplier replenishment orders for an electrical-components distributor (HackAlem AI, Logistics track, partner Elektrokomplekt LLP, anonymised exports). As of `main` @ `9b01fcb` (11:10Z): `npm run etl` loads the 12 partner files into SQLite; `node scripts/scenario.mjs` prints the five ТЗ checks M1–M5 plus Money and World as 11 `[PASS]` lines on partner data; the app (`npm run dev`) runs the calculation, shows recommendations with a numeric rationale per SKU, a decision queue, version-bound approval, 30/70 obligations, a 1C-compatible export and a supplier draft that is never sent. With no keys it runs in «Rules, no LLM» mode. Status per capability: `docs/TASK_MAP.md`.
+Ainalym is a financial operations OS for trading businesses; agents run the commercial cycle, you decide. First vertical: automatic supplier replenishment orders for an electrical-components distributor (HackAlem AI, Logistics track, partner Elektrokomplekt LLP, anonymised exports). As of `main` @ `220d777` (11:15Z): `npm run etl` loads the 12 partner files into SQLite; `node scripts/scenario.mjs` prints the five ТЗ checks M1–M5 plus Money and World as 11 `[PASS]` lines on partner data; the app (`npm run dev`) runs the calculation, shows recommendations with a numeric rationale per SKU, a decision queue, version-bound approval, 30/70 obligations, a 1C-compatible export and a supplier draft that is never sent. With no keys it runs in «Rules, no LLM» mode. Status per capability: `docs/TASK_MAP.md`.
