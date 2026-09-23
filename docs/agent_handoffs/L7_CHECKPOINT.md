@@ -4,4 +4,5 @@
 - check @09:00Z (with keys): passed=26 failed=0. Queue: 010 done, 020 queued, 030–060 released now; new items every ≈20 min.
 - for root: docs/DEMO_ACCESS.md says «Live AI on a synthetic company» — this case uses partner data.
 - FINDING (engine on partner data, as_of 2026-09-22, main @ af5c9ac, read-only run): `oneoff` 010500008_ doc 20000099834 (7 488) is NOT excluded — threshold = max(3×14 502, 5×144, 20) = 43 506; U733M 130300027_ excludes nothing (threshold 3 370; docs 1 960, 1 457 kept), growth clamped ×0.5, safety 1 705 > forecast 1 650, on_hand = September opening stock 6 (file «Свободный остаток» 108 is not a source) → need 3 360. For L2a/root; README states the rule as coded, claims M4 only on test data.
+- FINDING 2: on_hand = month-opening stock (300200745_: 181 at 2026-09 vs «Свободный остаток» 23 on 22.09 in the SE transit file); own-season index can go negative from returns (300200898_ March = −0.389); 2026-03 flagged stockout on 300200898_ although 70 sold (opening unknown).
 - undone: routes/UI/voice/scenario.mjs → README/TASK_MAP; SUBMISSION refresh ≈T+190; remote clean clone ≈12:10Z; README final ≈12:40Z.
