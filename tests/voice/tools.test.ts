@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { bumpStateVersion, db, resetInstance } from "../../src/db/client";
 import { executeVoiceTool } from "../../src/voice/tools";
 import { VoiceTurnGate } from "../../src/voice/transport";
+import { POST as toolRoute } from "../../src/app/api/voice/tools/[name]/route";
 
 const priorPath = process.env.DATABASE_PATH;
 beforeEach(() => {
@@ -65,6 +66,12 @@ describe("voice tool bridge", () => {
     const response = await executeVoiceTool("explain_sku", { request_id: "call-scope", scope: { org_id: "ORG-1", supplier_id: "SE" }, args: { code_1c: "SKU-1" } });
     expect(response.status).toBe(403);
     expect(response.result.code).toBe("denied");
+  });
+
+  it("labels a malformed transport payload", async () => {
+    const response = await toolRoute(new Request("http://localhost/api/voice/tools/what_changed", { method: "POST", body: "{" }), { params: Promise.resolve({ name: "what_changed" }) });
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "invalid", labels: { provenance: "Partner data · anonymised" }, state_version: 1 });
   });
 
   it("does not create a run for a corrected, ambiguous spoken quantity", async () => {

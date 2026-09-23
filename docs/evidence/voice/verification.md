@@ -1,0 +1,11 @@
+# L5 voice evidence (2026-09-23)
+
+- `npm run check -- voice` after L2a merge: 11 passed, 0 failed, 2 externally unverified. `tests/voice/tools.test.ts` runs the real `runCalculation` service and observes one `calc_run`, one `proposal`, and one durable `task` after concurrent duplicate delivery.
+- `npm run build`: GREEN; `npx tsc --noEmit`: GREEN after build.
+- `tests/voice/session.test.ts`: missing key returns `503` with `label:"Provider unavailable"`; mocked mint returns one ephemeral secret with four tool definitions, capped response expiry, and no standard key in response.
+- `tests/voice/interruption.test.ts`: scripted response creation, interruption and late completion abort a pending request and drop the late call.
+- `tests/voice/fallback.test.ts`: no-key typed status answer comes from a persisted ledger action; missing-key transcription returns no transcript; mocked provider transcript is stored once with `medium:"voice_note"`.
+- Partner ETL check via `node scripts/etl/load.mjs --db <temporary-db>`: `organization=0`, `supplier=2`, `sku=3909`. Voice scope deliberately rejects an absent organization; upstream ETL/reset must insert the contract organization row before a partner-data round-trip can pass.
+- Live Russian microphone/WebRTC round-trip and UI task visibility: externally unverified; L4 panel and L1 state/ledger routes were not present at this checkpoint. No OpenAI product call was made to build or test.
+
+Official OpenAI Docs checked: [WebRTC](https://developers.openai.com/api/docs/guides/voice-webrtc), [Realtime conversations and function calls](https://developers.openai.com/api/docs/guides/realtime-conversations), [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [file transcription](https://developers.openai.com/api/docs/guides/speech-to-text).

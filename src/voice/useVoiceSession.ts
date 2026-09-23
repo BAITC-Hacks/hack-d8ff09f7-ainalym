@@ -19,6 +19,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
   const [reason, setReason] = useState<string>();
   const [captions, setCaptions] = useState<Caption[]>([]);
   const peer = useRef<RTCPeerConnection | null>(null);
+  const starting = useRef(false);
   const channel = useRef<RTCDataChannel | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
@@ -33,6 +34,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
   }, []);
 
   const release = useCallback(() => {
+    starting.current = false;
     turn.current.cancel();
     channel.current?.close();
     channel.current = null;
@@ -118,7 +120,8 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
   }, [router, send]);
 
   const start = useCallback(async () => {
-    if (peer.current || !scopeRef.current.org_id) return;
+    if (starting.current || peer.current || !scopeRef.current.org_id) return;
+    starting.current = true;
     const sessionGeneration = ++generation.current;
     setReason(undefined);
     setState("connecting");
@@ -135,7 +138,12 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       const speaker = document.createElement("audio");
       speaker.autoplay = true;
       audio.current = speaker;
-      connection.ontrack = e => { speaker.srcObject = e.streams[0]; };
+      connection.ontrack = e => {
+        speaker.srcObject = e.streams[0];
+        void speaker.play().catch(() => {
+          if (sessionGeneration === generation.current) { release(); setReason("Provider unavailable"); setState("unavailable"); }
+        });
+      };
       connection.onconnectionstatechange = () => {
         if (sessionGeneration !== generation.current) return;
         if (connection.connectionState === "failed" || connection.connectionState === "disconnected") {
@@ -156,6 +164,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       const answer = await answerResponse.text();
       if (sessionGeneration !== generation.current) return;
       await connection.setRemoteDescription({ type: "answer", sdp: answer });
+      starting.current = false;
     } catch {
       if (sessionGeneration !== generation.current) return;
       release();
