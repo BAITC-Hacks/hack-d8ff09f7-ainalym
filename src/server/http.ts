@@ -28,6 +28,7 @@ export function failure(error: unknown): Response {
     return Response.json({ ok: false, code: "invalid_request", message: issue?.message || "Invalid request", field: issue?.path.join(".") }, { status: 400 });
   }
   if (error instanceof HttpError) return Response.json({ ok: false, code: error.code, message: error.message, ...(error.field ? { field: error.field } : {}) }, { status: error.status });
+  console.error("[api] internal_error", error instanceof Error ? `${error.name}: ${error.message}` : String(error), error instanceof Error && error.stack ? error.stack.split("\n").slice(1, 4).join(" | ") : "");
   return Response.json({ ok: false, code: "internal_error", message: "Internal error" }, { status: 500 });
 }
 
