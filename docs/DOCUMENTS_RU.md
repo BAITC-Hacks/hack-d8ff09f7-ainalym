@@ -14,7 +14,7 @@
 
 ## Проверка за минуту
 
-После `npm run demo:reset` запустите `npm run dev`. В другом терминале:
+После `npm run demo:reset` запустите `npm run dev -- --webpack -p 3000`. В другом терминале:
 
 ```sh
 curl -sS -X POST http://localhost:3000/api/documents -H 'Content-Type: application/json' -d '{"fixture":"iek_invoice_demo.xlsx"}' | jq '{id:.document.id,po_id:.document.po_id,mode:.document.extraction_mode,state:.document.state}'
