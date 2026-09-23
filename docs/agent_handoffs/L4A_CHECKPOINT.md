@@ -5,4 +5,4 @@ Checks: UI passed=30 failed=0; scoped lint + TypeScript + production build pass;
 Evidence: docs/evidence/ui/today_verification.md and L4A_REVIEW_FOLLOWUP.md; source/path manifest and closeout follow.
 Undone: full Play→ledger→queue acceptance, timing/CLS/screen-reader measurements; L1 routes/persisted ledger unavailable. Gate: RED.
 Resumable: merge L1 and its corrected custom-path reset; run rules-only canonical event through Pulse and inspect persisted ledger/queue without reload.
-sha: prior evidence 84f88a5; visible-label checkpoint = commit owning this file; main merged through ed943f1.
+sha: verified code d54c83a; merged tip f53f5f5; main through a32279a; documentation closeout follows.
