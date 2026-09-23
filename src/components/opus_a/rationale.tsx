@@ -10,7 +10,7 @@ export type Components = { base_rate?: number; season?: Record<string, number>; 
 export function Receipt({ c, recommended, adjusted }: { c: Components; recommended: number; adjusted?: number | null }) {
   return <dl className="oa-receipt">
     <dt>Прогноз на {c.horizon_days ?? "—"} дн</dt><dd>{qty(c.forecast_qty, 1)}</dd>
-    <dt>+ Страховой запас (90 %)</dt><dd>{qty(c.safety, 1)}</dd>
+    <dt>+ Страховой запас</dt><dd>{qty(c.safety, 1)}</dd>
     <dt>− Остаток{c.on_hand_as_of ? ` на ${day(c.on_hand_as_of)}` : ""}</dt><dd>{qty(c.on_hand)}</dd>
     <dt>− В пути</dt><dd>{qty(c.in_transit)}</dd>
     <dt className="total">= Потребность</dt><dd className="total">{qty(c.net_need, 1)}</dd>

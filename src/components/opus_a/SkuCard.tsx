@@ -48,7 +48,7 @@ export function SkuCard({ code }: { code: string }) {
     </section>
 
     <div className="oa-cols">
-      <div style={{ display: "grid", gap: 28, minWidth: 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 28, minWidth: 0 }}>
         <section style={{ display: "grid", gap: 14 }} aria-labelledby="oa-sales">
           <div className="oa-section-head"><h2 className="oa-h2" id="oa-sales">Продажи и прогноз <small>24 месяца, Алматы</small></h2>
             <div className="oa-legend"><span><i style={{ background: "#6f84c0" }} />продажи</span><span><i style={{ background: "repeating-linear-gradient(45deg,#f1e5c8 0 3px,#b07a12 3px 4px)" }} />разовый документ — исключён</span><span><i style={{ background: "#efe2d6", boxShadow: "inset 0 -3px 0 #c2432a" }} />нет остатка</span><span><i style={{ background: "transparent", borderTop: "2px dashed #5b3b58", height: 0, width: 16 }} />прогноз</span></div>
@@ -57,7 +57,7 @@ export function SkuCard({ code }: { code: string }) {
             {d ? (d.series.length ? <SalesChart series={d.series} forecast={c.monthly_forecast ?? {}} excluded={c.outliers_excluded ?? []} stockoutMonths={c.stockout_months ?? []} /> : <State kind="empty" title="Продаж нет">У товара нет продаж за период данных.</State>) : <Skel h={280} />}
           </div>
         </section>
-        {rec ? <section className="oa-card" style={{ padding: 20, display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 28 }} aria-label="Прогноз и исключения">
+        {rec ? <section className="oa-card oa-two" style={{ padding: 20, display: "grid", gap: 28 }} aria-label="Прогноз и исключения">
           <Forecast c={c} /><Exclusions c={c} max={4} />
         </section> : null}
         {d && d.timeline.length ? <section className="oa-rail-block" aria-labelledby="oa-hist"><h2 id="oa-hist">История агента</h2>

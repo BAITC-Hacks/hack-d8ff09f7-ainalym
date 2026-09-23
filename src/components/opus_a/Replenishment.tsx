@@ -131,12 +131,12 @@ export function ReplenishmentView({ supplier }: { supplier?: string }) {
     <div className="oa-toolbar">
       <label className="oa-filter"><Search size={15} aria-hidden /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Фильтр по названию или коду 1С" aria-label="Фильтр по названию или коду 1С" /></label>
       <nav className="oa-seg" aria-label="Поставщик">{seg.map(([id, label]) => <Link key={id || "all"} aria-current={(supplier ?? "") === id ? "true" : undefined} href={id ? `/opus_a/replenishment?supplier=${id}` : "/opus_a/replenishment"}>{label}</Link>)}</nav>
-      <span className="muted" style={{ font: "var(--oa-meta)", marginLeft: "auto" }}>↑ ↓ — по строкам · Enter — расчёт · Esc — свернуть</span>
+      <span className="muted oa-hide-sm" style={{ font: "var(--oa-meta)", marginLeft: "auto" }}>↑ ↓ — по строкам · Enter — расчёт · Esc — свернуть</span>
     </div>
     {recs.error && !recs.data ? <ErrorState error={recs.error} onRetry={recs.reload} /> : null}
     {recs.loading && !recs.data ? <div className="oa-group"><div className="oa-group-head"><Skel w={160} h={22} /></div>{Array.from({ length: 8 }, (_, i) => <div key={i} style={{ padding: "16px 18px", borderTop: "1px solid var(--oa-line-soft)" }}><Skel h={20} /></div>)}</div> : null}
     {recs.data && groups.length === 0 ? <State kind="empty" title="Рекомендаций нет">Запустите расчёт — рекомендации появятся здесь, сгруппированные по поставщикам.</State> : null}
-    <div ref={tableRef} onKeyDown={onKeyNav} style={{ display: "grid", gap: 28 }}>
+    <div ref={tableRef} onKeyDown={onKeyNav} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 28 }}>
       {groups.map(g => {
         const limit = limits[g.supplier_id] ?? PAGE;
         const shown = g.rows.slice(0, limit);

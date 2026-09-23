@@ -147,7 +147,7 @@ export function TodayView() {
     </section>
 
     <div className="oa-cols">
-      <div style={{ display: "grid", gap: 36, minWidth: 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 36, minWidth: 0 }}>
         <section style={{ display: "grid", gap: 14 }} aria-labelledby="oa-dec">
           <div className="oa-section-head"><h2 className="oa-h2" id="oa-dec">Ждут вашего решения <span className="oa-count">{queue.data ? items.length : "…"}</span></h2><span className="muted" style={{ font: "var(--oa-meta)" }}>Агенты ничего не отправляют без вашего решения</span></div>
           {receipts.map((r, i) => <State key={i} kind={r.kind} title={r.text}>{r.po ? <Link className="oa-link" href={`/orders/${encodeURIComponent(r.po)}`}>Открыть черновик и экспорт для 1С (файл)</Link> : null}</State>)}
