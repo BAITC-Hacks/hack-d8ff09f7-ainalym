@@ -1,0 +1,53 @@
+{
+  "at": "2026-09-23T10:15:39.497Z",
+  "branch": "lane/images",
+  "etl": {
+    "skus": 3909,
+    "sales_line": 248915,
+    "sales_month": 99634,
+    "stock_month": 117282
+  },
+  "local_server": {
+    "port": 3410,
+    "DATABASE_PATH": "./data/partner.db",
+    "AINALYM_MODE": "offline",
+    "AI_PROVIDER": "rules"
+  },
+  "tests": {
+    "node_fetch_tests": 2,
+    "vitest_tests": 7,
+    "vitest_files": 3,
+    "typecheck": "pass",
+    "scoped_eslint": "pass",
+    "live_verifier": "pass"
+  },
+  "visual_review": {
+    "method": "computer-use Finder icon view",
+    "official": "Sampled breakers: distinct poles/toggles and silhouettes retained at 96px; no stretching.",
+    "categories": "All 30 inspected; muted greige product photography, readable silhouettes, no decorative UI treatment."
+  },
+  "limitations": [
+    "400 supplier-first candidates are IEK; SE uses category fallback, source adapter page probed but no SE image downloaded.",
+    "75 positive recommendation rows remain null outside covered categories.",
+    "Individual billing attribution is chronological; aggregate 45 credits verified."
+  ],
+  "protected": [
+    "No UI files edited",
+    "No calculation or database schema changes",
+    "No added runtime dependency",
+    "No login-based scraping",
+    "No credential material committed"
+  ],
+  "deviations": [
+    "Category JPEGs landed with the first asset commit; their manifest entries and generation evidence are in the separate category commit."
+  ],
+  "source_probe": {
+    "systeme": {
+      "url": "https://systeme.ru/product/GAL001029",
+      "status": 200,
+      "json_ld_type": "Product",
+      "sku": "GAL001029",
+      "has_image": true
+    }
+  }
+}
