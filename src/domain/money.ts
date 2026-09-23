@@ -3,6 +3,11 @@ import Decimal from "decimal.js";
 export type Currency = "KZT" | "CNY" | "USD" | "RUB";
 export interface MoneyJSON { amount: string; currency: Currency }
 
+export function formatAmount(value: Decimal): string {
+  const [whole, fraction = ""] = value.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toString().split(".");
+  return `${whole}.${fraction.padEnd(2, "0")}`;
+}
+
 /** Exact two-decimal money. Allocation gives leftover cents to earlier shares. */
 export class Money {
   private constructor(public readonly amount: string, public readonly currency: Currency) {}
@@ -10,8 +15,7 @@ export class Money {
   static of(amount: string | number | Decimal, currency: Currency = "KZT"): Money {
     const value = new Decimal(amount);
     if (!value.isFinite() || value.decimalPlaces() > 2) throw new RangeError("money must have at most two decimal places");
-    const [whole, fraction = ""] = value.toDecimalPlaces(2).toString().split(".");
-    return new Money(`${whole}.${fraction.padEnd(2, "0")}`, currency);
+    return new Money(formatAmount(value), currency);
   }
 
   private sameCurrency(other: Money): void {

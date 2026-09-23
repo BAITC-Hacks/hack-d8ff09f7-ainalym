@@ -5,7 +5,7 @@ export type SqlValue = string | number | bigint | null | Uint8Array;
 export interface Tables {
   organization: { id: string; name: string; payload: string };
   supplier: { id: string; name: string; lead_time_days: number; review_days: number; terms: string; currency: string; version: number };
-  sku: { code_1c: string; supplier_id: string; article: string | null; name: string; unit: string | null; category: string | null; unit_cost: string | null; moq: number; weight: string | null; first_sale_ym: string | null; months_with_sales: number | null; median_month_qty: string | null; p95_doc_qty: string | null; version: number };
+  sku: { code_1c: string; supplier_id: string; article: string | null; name: string; unit: string | null; category: string | null; unit_cost: string | null; moq: number; weight: string | null; first_sale_ym: string | null; months_with_sales: number | null; median_month_qty: string | null; p95_doc_qty: string | null; on_hand_qty: string | null; on_hand_as_of: string | null; version: number };
   sales_line: { id: number; code_1c: string; doc_no: string | null; doc_type: string | null; at: string; warehouse: string | null; qty: string; source: string };
   sales_month: { code_1c: string; ym: string; qty_file: string | null; qty_lines: string | null; qty_regular: string | null; stockout: number };
   stock_month: { code_1c: string; ym: string; opening_qty: string | null; known: number };

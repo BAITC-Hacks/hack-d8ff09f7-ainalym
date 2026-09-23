@@ -23,8 +23,9 @@ function fixture(options: { seasonal?: boolean; stockout?: boolean; oneoff?: boo
     const censored = options.stockout && ym === "2025-08";
     database.prepare("INSERT INTO sales_month (code_1c,ym,qty_file,stockout) VALUES (?,?,?,?)")
       .run("TEST", ym, censored ? "0" : String(quantity), censored ? 1 : 0);
-    if (!censored) database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty) VALUES ('TEST',?,?,?)")
-      .run(`DOC-${ym}`, `${ym}-15`, String(quantity));
+    if (!censored) for (let part = 0; part < (quantity > 20 ? 2 : 1); part++)
+      database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty) VALUES ('TEST',?,?,?)")
+        .run(`DOC-${ym}-${part}`, `${ym}-15`, String(quantity > 20 ? quantity / 2 : quantity));
   }
   if (options.oneoff) database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty,source) VALUES ('TEST','ONEOFF','2025-08-20','5000','judge')").run();
   database.prepare("INSERT INTO stock_month (code_1c,ym,opening_qty) VALUES ('TEST','2025-01','20')").run();
@@ -35,6 +36,16 @@ function fixture(options: { seasonal?: boolean; stockout?: boolean; oneoff?: boo
 const context = (database: DatabaseSync, as_of = "2025-09-23") => ({ database, as_of });
 
 describe("deterministic replenishment need", () => {
+  it("completes a supplier's SKUs when one has no sales", async () => {
+    const database = fixture();
+    database.prepare("INSERT INTO sku (code_1c,supplier_id,name,moq) VALUES ('INACTIVE','IEK','Без продаж',1)").run();
+    database.prepare("INSERT INTO stock_month (code_1c,ym,opening_qty) VALUES ('INACTIVE','2025-09','5')").run();
+    const results = await Promise.all(["TEST", "INACTIVE"].map((code) => computeNeed(code, params, context(database))));
+    expect(results[0].need).toBeGreaterThan(0);
+    expect(results[1]).toMatchObject({ need: 0, flags: ["inactive"], components: { flags: ["inactive"] } });
+    expect(results[1].rationale_ru).toContain("нет продаж за период — заказ не требуется");
+  });
+
   it("reduces need when in-transit supply rises", async () => {
     const base = await computeNeed("TEST", params, context(fixture()));
     const supplied = await computeNeed("TEST", params, context(fixture({ inTransit: 2 })));
@@ -64,6 +75,22 @@ describe("deterministic replenishment need", () => {
     expect(spiked.rationale_ru).toContain("ONEOFF");
   });
 
+  it("excludes the eval document and a 5000-unit injection on a high-volume SKU", async () => {
+    const database = fixture();
+    database.prepare("UPDATE sku SET median_month_qty='14502',p95_doc_qty='144' WHERE code_1c='TEST'").run();
+    database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty) VALUES ('TEST','20000099834','2025-07-20','7488')").run();
+    const before = await computeNeed("TEST", params, context(database));
+    database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty) VALUES ('TEST','INJECTED','2025-08-20','5000')").run();
+    const after = await computeNeed("TEST", params, context(database));
+    expect(after.components.outlier_threshold).toBe(720);
+    expect(after.components.outliers_excluded).toEqual(expect.arrayContaining([
+      expect.objectContaining({ doc_no: "20000099834" }), expect.objectContaining({ doc_no: "INJECTED" }),
+    ]));
+    expect(after.rationale_ru).toContain("исключено");
+    expect(after.rationale_ru).toContain("20000099834");
+    expect(Math.abs((after.components.base_rate as number) / (before.components.base_rate as number) - 1)).toBeLessThan(0.1);
+  });
+
   it("refuses a missing stock source", async () => {
     const database = fixture();
     database.prepare("DELETE FROM stock_month WHERE code_1c='TEST'").run();
@@ -75,5 +102,13 @@ describe("deterministic replenishment need", () => {
     expect(result.components).toEqual(expect.objectContaining({ on_hand: 20, in_transit: 0, moq: 1 }));
     expect(result.rationale_ru).toContain("20");
     expect(result.need).toBeGreaterThan(0);
+  });
+
+  it("uses a fresh on-hand snapshot only once it is dated", async () => {
+    const database = fixture();
+    database.prepare("UPDATE sku SET on_hand_qty='7',on_hand_as_of='2025-09-22' WHERE code_1c='TEST'").run();
+    expect((await computeNeed("TEST", params, context(database, "2025-09-01"))).components.on_hand).toBe(20);
+    const fresh = await computeNeed("TEST", params, context(database));
+    expect(fresh.components).toMatchObject({ on_hand: 7, on_hand_as_of: "2025-09-22" });
   });
 });
