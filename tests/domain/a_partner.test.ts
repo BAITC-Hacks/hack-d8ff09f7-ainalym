@@ -4,6 +4,7 @@ import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from "nod
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { computeNeed } from "../../src/domain/engine";
+import { migrate } from "../../src/db/client";
 import { paramsForSupplier } from "../../src/domain/params";
 import { runCalculation } from "../../src/domain/apply";
 
@@ -12,6 +13,7 @@ const fixture = JSON.parse(readFileSync(join(process.cwd(), "tests/fixtures/eval
   as_of: string; skus: Record<string, { code_1c: string; supplier_id: string }>;
 };
 const database = existsSync(path) ? new DatabaseSync(path) : null;
+if (database) migrate(database);
 const need = (name: string) => {
   if (!database) throw new Error("run npm run etl first");
   const sku = fixture.skus[name];
@@ -78,6 +80,7 @@ describe.skipIf(!database)("named partner SKU properties", () => {
     copyFileSync(path, copy);
     const writable = new DatabaseSync(copy);
     try {
+      migrate(writable);
       const result = await runCalculation({ supplier: "SE" }, {}, { database: writable, as_of: fixture.as_of });
       expect(result.recommended).toBeGreaterThan(0);
       expect(result.proposals).toHaveLength(1);

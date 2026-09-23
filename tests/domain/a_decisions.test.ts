@@ -33,7 +33,7 @@ describe("review queue and versioned approval", () => {
     const database = fixture(false);
     const today = await todayView("ORG-1", database);
     expect(today.lead).toBeTruthy();
-    expect((today.pulse as { money: { empty_reason: string } }).money.empty_reason).toBe("organization_not_found");
+    expect((today.pulse as { money: { risks: { code: string }[] } }).money.risks).toEqual(expect.arrayContaining([expect.objectContaining({ code: "opening_cash_unknown" })]));
   });
   it("shows one decision with rationale, sources and two effects", async () => {
     const database = fixture();

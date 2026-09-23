@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { db, stateVersion } from "../db/client";
+import { db, stateVersion, withTx, bumpStateVersion } from "../db/client";
 import { catalogQuestion } from "./catalog";
 import { decideChoice, selectedProvider, type ChoiceResult } from "./provider";
 
@@ -56,6 +56,7 @@ function versionsFor(subject_ref: string, context: Record<string, unknown>): Rec
   const sku = db().prepare("SELECT version FROM sku WHERE code_1c = ?").get(skuCode) as { version: number } | undefined;
   if (sku) versions[`sku:${skuCode}`] = sku.version;
   if (Object.keys(versions).length === 0) versions.state = stateVersion();
+  versions.context = Number.parseInt(createHash("sha256").update(JSON.stringify(context)).digest("hex").slice(0, 12), 16);
   return versions;
 }
 
@@ -79,6 +80,7 @@ function fromRow(row: Record<string, unknown>): DecisionRecord {
     mode: row.mode as DecisionRecord["mode"],
     evidence_versions: JSON.parse(String(row.evidence_versions || "{}")), rubric_version: String(row.rubric_version || ""),
     cache_key: String(row.cache_key || ""), at: String(row.at),
+    label: row.mode === "rules" ? "Правила без LLM" : row.mode === "replay" ? "Replay · recorded decision" : undefined,
   };
 }
 
@@ -89,6 +91,7 @@ export async function decide(question_id: string, subject_ref: string, context: 
   const clean = sanitizeDecisionContext(context);
   const input = clean && typeof clean === "object" && !Array.isArray(clean) ? clean as Record<string, unknown> : {};
   const versions = versionsFor(subject_ref, input);
+  const startState = stateVersion();
   const rubric = question?.rubric_version ?? "unsupported";
   const hint = modelHint(selectedProvider());
   const missingRequired = question && (question.required_input_context ?? []).some(key => input[key] === undefined || input[key] === null || input[key] === "");
@@ -107,7 +110,7 @@ export async function decide(question_id: string, subject_ref: string, context: 
   }
   // A model response to an older SKU or inbox state is never accepted as a current judgment.
   const current = versionsFor(subject_ref, input);
-  if (JSON.stringify(current) !== JSON.stringify(versions)) {
+  if (JSON.stringify(current) !== JSON.stringify(versions) || stateVersion() !== startState) {
     result = { answer: null, distribution: {}, provider: result.provider, model_version: result.model_version, result_state: "insufficient", label: result.label };
   }
   const key = cacheKey(question_id, subject_ref, versions, rubric, result.model_version);
@@ -115,11 +118,14 @@ export async function decide(question_id: string, subject_ref: string, context: 
     ...result, id: `DR-${randomUUID()}`, question_id, subject_ref, evidence_versions: versions,
     rubric_version: rubric, mode, cache_key: key, at: new Date().toISOString(),
   };
-  db().prepare(`INSERT INTO decision_record
-    (id, question_id, subject_ref, answer, distribution, provider, model_version, result_state, mode, at, evidence_versions, rubric_version, cache_key)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-      record.id, question_id, subject_ref, record.answer, JSON.stringify(record.distribution), record.provider,
-      record.model_version, record.result_state, mode, record.at, JSON.stringify(versions), rubric, key,
-    );
+  withTx(tx => {
+    tx.prepare(`INSERT INTO decision_record
+      (id, question_id, subject_ref, answer, distribution, provider, model_version, result_state, mode, at, evidence_versions, rubric_version, cache_key)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+        record.id, question_id, subject_ref, record.answer, JSON.stringify(record.distribution), record.provider,
+        record.model_version, record.result_state, mode, record.at, JSON.stringify(versions), rubric, key,
+      );
+    bumpStateVersion(tx);
+  });
   return record;
 }

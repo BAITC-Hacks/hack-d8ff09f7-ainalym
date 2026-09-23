@@ -86,6 +86,12 @@ describe("money derived from ledger rows", () => {
     const view = await moneyView("ORG");
     expect(view.cash).toEqual(expect.arrayContaining([{ amount: "1000.00", currency: "KZT" }, { amount: "50.00", currency: "USD" }]));
   });
+  it("states when the ETL has no opening cash row", async () => {
+    q("DELETE FROM organization WHERE id='ORG'");
+    const view = await moneyView("partner");
+    expect(view.cash).toEqual([]);
+    expect(view.risks).toEqual(expect.arrayContaining([expect.objectContaining({ code: "opening_cash_unknown" })]));
+  });
   it("adds incoming and subtracts outgoing payments once", async () => {
     q("INSERT INTO payment(id,direction,counterparty_id,amount,currency,payment_ref,at) VALUES ('P-1','in','X','500.00','KZT','REF-1','2026-09-23')");
     q("INSERT INTO payment(id,direction,counterparty_id,amount,currency,payment_ref,at) VALUES ('P-2','out','SE','300.00','KZT','REF-2','2026-09-23')");
@@ -101,6 +107,18 @@ describe("money derived from ledger rows", () => {
     approveOrder("PO-1", 2);
     const view = await moneyView("ORG", new Date("2026-09-23T00:00:00Z"));
     expect(view.next_60d.out.map(r => r.amount).sort()).toEqual(["300.00", "700.00"]);
+  });
+  it("keeps an overdue open prepayment visible", async () => {
+    approveOrder("PO-1", 2);
+    q("UPDATE obligation SET due_at='2026-09-20T00:00:00Z' WHERE kind='supplier_prepayment'");
+    const view = await moneyView("ORG", new Date("2026-09-23T00:00:00Z"));
+    expect(view.next_60d.out.map(r => r.amount).sort()).toEqual(["300.00", "700.00"]);
+  });
+  it("states a cash shortfall in the obligation's currency", async () => {
+    q("UPDATE organization SET payload=? WHERE id='ORG'", JSON.stringify({ opening_cash: [{ amount: "200.00", currency: "KZT" }] }));
+    approveOrder("PO-1", 2);
+    const view = await moneyView("ORG", new Date("2026-09-23T00:00:00Z"));
+    expect(view.risks).toEqual(expect.arrayContaining([expect.objectContaining({ code: "cash_shortfall", amount: "800.00", currency: "KZT" })]));
   });
   it("counts missing cost instead of summing it as zero", async () => {
     approveOrder("PO-2", 1);
@@ -137,6 +155,10 @@ describe("world events and SKU drilldown", () => {
     await applyWorldEvent(event("WE-2", "stock_snapshot", "SE-1", { ym: "2026-09", opening_qty: null }));
     expect(one("SELECT known,opening_qty FROM stock_month WHERE code_1c='SE-1'")).toMatchObject({ known: 0, opening_qty: null });
   });
+  it("accepts a world stock snapshot array and its explicit known flag", async () => {
+    await applyWorldEvent(event("WE-STOCKS", "stock_snapshot", "SE-1", { ym: "2026-09", stocks: [{ code_1c: "SE-1", opening_qty: "0", known: 0 }] }));
+    expect(one("SELECT known,opening_qty FROM stock_month WHERE code_1c='SE-1'")).toMatchObject({ known: 0, opening_qty: null });
+  });
   it("updates in-transit quantity and marks the affected SKU", async () => {
     const r = await applyWorldEvent(event("WE-3", "in_transit_update", "SE-1", { po_ref: "SUP-1", qty: 100 }));
     expect(r.affected_codes).toEqual(["SE-1"]);
@@ -146,6 +168,20 @@ describe("world events and SKU drilldown", () => {
     await applyWorldEvent(event("WE-4", "judge_message", "SE-1", { qty: 5000, at: "2026-09-23" }, "Разовый заказ 5000 шт"));
     expect(one("SELECT qty,source FROM sales_line WHERE code_1c='SE-1'")).toMatchObject({ qty: "5000", source: "judge" });
   });
+  it("applies the judge one-off document payload", async () => {
+    await applyWorldEvent(event("WE-J1", "judge_message", "SE-1", { action: "inject_sales_line", line: { code_1c: "SE-1", qty: "5000", at: "2026-08-22", doc_no: "JUDGE-DOC" } }));
+    expect(one("SELECT doc_no,source FROM sales_line WHERE code_1c='SE-1'")).toMatchObject({ doc_no: "JUDGE-DOC", source: "judge" });
+    expect(one("SELECT state,rule FROM outlier_doc WHERE doc_no='JUDGE-DOC'")).toMatchObject({ state: "excluded", rule: "explicit_judge_oneoff" });
+  });
+  it("applies the judge in-transit increase as a delta", async () => {
+    q("INSERT INTO in_transit(code_1c,po_ref,qty) VALUES ('SE-1','BASE','20')");
+    await applyWorldEvent(event("WE-J2", "judge_message", "SE-1", { action: "adjust_in_transit", delta_qty: 100 }));
+    expect(one("SELECT sum(CAST(qty AS INTEGER)) AS n FROM in_transit WHERE code_1c='SE-1'")?.n).toBe(120);
+  });
+  it("applies the judge price update", async () => {
+    await applyWorldEvent(event("WE-J3", "judge_message", "SE-1", { action: "update_unit_cost", to: "360.00" }));
+    expect(one("SELECT unit_cost FROM sku WHERE code_1c='SE-1'")?.unit_cost).toBe("360.00");
+  });
   it("updates unit cost from a price event", async () => {
     await applyWorldEvent(event("WE-5", "price_update", "SE-1", { unit_cost: "125.00" }));
     expect(one("SELECT unit_cost FROM sku WHERE code_1c='SE-1'")?.unit_cost).toBe("125.00");
@@ -154,8 +190,11 @@ describe("world events and SKU drilldown", () => {
     q("INSERT INTO stock_month(code_1c,ym,opening_qty,known) VALUES ('SE-1','2026-09','5',1)");
     const view = await skuView("SE-1");
     expect(view).toMatchObject({ sku: { code_1c: "SE-1" }, series: expect.any(Array), in_transit: expect.any(Array), timeline: expect.any(Array) });
+    expect((view?.series as Record<string, unknown>[])[0].outliers).toEqual([]);
   });
   it("recomputes exactly the requested codes", async () => {
+    q("INSERT INTO sales_month(code_1c,ym,qty_file) VALUES ('SE-1','2026-08','10')");
+    q("INSERT INTO stock_month(code_1c,ym,opening_qty,known) VALUES ('SE-1','2026-08','5',1)");
     const r = await recomputeAffected(["SE-1"]);
     expect(r.affected_codes).toEqual(["SE-1"]);
     expect(r.affected_codes).not.toContain("IEK-1");

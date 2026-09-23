@@ -3,10 +3,10 @@ import Decimal from "decimal.js";
 export type Currency = "KZT" | "CNY" | "USD" | "RUB";
 export interface MoneyJSON { amount: string; currency: Currency }
 
-function decimalAmount(value: Decimal): string {
+export function formatAmount(value: Decimal): string {
   if (value.isZero()) return "0.00";
   if (value.e > 1000) throw new RangeError("money amount is too large");
-  const raw = value.toDecimalPlaces(2).toString();
+  const raw = value.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toString();
   const match = raw.match(/^(-?)(\d+)(?:\.(\d+))?(?:e([+-]?\d+))?$/i);
   if (!match) throw new RangeError("invalid money amount");
   const [, sign, whole, fraction = "", exponent = "0"] = match;
@@ -25,7 +25,7 @@ export class Money {
   static of(amount: string | number | Decimal, currency: Currency = "KZT"): Money {
     const value = new Decimal(amount);
     if (!value.isFinite() || value.decimalPlaces() > 2) throw new RangeError("money must have at most two decimal places");
-    return new Money(decimalAmount(value), currency);
+    return new Money(formatAmount(value), currency);
   }
 
   private sameCurrency(other: Money): void {
