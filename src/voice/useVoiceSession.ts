@@ -157,8 +157,10 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
           if (typeof snapshot.state_version === "number") latestStateVersion.current = snapshot.state_version;
         }
       } catch { /* voice can still answer if the state fingerprint is temporarily unavailable */ }
+      if (sessionGeneration !== generation.current) return;
       const sessionResponse = await fetch("/api/voice/session", { method: "POST", cache: "no-store" });
       const session = await sessionResponse.json() as SessionResponse;
+      if (sessionGeneration !== generation.current) return;
       if (!sessionResponse.ok || !session.client_secret || !session.expires_at || session.expires_at * 1000 <= Date.now()) throw new Error("Provider unavailable");
       if (!navigator.mediaDevices?.getUserMedia) throw new Error("Provider unavailable");
       const media = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -194,6 +196,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       dataChannel.onmessage = e => { try { void handleEvent(JSON.parse(e.data) as RealtimeEvent, sessionGeneration); } catch { /* malformed transport event */ } };
       const offer = await connection.createOffer();
       await connection.setLocalDescription(offer);
+      if (sessionGeneration !== generation.current) return;
       const answerResponse = await fetch("https://api.openai.com/v1/realtime/calls", {
         method: "POST", headers: { Authorization: `Bearer ${session.client_secret}`, "Content-Type": "application/sdp" }, body: offer.sdp,
       });
