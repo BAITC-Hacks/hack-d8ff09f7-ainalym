@@ -16,6 +16,8 @@ const d = new DatabaseSync(dbPath);
 d.exec(readFileSync(join(root, 'src/db/schema.sql'), 'utf8'));
 const skuColumns = new Set(d.prepare('PRAGMA table_info(sku)').all().map(row => row.name));
 for (const name of ['on_hand_qty','on_hand_as_of']) if (!skuColumns.has(name)) d.exec(`ALTER TABLE sku ADD COLUMN ${name} TEXT`);
+const salesMonthColumns = new Set(d.prepare('PRAGMA table_info(sales_month)').all().map(row => row.name));
+if (!salesMonthColumns.has('stockout_kind')) d.exec('ALTER TABLE sales_month ADD COLUMN stockout_kind TEXT');
 
 const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 const monthOf = h => { const v = String(h ?? '').trim().toLowerCase(); const m = v.match(/20\d\d/); if (!m) return null; const i = months.findIndex(x => v.startsWith(x)); return i < 0 ? null : `${m[0]}-${String(i + 1).padStart(2, '0')}`; };

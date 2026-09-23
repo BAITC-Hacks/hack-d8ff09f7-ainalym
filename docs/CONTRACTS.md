@@ -21,7 +21,7 @@ Storage source: src/db/schema.sql. The raw row types are Tables in src/db/repo/i
 | supplier | id:s, name:s, lead_time_days:i, review_days:i, terms:j, currency:s, version:i | id |
 | sku | code_1c:s, supplier_id:s, article:s?, name:s, unit:s?, category:s?, unit_cost:s?, moq:i, weight:s?, first_sale_ym:s?, months_with_sales:i?, median_month_qty:s?, p95_doc_qty:s?, version:i | code_1c |
 | sales_line | id:i, code_1c:s, doc_no:s?, doc_type:s?, at:s, warehouse:s?, qty:s, source:s | id |
-| sales_month | code_1c:s, ym:s, qty_file:s?, qty_lines:s?, qty_regular:s?, stockout:i | (code_1c, ym) |
+| sales_month | code_1c:s, ym:s, qty_file:s?, qty_lines:s?, qty_regular:s?, stockout:i, stockout_kind:s? (`observed`/`inferred`) | (code_1c, ym) |
 | stock_month | code_1c:s, ym:s, opening_qty:s?, known:i | (code_1c, ym) |
 | in_transit | id:i, code_1c:s, po_ref:s, qty:s, expected_at:s?, source_file:s? | id |
 | seasonality | supplier_id:s, year:i, month:i, revenue_kzt:s? | (supplier_id, year, month) |

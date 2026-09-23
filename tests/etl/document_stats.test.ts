@@ -18,12 +18,20 @@ describe("ETL document statistics", () => {
       for (const year of [2024, 2025]) for (let month = 1; month <= 12; month++)
         database.prepare("INSERT INTO seasonality(supplier_id,year,month,revenue_kzt) VALUES ('IEK',?,?,'100')").run(year, month);
       database.prepare("INSERT INTO sales_month(code_1c,ym,qty_file) VALUES ('SKU','2025-01','103')").run();
+      for (const ym of ["2025-02", "2025-03"]) database.prepare("INSERT INTO sales_month(code_1c,ym,qty_file) VALUES ('SKU',?,'1')").run(ym);
+      for (const ym of ["2025-04", "2025-05"]) database.prepare("INSERT INTO sales_month(code_1c,ym,qty_file) VALUES ('SKU',?,'0')").run(ym);
+      database.prepare("INSERT INTO stock_month(code_1c,ym,opening_qty,known) VALUES ('SKU','2025-04',NULL,0)").run();
+      database.prepare("INSERT INTO stock_month(code_1c,ym,opening_qty,known) VALUES ('SKU','2025-05','0',1)").run();
       for (const [doc, qty] of [["D1", "50"], ["D1", "50"], ["D2", "3"]])
         database.prepare("INSERT INTO sales_line(code_1c,doc_no,doc_type,at,qty) VALUES ('SKU',?,'Расходная накладная','2025-01-15',?)").run(doc, qty);
       database.close();
       execFileSync(process.execPath, [resolve("scripts/etl/derive.mjs"), "--db", path]);
       const result = new DatabaseSync(path);
       expect(result.prepare("SELECT p95_doc_qty FROM sku WHERE code_1c='SKU'").get()).toEqual({ p95_doc_qty: "100" });
+      expect(result.prepare("SELECT ym,stockout,stockout_kind FROM sales_month WHERE ym IN ('2025-04','2025-05') ORDER BY ym").all()).toEqual([
+        { ym: "2025-04", stockout: 0, stockout_kind: "inferred" },
+        { ym: "2025-05", stockout: 1, stockout_kind: "observed" },
+      ]);
       result.close();
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });

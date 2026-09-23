@@ -112,12 +112,13 @@ describe("deterministic replenishment need", () => {
     expect(peak.components.forecast_qty).toBeGreaterThan(quiet.components.forecast_qty as number);
   });
 
-  it("compensates a censored stockout month", async () => {
-    const baseline = await computeNeed("TEST", params, context(fixture()));
-    const censored = await computeNeed("TEST", params, context(fixture({ stockout: true })));
-    expect(censored.components.stockout_months).toContain("2025-08");
-    expect(censored.components.stockout_uplift).toBeGreaterThan(0);
-    expect(censored.need).toBeGreaterThanOrEqual(baseline.need - 1);
+  it("shows raw and corrected demand for the same SKU with observed stockout", async () => {
+    const result = await computeNeed("TEST", params, context(fixture({ stockout: true })));
+    expect(result.components.stockout_months).toContain("2025-08");
+    expect(result.components.stockout_uplift).toBeGreaterThan(0);
+    expect(result.components.corrected_demand_rate).toBeGreaterThan(result.components.raw_demand_rate as number);
+    expect(result.rationale_ru).toContain(`фактические продажи ${result.components.raw_demand_rate}`);
+    expect(result.rationale_ru).toContain(`спрос с учётом подтверждённого дефицита ${result.components.corrected_demand_rate}`);
   });
 
   it("excludes an injected one-off document from regular demand", async () => {

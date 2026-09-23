@@ -14,7 +14,7 @@ export interface EngineContext { database?: DatabaseSync; as_of?: string }
 
 type Sku = { code_1c: string; supplier_id: string; name: string; unit: string | null; moq: number; months_with_sales: number | null; median_month_qty: string | null; p95_doc_qty: string | null;
   on_hand_qty: string | null; on_hand_as_of: string | null };
-type Month = { ym: string; qty_file: string | null; qty_regular: string | null; stockout: number };
+type Month = { ym: string; qty_file: string | null; qty_regular: string | null; stockout: number; stockout_kind: string | null };
 type Sale = { doc_no: string | null; at: string; qty: string; id: number; source: string };
 type Outlier = { doc_no: string | null; at: string | null; state: string };
 
@@ -53,7 +53,7 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
   const unit = sku.unit?.trim() || "шт";
   const orderRule = sku.supplier_id === "IEK" ? "минимум" : "кратность";
   if (params.lead_time_days < 1 || params.review_days < 0 || params.growth_cap < 0 || params.outlier.min_units < 0 || sku.moq < 1) throw new RangeError("invalid engine parameters");
-  const months = database.prepare("SELECT ym,qty_file,qty_regular,stockout FROM sales_month WHERE code_1c=? AND ym<=? ORDER BY ym")
+  const months = database.prepare("SELECT ym,qty_file,qty_regular,stockout,stockout_kind FROM sales_month WHERE code_1c=? AND ym<=? ORDER BY ym")
     .all(code_1c, monthOf(asOf)) as Month[];
   const sales = database.prepare("SELECT id,doc_no,at,qty,source FROM sales_line WHERE code_1c=? AND at<=? AND (doc_type IN ('Расходная накладная','sales_day','judge_message') OR doc_type IS NULL) ORDER BY at,id")
     .all(code_1c, `${asOf}T23:59:59`) as Sale[];
@@ -151,14 +151,16 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
       ? Decimal.max(0, dec(month.qty_file).minus(excludedFromFile.get(month.ym) ?? 0).plus(worldDelta.get(month.ym) ?? 0))
       : (byMonth.get(month.ym) ?? new Decimal(0)),
     stockout: month.stockout === 1,
+    stockout_kind: month.stockout_kind,
   }));
   if (!series.length) {
-    for (const [ym, qty] of [...byMonth].sort(([a], [b]) => a.localeCompare(b))) series.push({ ym, qty, stockout: false });
+    for (const [ym, qty] of [...byMonth].sort(([a], [b]) => a.localeCompare(b))) series.push({ ym, qty, stockout: false, stockout_kind: null });
   }
   const uncensored = series.filter((point) => !point.stockout);
   if (!uncensored.length) throw new Error(`uncensored sales source missing for ${code_1c}`);
   const baseRate = uncensored.reduce((sum, point) => sum.plus(point.qty), new Decimal(0)).div(uncensored.length);
   const stockoutMonths = series.filter((point) => point.stockout).map((point) => point.ym);
+  const inferredStockoutMonths = series.filter((point) => point.stockout_kind === "inferred").map((point) => point.ym);
   const stockoutUplift = series.filter((point) => point.stockout)
     .reduce((sum, point) => sum.plus(Decimal.max(0, baseRate.minus(point.qty))), new Decimal(0));
   const rawObservedRate = series.reduce((sum, point) => sum.plus(point.qty), new Decimal(0)).div(series.length);
@@ -214,7 +216,9 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     season: Object.fromEntries([...season].map(([month, index]) => [month, numeric(index.toDecimalPlaces(3))])),
     growth: numeric(growth.toDecimalPlaces(3)), horizon_days: horizonDays,
     forecast_qty: numeric(forecastQty.toDecimalPlaces(3)), monthly_forecast: Object.fromEntries([...monthlyForecast].map(([ym, qty]) => [ym, numeric(qty.toDecimalPlaces(3))])),
-    stockout_months: stockoutMonths, stockout_uplift: numeric(stockoutUplift.toDecimalPlaces(3)),
+    stockout_months: stockoutMonths, inferred_stockout_months: inferredStockoutMonths,
+    raw_demand_rate: numeric(rawObservedRate.toDecimalPlaces(3)), corrected_demand_rate: numeric(baseRate.toDecimalPlaces(3)),
+    stockout_uplift: numeric(stockoutUplift.toDecimalPlaces(3)),
     outliers_excluded: excluded, median_month_qty: numeric(medianMonth), p95_doc_qty: numeric(p95Doc), outlier_threshold: numeric(threshold),
     safety: numeric(safety.toDecimalPlaces(3)), on_hand: numeric(onHand), on_hand_as_of: freshOnHand ? sku.on_hand_as_of : `${stockMonth}-01`, in_transit: numeric(transit),
     in_transit_sources: transitRows, in_transit_excluded_late: allTransitRows.filter((row) => !transitRows.includes(row)),
@@ -224,6 +228,6 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     days_of_cover: coverDays ? numeric(coverDays.toDecimalPlaces(1)) : null,
   };
   const arrivals = transitRows.filter((row) => row.expected_at).map((row) => `${row.qty} ${unit} прибудет до ${row.expected_at!.slice(8, 10)}.${row.expected_at!.slice(5, 7)}`);
-  const rationale_ru = `Код 1С ${code_1c}: регулярный спрос ${components.base_rate} ${unit}/мес; сезонность ${ownSeason ? "артикула" : "поставщика"}, рост ×${components.growth}; прогноз на ${horizonDays} дн ${components.forecast_qty} + запас ${components.safety} − остаток ${components.on_hand} − в пути ${components.in_transit} − утверждённый заказ ${components.approved_order_qty} ${unit} = потребность ${need} ${unit} (${orderRule} ${sku.moq} ${unit}). ${arrivals.length ? `Ожидаемые поставки: ${arrivals.join(", ")}. ` : ""}Без продаж из-за отсутствия остатка: ${stockoutMonths.join(", ") || "нет"}; исключены разовые документы: ${excluded.map((doc) => doc.doc_no).join(", ") || "нет"}.${stockStale ? ` Последний подтверждённый остаток ${stockMonth}; текущий остаток неизвестен, заказ требует уточнения.` : ""}`;
+  const rationale_ru = `Код 1С ${code_1c}: фактические продажи ${components.raw_demand_rate} ${unit}/мес; спрос с учётом подтверждённого дефицита ${components.corrected_demand_rate} ${unit}/мес; сезонность ${ownSeason ? "артикула" : "поставщика"}, рост ×${components.growth}; прогноз на ${horizonDays} дн ${components.forecast_qty} + запас ${components.safety} − остаток ${components.on_hand} − в пути ${components.in_transit} − утверждённый заказ ${components.approved_order_qty} ${unit} = потребность ${need} ${unit} (${orderRule} ${sku.moq} ${unit}). ${arrivals.length ? `Ожидаемые поставки: ${arrivals.join(", ")}. ` : ""}Без продаж из-за подтверждённого отсутствия остатка: ${stockoutMonths.join(", ") || "нет"}; месяцы с неизвестным остатком: ${inferredStockoutMonths.join(", ") || "нет"}; исключены разовые документы: ${excluded.map((doc) => doc.doc_no).join(", ") || "нет"}.${stockStale ? ` Последний подтверждённый остаток ${stockMonth}; текущий остаток неизвестен, заказ требует уточнения.` : ""}`;
   return { forecast: { horizon_months: horizonDays / 30, base_rate: components.base_rate, season: components.season, growth: components.growth, stockout_uplift: components.stockout_uplift, safety: components.safety, method_ru: "Сезонный спрос × рост; цензурирование дефицита; исключение разовых документов" }, need, rationale_ru, components };
 }
