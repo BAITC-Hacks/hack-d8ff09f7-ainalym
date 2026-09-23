@@ -4,7 +4,7 @@ import { startRun, recordAction, finishRun, type ActionInput } from "../server/l
 import type { DatabaseSync } from "node:sqlite";
 import { Money } from "./money";
 
-export interface WorldEventRow { id: string; kind: string; org_id?: string; source_id?: string; code_1c?: string | null; payload: string | Record<string, unknown>; text?: string | null; at?: string | null; run_id?: string | null }
+export interface WorldEventRow { id: string; kind: string; org_id?: string; source_id?: string; code_1c?: string | null; po_id?: string | null; payload: string | Record<string, unknown>; text?: string | null; at?: string | null; run_id?: string | null }
 export interface ApplyEventResult { applied: boolean; affected_codes: string[]; actions: ActionInput[]; escalations: ActionInput[]; reason?: string }
 type P = Record<string, unknown>;
 
@@ -126,7 +126,7 @@ export async function applyWorldEvent(event: WorldEventRow): Promise<ApplyEventR
           break;
         }
         case "supplier_reply":
-          actions.push({ kind: "status_change", po_id: String(payload.po_id || ""), subject_ref: String(payload.po_id || event.id), summary_ru: "Получен ответ поставщика", world_event_id: event.id, idempotency_key: `${event.id}:supplier_reply` });
+          actions.push({ kind: "status_change", po_id: String(payload.po_id || event.po_id || ""), subject_ref: String(payload.po_id || event.po_id || event.id), summary_ru: "Получен ответ поставщика", world_event_id: event.id, idempotency_key: `${event.id}:supplier_reply` });
           break;
         default:
           throw new Error(`unsupported_world_event:${event.kind}`);

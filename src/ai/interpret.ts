@@ -1,6 +1,60 @@
 import { db } from "../db/client";
 import { recordAction } from "../server/ledger";
 import { decide } from "./decisions";
+import { catalogQuestion } from "./catalog";
+import { decideChoice } from "./provider";
+
+export interface SupplierReplyDecision {
+  action: "split" | "expedite" | "unknown";
+  partial_share: string | null;
+  partial_qty: number | null;
+  delay_days: number | null;
+  promised_eta: string | null;
+  affected_lines: string[];
+  decision_record_id: string;
+}
+
+/** Typed extraction keeps quantities and dates under deterministic validation. */
+export async function interpretSupplierReply(input: {
+  text: string; at: string; po_id: string; org_id: string; affected_lines: string[];
+}): Promise<SupplierReplyDecision> {
+  const text = input.text.toLowerCase().replace(/\u00a0/g, " ");
+  const shareMatch = text.match(/(\d+(?:[,.]\d+)?)\s*%/);
+  const qtyMatch = text.match(/(\d[\d\s]*)\s*шт/i) ?? text.match(/(\d[\d\s]*)\s*из\s*\d+/i);
+  const partialShare = shareMatch ? Number(shareMatch[1].replace(",", ".")) / 100 : null;
+  const partialQty = !shareMatch && qtyMatch ? Number(qtyMatch[1].replace(/\s/g, "")) : null;
+  const base = new Date(input.at);
+  if (!Number.isFinite(base.getTime())) throw new Error("invalid_reply_date");
+  const weeks = text.match(/через\s+(\d+)\s*недел/);
+  const days = text.match(/через\s+(\d+)\s*(?:дн|день|дня)/);
+  const until = text.match(/до\s+(\d{1,2})\.(\d{1,2})(?:\.(\d{4}))?/);
+  let eta: Date | null = null;
+  if (weeks || days) {
+    eta = new Date(base);
+    eta.setUTCDate(eta.getUTCDate() + Number(weeks?.[1] ?? days?.[1]) * (weeks ? 7 : 1));
+  } else if (until) {
+    const year = until[3] ? Number(until[3]) : base.getUTCFullYear();
+    eta = new Date(Date.UTC(year, Number(until[2]) - 1, Number(until[1])));
+    if (eta.getUTCDate() !== Number(until[1]) || eta.getUTCMonth() !== Number(until[2]) - 1) eta = null;
+    else if (!until[3] && eta.getTime() < base.getTime()) eta.setUTCFullYear(year + 1);
+  }
+  const delayDays = eta ? Math.ceil((eta.getTime() - base.getTime()) / 86_400_000) : null;
+  const context = { text: input.text, org_id: input.org_id, po_id: input.po_id };
+  const record = await decide("supplier_fulfilment", input.po_id, context);
+  const fallback = record.result_state === "decided" ? null : await decideChoice(catalogQuestion("supplier_fulfilment")!, context, "rules");
+  const chosen = fallback?.answer ?? record.answer;
+  const hasPartial = (partialShare !== null && partialShare > 0 && partialShare < 1)
+    || (partialQty !== null && Number.isSafeInteger(partialQty) && partialQty > 0);
+  const action = chosen === "split" && hasPartial && delayDays !== null && delayDays > 0 ? "split"
+    : (chosen === "expedite" || (chosen === "split" && !hasPartial)) && delayDays !== null && delayDays > 0 ? "expedite" : "unknown";
+  return {
+    action, partial_share: partialShare !== null && partialShare > 0 && partialShare < 1 ? String(partialShare) : null,
+    partial_qty: partialQty !== null && Number.isSafeInteger(partialQty) && partialQty > 0 ? partialQty : null,
+    delay_days: delayDays !== null && delayDays > 0 ? delayDays : null,
+    promised_eta: eta && delayDays !== null && delayDays > 0 ? eta.toISOString() : null,
+    affected_lines: [...new Set(input.affected_lines)], decision_record_id: record.id,
+  };
+}
 
 export interface OutlierDecision {
   answer: "one_off" | "regular" | null;
