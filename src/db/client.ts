@@ -20,6 +20,11 @@ export function db(): DatabaseSync {
 }
 
 export function migrate(d: DatabaseSync = db()): void {
+  for (const table of ["calc_run", "proposal"]) {
+    if (d.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table) &&
+        !(d.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).some(row => row.name === "org_id"))
+      d.exec(`ALTER TABLE ${table} ADD COLUMN org_id TEXT`);
+  }
   const sql = readFileSync(join(process.cwd(), "src", "db", "schema.sql"), "utf8");
   d.exec(sql);
   const columns = new Set((d.prepare("PRAGMA table_info(sku)").all() as { name: string }[]).map((row) => row.name));
