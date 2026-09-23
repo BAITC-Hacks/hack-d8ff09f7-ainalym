@@ -1,5 +1,5 @@
 L2b checkpoint — real partner data
-Done: routes, SKU drilldown, 45-event replay, judge presets, exact money and 30/70 obligations.
+Done: routes, SKU drilldown, durable affected-only recompute, 45-event replay, money and obligations.
 Evidence: domain check 48/48; HTTP money 200, order approval 200 then stale 409; two installments visible.
 Scenario: M1–M4, M5 subset, Money, World PASS; no opening cash is reported as unknown.
 RED: full SE run stops at no-sales SKU 030200010_ (L2a runCalculation); scenario reports M5-full FAIL.

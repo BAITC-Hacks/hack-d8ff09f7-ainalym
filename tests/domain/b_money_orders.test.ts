@@ -198,5 +198,8 @@ describe("world events and SKU drilldown", () => {
     const r = await recomputeAffected(["SE-1"]);
     expect(r.affected_codes).toEqual(["SE-1"]);
     expect(r.affected_codes).not.toContain("IEK-1");
+    expect(r.run_id).toMatch(/^RUN-/);
+    expect(one("SELECT count(*) AS n FROM recommendation WHERE run_id=? AND code_1c='SE-1'", r.run_id!)?.n).toBe(1);
+    expect(one("SELECT count(*) AS n FROM recommendation WHERE run_id=? AND code_1c='IEK-1'", r.run_id!)?.n).toBe(0);
   });
 });
