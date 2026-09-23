@@ -10,6 +10,7 @@ import { recomputeAffected } from "../../src/domain/recompute";
 import { computeNeed, type EngineParams } from "../../src/domain/engine";
 import { GET as getMoney } from "../../src/app/api/money/route";
 import { GET as getOrder } from "../../src/app/api/orders/[id]/route";
+import { GET as getRecommendations } from "../../src/app/api/recommendations/route";
 
 const q = (sql: string, ...args: (string | number | null)[]) => db().prepare(sql).run(...args);
 const one = (sql: string, ...args: (string | number | null)[]) => db().prepare(sql).get(...args) as Record<string, unknown> | undefined;
@@ -204,7 +205,7 @@ describe("world events and SKU drilldown", () => {
     expect(after.components.in_transit).toBe(0);
     expect(after.need).toBe(80);
   });
-  it("keeps B once and drops zero-need A from the supplier basket after an event", async () => {
+  it("keeps B in the basket API when the latest partial run drops A: 2 to 1", async () => {
     q("INSERT INTO sku(code_1c,supplier_id,name,unit_cost,moq) VALUES ('SE-2','SE','Second','2.00',1)");
     for (const code of ["SE-1", "SE-2"]) {
       for (let month = 1; month <= 12; month++) {
@@ -221,6 +222,10 @@ describe("world events and SKU drilldown", () => {
     const lines = JSON.parse(String(next.proposals[0].payload)).lines as { code_1c: string }[];
     expect(lines.map(line => line.code_1c)).toEqual(["SE-2"]);
     expect(next.proposals[0].supersedes_id).toBe(first.proposals[0].id);
+    const response = await getRecommendations(new Request("http://localhost/api/recommendations?supplier=SE"));
+    const body = await response.json() as { groups: { rows: { code_1c: string }[] }[] };
+    expect(response.status).toBe(200);
+    expect(body.groups.flatMap(group => group.rows.map(row => row.code_1c))).toEqual(["SE-2"]);
   });
   it("appends a sales day once and marks only its SKU", async () => {
     const e = event("WE-1", "sales_day", "SE-1", { at: "2026-09-23", qty: 3, doc_no: "DOC-1" });
