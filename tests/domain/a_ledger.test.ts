@@ -32,9 +32,10 @@ describe("agent loop ledger", () => {
   it("records sourced recompute, preparation and escalation once", async () => {
     const database = fixture();
     const result = await runCalculation({}, {}, { database, org_id: "ORG-1", as_of: "2025-01-01" });
-    const actions = database.prepare("SELECT kind,sources,autonomy FROM agent_action ORDER BY at,id").all() as
-      { kind: string; sources: string; autonomy: string }[];
-    expect(actions.map((row) => row.kind)).toEqual(expect.arrayContaining(["recompute", "recommendation_prepared", "escalation"]));
+    const actions = database.prepare("SELECT kind,subject_ref,sources,autonomy FROM agent_action ORDER BY at,id").all() as
+      { kind: string; subject_ref: string | null; sources: string; autonomy: string }[];
+    expect(actions.map((row) => row.kind)).toEqual(expect.arrayContaining(["recompute", "recommendation_prepared", "status_change", "escalation"]));
+    expect(actions).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "status_change", subject_ref: result.tasks[0].id })]));
     for (const action of actions) expect(JSON.parse(action.sources).length).toBeGreaterThan(0);
     expect(actions.find((row) => row.kind === "escalation")?.autonomy).toBe("escalated");
     expect((await queueView("ORG-1", database)).items[0].id).toBe(result.proposals[0].id);

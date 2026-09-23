@@ -168,6 +168,9 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
       await recordActionIn(run.agent_run_id, { kind: "recommendation_prepared", subject_ref: supplierId,
         summary_ru: `Подготовлены рекомендации ${supplierId}: ${lines.length} позиций`, rationale_ru: rationale,
         sources, autonomy: "auto", idempotency_key: `recommendation:${run_id}:${supplierId}` }, database);
+      await recordActionIn(run.agent_run_id, { kind: "status_change", subject_ref: taskId,
+        summary_ru: `Создана задача проверить заказ ${supplierId}`, rationale_ru: `Задача связана с предложением ${id}.`,
+        sources: [`proposal:${id}`, ...sources], autonomy: "auto", idempotency_key: `task:create:${taskId}` }, database);
       await recordActionIn(run.agent_run_id, { kind: "escalation", subject_ref: id,
         summary_ru: `Нужно решение по заказу ${supplierId}`, rationale_ru: rationale,
         sources, autonomy: "escalated", result: "needs_owner", idempotency_key: `escalation:${id}` }, database);
@@ -316,6 +319,10 @@ export async function decideProposal(id: string, proposalVersion: number, decisi
     rationale_ru: proposal.rationale_ru ?? undefined, sources: JSON.parse(proposal.sources),
     autonomy: "escalated", result: "done", idempotency_key: `decision:${id}:${proposalVersion}`,
     po_id: poId ?? undefined }, database);
+  if (poId) await recordActionIn(runId, { kind: "order_drafted", subject_ref: poId, po_id: poId,
+    summary_ru: `Подготовлен черновик заказа ${poId}`, rationale_ru: `Основание — утверждённое предложение ${id}, версия ${proposalVersion}.`,
+    sources: [`proposal:${id}`, ...JSON.parse(proposal.sources) as string[]], autonomy: "auto",
+    idempotency_key: `order:draft:${poId}` }, database);
   if (!run?.agent_run_id) await finishRunIn(runId, "done", database);
   const linkedTask = database.prepare("SELECT id,state,version FROM task WHERE proposal_id=?").get(id) as { id: string; state: string; version: number } | undefined;
   if (linkedTask?.state === "needs_review") await transitionTask(linkedTask.id, decision === "approve" ? "ready_to_handover" : "preparing", linkedTask.version, { database, org_id: ctx.org_id });
