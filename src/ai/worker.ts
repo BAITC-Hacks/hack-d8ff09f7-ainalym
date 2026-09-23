@@ -93,14 +93,19 @@ async function maybeSemanticDecisions(row: EventRow, payload: Record<string, unk
     await recordDecision(runId, row.id, "supplier_terms_hint", row.po_id || row.source_id, { text, org_id: row.org_id });
   }
   if (row.kind === "judge_message") {
-    const qty = Number(payload.document_qty ?? payload.qty);
-    const threshold = Number(payload.threshold);
-    if (Number.isFinite(qty) && Number.isFinite(threshold) && threshold > 0) {
+    const line = payload.line && typeof payload.line === "object" ? payload.line as Record<string, unknown> : {};
+    const qty = Number(line.qty ?? payload.document_qty ?? payload.qty);
+    if (line.qty !== undefined && payload.document_qty !== undefined && Number(line.qty) !== Number(payload.document_qty))
+      throw new Error("document_quantity_mismatch");
+    if (row.code_1c && Number.isFinite(qty) && qty > 0) {
+      const stats = (await domainRecompute([row.code_1c])).results[row.code_1c]?.components;
+      const threshold = Number(stats?.outlier_threshold);
+      if (!Number.isFinite(threshold) || threshold <= 0) throw new Error("outlier_statistics_unavailable");
       const judgment = await judgeOutlier({
-        qty, doc_no: payload.doc_no || row.source_id, code_1c: row.code_1c, text, org_id: row.org_id,
-      }, { threshold });
+        qty, doc_no: line.doc_no || payload.doc_no || row.source_id, code_1c: row.code_1c, text, org_id: row.org_id,
+      }, { threshold, median_month_qty: stats?.median_month_qty, p95_doc_qty: stats?.p95_doc_qty });
       await recordAction(runId, {
-        kind: "decision", subject_ref: String(payload.doc_no || row.source_id), world_event_id: row.id,
+        kind: "decision", subject_ref: String(line.doc_no || payload.doc_no || row.source_id), world_event_id: row.id,
         summary_ru: `Проверка разового заказа: ${judgment.answer ?? judgment.result_state}`,
         rationale_ru: `provider=${judgment.provider}; model=${judgment.model_version || "none"}`,
         sources: judgment.decision_record_id ? [judgment.decision_record_id] : [row.id],
@@ -109,8 +114,8 @@ async function maybeSemanticDecisions(row: EventRow, payload: Record<string, unk
       });
       if (judgment.result_state === "provider_error") throw new Error("provider_error:one_off_order");
       if (judgment.decision_record_id) review = {
-        subject: String(payload.doc_no || row.source_id), answer: judgment.answer,
-        decisionId: judgment.decision_record_id, at: String(payload.at || row.at || ""),
+        subject: String(line.doc_no || payload.doc_no || row.source_id), answer: judgment.answer,
+        decisionId: judgment.decision_record_id, at: String(line.at || payload.at || row.at || ""),
       };
     }
   }

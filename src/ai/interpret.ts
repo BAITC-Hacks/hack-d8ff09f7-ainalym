@@ -38,6 +38,7 @@ export async function judgeOutlier(doc: unknown, stats: unknown): Promise<Outlie
   if (!subject) return { answer: null, result_state: "insufficient", provider: "rule-boundary" };
   const record = await decide("one_off_order", subject, {
     document_qty: qty, threshold, text: String(item.text ?? ""),
+    median_month_qty: values.median_month_qty, p95_doc_qty: values.p95_doc_qty,
     code_1c: item.code_1c, doc_no: subject, org_id: item.org_id,
     subject_versions: values.subject_versions,
   });

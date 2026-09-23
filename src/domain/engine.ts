@@ -168,7 +168,7 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     growth: growth.toDecimalPlaces(3).toNumber(), horizon_days: horizonDays,
     forecast_qty: forecastQty.toDecimalPlaces(3).toNumber(), monthly_forecast: Object.fromEntries([...monthlyForecast].map(([ym, qty]) => [ym, qty.toDecimalPlaces(3).toNumber()])),
     stockout_months: stockoutMonths, stockout_uplift: stockoutUplift.toDecimalPlaces(3).toNumber(),
-    outliers_excluded: excluded, outlier_threshold: threshold.toNumber(),
+    outliers_excluded: excluded, median_month_qty: medianMonth.toNumber(), p95_doc_qty: p95Doc.toNumber(), outlier_threshold: threshold.toNumber(),
     safety: safety.toDecimalPlaces(3).toNumber(), on_hand: onHand.toNumber(), on_hand_as_of: freshOnHand ? sku.on_hand_as_of : `${stock.ym}-01`, in_transit: transit.toNumber(),
     in_transit_sources: transitRows, raw_need: rawNeed.toDecimalPlaces(3).toNumber(), moq: sku.moq, urgency,
     days_of_cover: coverDays?.toDecimalPlaces(1).toNumber() ?? null,
