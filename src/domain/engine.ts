@@ -149,7 +149,7 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
       pendingReview.push({ doc_no: doc.doc_no, ym: doc.ym, qty: numeric(doc.qty), threshold: numeric(docThreshold) });
     } else if (outlierCandidate) {
       excluded.push({ doc_no: doc.doc_no, ym: doc.ym, qty: numeric(doc.qty), threshold: numeric(docThreshold) });
-      if (doc.source !== "judge") excludedFromFile.set(doc.ym, (excludedFromFile.get(doc.ym) ?? new Decimal(0)).plus(doc.qty));
+      if (doc.source === "file") excludedFromFile.set(doc.ym, (excludedFromFile.get(doc.ym) ?? new Decimal(0)).plus(doc.qty));
       continue;
     }
     byMonth.set(doc.ym, (byMonth.get(doc.ym) ?? new Decimal(0)).plus(doc.qty));

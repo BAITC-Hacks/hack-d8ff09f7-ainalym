@@ -49,6 +49,24 @@ function eightyFixture() {
 const eightyParams: EngineParams = { ...params, lead_time_days: 30, review_days: 0 };
 
 describe("deterministic replenishment need", () => {
+  it("keeps regular demand at 30 when a 5000-unit world document is excluded, not 27.5", async () => {
+    const database = new DatabaseSync(":memory:");
+    migrate(database);
+    database.prepare("INSERT INTO supplier(id,name,lead_time_days) VALUES ('IEK','IEK',30)").run();
+    database.prepare("INSERT INTO sku(code_1c,supplier_id,name,moq) VALUES ('THIRTY','IEK','Thirty',1)").run();
+    for (let month = 1; month <= 12; month++) {
+      const ym = `2024-${String(month).padStart(2, "0")}`;
+      database.prepare("INSERT INTO sales_month(code_1c,ym,qty_file) VALUES ('THIRTY',?,'30')").run(ym);
+      database.prepare("INSERT INTO sales_line(code_1c,doc_no,at,qty) VALUES ('THIRTY',?,?,'30')").run(`DOC-${ym}`, `${ym}-15`);
+    }
+    database.prepare("INSERT INTO stock_month(code_1c,ym,opening_qty) VALUES ('THIRTY','2024-12','0')").run();
+    const before = await computeNeed("THIRTY", eightyParams, context(database, "2025-01-01"));
+    database.prepare("INSERT INTO sales_line(code_1c,doc_no,doc_type,at,qty,source) VALUES ('THIRTY','WORLD-5000','sales_day','2024-12-20','5000','world')").run();
+    const after = await computeNeed("THIRTY", eightyParams, context(database, "2025-01-01"));
+    expect(before.components.base_rate).toBe(30);
+    expect(after.components.outliers_excluded).toEqual([expect.objectContaining({ doc_no: "WORLD-5000", qty: 5000 })]);
+    expect(after.components.base_rate).toBe(30);
+  });
   it("keeps a sole legitimate 100-unit document instead of excluding it at threshold 20", async () => {
     const database = eightyFixture();
     database.prepare("DELETE FROM sales_line WHERE code_1c='EIGHTY'").run();
