@@ -7,6 +7,7 @@ describe("KZT money", () => {
   it("preserves decimal cents through arithmetic and JSON", () => {
     expect(Money.of("0.10").add(Money.of("0.20")).toJSON()).toEqual({ amount: "0.30", currency: "KZT" });
     expect(Money.of("7.00").sub(Money.of("1.25")).mul("2").toJSON()).toEqual({ amount: "11.50", currency: "KZT" });
+    expect(Money.of("1e21").toJSON().amount).toBe("1000000000000000000000.00");
   });
 
   it("allocates every cent, assigning the remainder to earlier shares", () => {
@@ -24,6 +25,6 @@ it("keeps floating point coercion out of domain source", () => {
   const root = join(process.cwd(), "src", "domain");
   for (const name of readdirSync(root).filter((file) => file.endsWith(".ts"))) {
     const source = readFileSync(join(root, name), "utf8");
-    expect(source, name).not.toMatch(/parseFloat\s*\(|\bNumber\s*\(|\.toFixed\s*\(/);
+    expect(source, name).not.toMatch(/parseFloat|Number\(|toFixed/);
   }
 });

@@ -14,24 +14,23 @@ const temp = mkdtempSync(join(tmpdir(), "ainalym-check-"));
 const output = join(temp, "vitest.json");
 const counts = { passed: 0, failed: 0, skipped: 0, externallyUnverified: 0 };
 try {
-  const args = ["vitest", "run", ...(filter ? [`tests/${filter}`] : []), "--reporter=json", `--outputFile=${output}`];
-  const result = spawnSync("npx", args, { cwd: process.cwd(), encoding: "utf8", env: { ...process.env, DATABASE_PATH: ":memory:" } });
+  const args = ["vitest", "run", ...(filter ? [`tests/${filter}`] : []), "--reporter=./scripts/vitest_reporter.mjs"];
+  const result = spawnSync("npx", args, { cwd: process.cwd(), encoding: "utf8", env: { ...process.env, DATABASE_PATH: ":memory:", AINALYM_CHECK_REPORT: output } });
   if (existsSync(output)) {
     const report = JSON.parse(readFileSync(output, "utf8"));
-    for (const suite of report.testResults ?? []) {
-      for (const test of suite.assertionResults ?? []) {
-        const name = test.fullName || test.title;
-        const note = test.note || test.invocations?.[0]?.note || "";
+    for (const test of report.cases ?? []) {
+        const name = test.name;
+        const note = test.note || "";
         if (test.status === "passed") { counts.passed++; console.log(`[PASS] ${name}`); }
-        else if (test.status === "pending" || test.status === "skipped" || test.status === "todo") {
+        else if (test.status === "skipped") {
           counts.skipped++;
-          if (String(note).startsWith("UNVERIFIED:") || test.title?.startsWith("UNVERIFIED:")) {
+          if (String(note).startsWith("UNVERIFIED:")) {
             counts.externallyUnverified++;
-            console.log(`[UNVERIFIED] ${name} — ${note || test.title}`);
+            console.log(`[UNVERIFIED] ${name} — ${note}`);
           } else console.log(`[SKIP] ${name}`);
-        } else { counts.failed++; console.log(`[FAIL] ${name} — ${(test.failureMessages || []).join(" ")}`); }
-      }
+        } else { counts.failed++; console.log(`[FAIL] ${name} — ${(test.errors || []).join(" ")}`); }
     }
+    for (const error of report.errors ?? []) { counts.failed++; console.log(`[FAIL] vitest — ${error}`); }
   }
   if (result.error || result.status !== 0) {
     if (counts.failed === 0) counts.failed++;

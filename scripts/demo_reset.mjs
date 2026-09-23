@@ -18,7 +18,7 @@ for (const suffix of ["", "-wal", "-shm"]) {
   const path = databasePath + suffix;
   if (existsSync(path)) unlinkSync(path);
 }
-const etl = spawnSync(process.execPath, [loader], {
+const etl = spawnSync(process.execPath, [loader, "--db", databasePath], {
   cwd: root, encoding: "utf8", env: { ...process.env, DATABASE_PATH: databasePath },
 });
 if (etl.status !== 0 || etl.error) {
@@ -26,6 +26,9 @@ if (etl.status !== 0 || etl.error) {
   process.exit(etl.status || 1);
 }
 const d = new DatabaseSync(databasePath);
+if (!d.prepare("SELECT id FROM organization WHERE id = 'partner'").get()) {
+  d.prepare("INSERT INTO organization (id,name,payload) VALUES (?,?,?)").run("partner", "Электрокомплект · обезличено", JSON.stringify({ opening_cash: [] }));
+}
 const worldPath = join(root, "fixtures", "world_events.jsonl");
 if (existsSync(worldPath)) {
   const lines = readFileSync(worldPath, "utf8").split(/\r?\n/).filter(Boolean);
