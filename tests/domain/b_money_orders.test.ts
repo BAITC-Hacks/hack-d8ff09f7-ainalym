@@ -7,6 +7,7 @@ import { applyWorldEvent } from "../../src/domain/events";
 import { skuView } from "../../src/domain/skus";
 import { recomputeAffected } from "../../src/domain/recompute";
 import { GET as getMoney } from "../../src/app/api/money/route";
+import { GET as getOrder } from "../../src/app/api/orders/[id]/route";
 
 const q = (sql: string, ...args: (string | number | null)[]) => db().prepare(sql).run(...args);
 const one = (sql: string, ...args: (string | number | null)[]) => db().prepare(sql).get(...args) as Record<string, unknown> | undefined;
@@ -31,6 +32,15 @@ beforeEach(() => {
 });
 
 describe("purchase approvals and obligations", () => {
+  it("GET /api/orders/:id sums known line costs and counts unknown lines", async () => {
+    q("INSERT INTO sku(code_1c,supplier_id,name,unit_cost,moq) VALUES ('SE-2','SE','Unpriced',NULL,1)");
+    q("INSERT INTO purchase_order_line(po_id,code_1c,qty,unit_cost) VALUES ('PO-1','SE-2',2,NULL)");
+    approveOrder("PO-1", 2);
+    const response = await getOrder(new Request("http://localhost/api/orders/PO-1"), { params: Promise.resolve({ id: "PO-1" }) });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.order).toMatchObject({ id: "PO-1", total_cost: "1000.00", cost_known_lines: 1, unknown_cost_lines: 1 });
+  });
   it("rejects a stale order version", () => {
     expect(() => approveOrder("PO-1", 1)).toThrow(/stale|version/i);
     expect(one("SELECT state FROM purchase_order WHERE id='PO-1'")?.state).toBe("draft");
