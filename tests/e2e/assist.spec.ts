@@ -29,6 +29,7 @@ test("money: ⌘J opens the dock, a chip answers, «Открыть отдель�
   await dock.getByRole("button", { name: "Что срочно?" }).click();
   await expect(dock.getByRole("article", { name: "Что срочно?" })).toBeVisible({ timeout: 20_000 });
   await page.screenshot({ path: `${OUT}/03_money_answers.png` });
+  await page.screenshot({ path: "docs/evidence/v2/assist2/05_dock_open_answers_1440.png" });
   const popupPromise = context.waitForEvent("page");
   await dock.getByRole("button", { name: "Открыть отдельно" }).click();
   const popup = await popupPromise;
@@ -99,4 +100,25 @@ test("assistant page: chip → inline card, typed «почему 130200122» →
   await expect(dock).toBeVisible();
   await expect(dock.getByRole("article", { name: "почему 130200122" })).toBeVisible();
   await page.screenshot({ path: `${OUT2}/04_dock_shared_thread.png` });
+});
+
+test("dock at 390: ⌘J opens an opaque chat sheet, a chip answers, a typed question answers", async ({ page }) => {
+  const OUT2 = "docs/evidence/v2/assist2";
+  mkdirSync(OUT2, { recursive: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await go(page, `${PREFIX}/money`);
+  await page.keyboard.press("Control+j");
+  const dock = page.getByRole("dialog", { name: "Помощник" });
+  await expect(dock).toBeVisible();
+  await expect(dock.getByRole("heading", { name: "Помощник" })).toBeVisible();
+  expect(await dock.evaluate(node => getComputedStyle(node).backgroundColor)).not.toMatch(/rgba\(\d+, \d+, \d+, 0\)|transparent/);
+  await page.screenshot({ path: `${OUT2}/06_dock_390_open.png` });
+  await dock.getByRole("button", { name: "Что срочно?" }).click();
+  await expect(dock.getByRole("article", { name: "Что срочно?" })).toBeVisible({ timeout: 20_000 });
+  await dock.getByRole("textbox", { name: "Вопрос ассистенту" }).fill("почему 130200122");
+  await page.keyboard.press("Enter");
+  const card = dock.getByRole("article", { name: "почему 130200122" });
+  await expect(card).toBeVisible({ timeout: 20_000 });
+  expect(await card.innerText()).not.toMatch(TECH);
+  await page.screenshot({ path: `${OUT2}/07_dock_390_answers.png` });
 });

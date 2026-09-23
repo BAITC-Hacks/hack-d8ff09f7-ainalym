@@ -77,7 +77,7 @@ export function AssistantSurface({ base: baseProp }: { base?: string }) {
   const live = voice.active;
   const MicIcon = live ? Square : Mic;
 
-  return <section className={styles.surface} aria-label="Помощник">
+  return <section className={styles.surface} aria-label="Помощник" aria-busy={busy}>
     <div className={styles.column}>
       <header className={styles.head}>
         <div><h1 className={styles.title}>Помощник</h1><p className={styles.sub}>Отвечаю по данным склада{ctx.route !== "assistant" && ctx.route !== "other" ? ` — ${title}` : ""}. Голосом или текстом.</p></div>
@@ -101,7 +101,7 @@ export function AssistantSurface({ base: baseProp }: { base?: string }) {
                 <div className={styles.card}><ResultCard title={entry.question ?? ""} response={entry.response ?? { ok: false, reply_ru: CANNOT_ANSWER }} plain base={base} hideTitle /></div>
               </div>
             </div>)}
-        {busy && <div className={`${styles.turn} ${styles.assistant}`}><span className={styles.mark} aria-hidden="true"><Sparkles size={14} /></span><p className={`${styles.bubble} ${styles.status}`} role="status">Смотрю данные…</p></div>}
+        {busy && <div className={`${styles.turn} ${styles.assistant}`}><span className={styles.mark} aria-hidden="true"><Sparkles size={14} /></span><p className={`${styles.bubble} ${styles.typing}`} role="status" aria-label="Помощник готовит ответ"><i /><i /><i /><span>Смотрю данные…</span></p></div>}
         <div ref={end} />
       </div>
     </div>

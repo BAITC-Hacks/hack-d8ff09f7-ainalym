@@ -109,7 +109,7 @@ export function AssistantDock({ base: baseProp }: { base?: string }) {
     </button>, navHost) : null;
   return <>
     {trigger}
-    {open && <aside id={`${id}-dock`} role="dialog" aria-label="Помощник" className={styles.sheet}>
+    {open && <div className="v2" style={{ display: "contents" }}><aside id={`${id}-dock`} role="dialog" aria-label="Помощник" aria-busy={busy} className={styles.sheet}>
       <header className={styles.head}>
         <Sparkles size={16} aria-hidden="true" className={styles.spark} />
         <h2 className={styles.title}>Помощник</h2>
@@ -120,11 +120,14 @@ export function AssistantDock({ base: baseProp }: { base?: string }) {
         </div>
       </header>
       <div className={styles.body} ref={body} aria-live="polite">
-        {entries.length === 0 && <p className={styles.intro}>Отвечаю по данным этой страницы — {title}. Выберите вопрос ниже, напишите свой или нажмите на микрофон.</p>}
+        {entries.length === 0 && <div className={styles.intro}><p>Отвечаю по данным этой страницы — {title}.</p><p className={styles.introMeta}>Что срочно, что заплатить, почему такое количество — выберите вопрос ниже, напишите свой или нажмите на микрофон.</p></div>}
         {entries.map(entry => entry.say
-          ? <p key={entry.id} className={`${styles.say} ${entry.say.who === "user" ? styles.sayUser : ""}`}><span className={styles.who}>{entry.say.who === "user" ? "Вы" : "Ассистент"}</span>{entry.say.text}</p>
-          : <ResultCard key={entry.id} title={entry.question ?? ""} response={entry.response ?? { ok: false, reply_ru: CANNOT_ANSWER }} plain base={base} />)}
-        {busy && <p className={styles.status} role="status">Смотрю данные…</p>}
+          ? <div key={entry.id} className={`${styles.msg} ${entry.say.who === "user" ? styles.msgUser : styles.msgBot}`}><p className={styles.bubble}>{entry.say.text}</p></div>
+          : <div key={entry.id} className={styles.exchange}>
+              <div className={`${styles.msg} ${styles.msgUser}`}><p className={styles.bubble}>{entry.question}</p></div>
+              <div className={`${styles.msg} ${styles.msgBot}`}><div className={styles.answer}><ResultCard title={entry.question ?? ""} response={entry.response ?? { ok: false, reply_ru: CANNOT_ANSWER }} plain base={base} hideTitle /></div></div>
+            </div>)}
+        {busy && <div className={`${styles.msg} ${styles.msgBot}`}><p className={`${styles.bubble} ${styles.typing}`} role="status" aria-label="Помощник готовит ответ"><i /><i /><i /><span>Смотрю данные…</span></p></div>}
       </div>
       <div className={styles.foot}>
         {live && <div className={styles.live}><VoiceWave local={voice.local} remote={voice.remote} state={voice.mic === "idle" ? "listening" : voice.mic} size="mini" /><span role="status">{voice.label}</span>{voice.audioBlocked && voice.enableAudio && <button type="button" className={styles.linkBtn} onClick={voice.enableAudio}><Volume2 size={12} aria-hidden="true" /> Включить звук</button>}</div>}
@@ -137,6 +140,6 @@ export function AssistantDock({ base: baseProp }: { base?: string }) {
         </form>
         <div className={styles.hint}><span>Enter — отправить · Esc — {live ? "стоп" : "закрыть"}</span>{entries.length > 0 && <button type="button" className={styles.linkBtn} onClick={clear}>Очистить</button>}</div>
       </div>
-    </aside>}
+    </aside></div>}
   </>;
 }
