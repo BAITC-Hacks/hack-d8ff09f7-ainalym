@@ -98,16 +98,16 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
   const p95Index = Math.max(0, Math.ceil(positiveDocs.length * 0.95) - 1);
   const medianMonth = sku.median_month_qty ? dec(sku.median_month_qty) : median(fileMonths);
   const p95Doc = sku.p95_doc_qty ? dec(sku.p95_doc_qty) : (positiveDocs[p95Index] ?? new Decimal(0));
-  const threshold = Decimal.max(medianMonth.times(params.outlier.k_month), p95Doc.times(params.outlier.k_doc), params.outlier.min_units);
-  const concentratedThreshold = Decimal.max(medianMonth.times("0.20"), p95Doc.times(params.outlier.k_doc), params.outlier.min_units);
+  const threshold = Decimal.max(params.outlier.min_units,
+    Decimal.min(medianMonth.times(params.outlier.k_month), p95Doc.times(params.outlier.k_doc)));
   const byMonth = new Map<string, Decimal>();
   const worldDelta = new Map<string, Decimal>();
   const excludedFromFile = new Map<string, Decimal>();
   const excluded: { doc_no: string; ym: string; qty: number; threshold: number }[] = [];
   for (const doc of docGroups.values()) {
     const state = outlierState.get(`${doc.doc_no}|${doc.ym}`);
-    if (state === "excluded" || (state !== "kept" && doc.qty.gt(0) && (doc.qty.gt(threshold) || doc.qty.gt(concentratedThreshold)))) {
-      excluded.push({ doc_no: doc.doc_no, ym: doc.ym, qty: numeric(doc.qty), threshold: numeric(doc.qty.gt(threshold) ? threshold : concentratedThreshold) });
+    if (state === "excluded" || (state !== "kept" && doc.qty.gt(threshold))) {
+      excluded.push({ doc_no: doc.doc_no, ym: doc.ym, qty: numeric(doc.qty), threshold: numeric(threshold) });
       if (doc.source !== "judge") excludedFromFile.set(doc.ym, (excludedFromFile.get(doc.ym) ?? new Decimal(0)).plus(doc.qty));
       continue;
     }
@@ -183,7 +183,7 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     growth: numeric(growth.toDecimalPlaces(3)), horizon_days: horizonDays,
     forecast_qty: numeric(forecastQty.toDecimalPlaces(3)), monthly_forecast: Object.fromEntries([...monthlyForecast].map(([ym, qty]) => [ym, numeric(qty.toDecimalPlaces(3))])),
     stockout_months: stockoutMonths, stockout_uplift: numeric(stockoutUplift.toDecimalPlaces(3)),
-    outliers_excluded: excluded, outlier_threshold: numeric(threshold), concentrated_order_threshold: numeric(concentratedThreshold),
+    outliers_excluded: excluded, outlier_threshold: numeric(threshold),
     safety: numeric(safety.toDecimalPlaces(3)), on_hand: numeric(onHand), on_hand_as_of: freshOnHand ? sku.on_hand_as_of : `${stockMonth}-01`, in_transit: numeric(transit),
     in_transit_sources: transitRows, net_need: numeric(netNeed.toDecimalPlaces(6)), raw_need: numeric(rawNeed.toDecimalPlaces(3)), moq: sku.moq, urgency,
     raw_observed_forecast: baseRate.gt(0) ? numeric(forecastQty.times(rawObservedRate).div(baseRate).toDecimalPlaces(3)) : 0,

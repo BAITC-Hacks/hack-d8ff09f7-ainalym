@@ -105,8 +105,7 @@ describe("deterministic replenishment need", () => {
     const before = await computeNeed("TEST", params, context(database));
     database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty,source) VALUES ('TEST','INJECTED','2025-08-20','5000','judge')").run();
     const after = await computeNeed("TEST", params, context(database));
-    expect(after.components.outlier_threshold).toBe(43506);
-    expect(after.components.concentrated_order_threshold).toBe(2900.4);
+    expect(after.components.outlier_threshold).toBe(720);
     expect(after.components.outliers_excluded).toEqual(expect.arrayContaining([
       expect.objectContaining({ doc_no: "20000099834" }), expect.objectContaining({ doc_no: "INJECTED" }),
     ]));
