@@ -121,6 +121,30 @@ export function reserveLiveCall(now = Date.now()): { allowed: boolean; remaining
   }
 }
 
+// Realtime follow-ups share their originating user turn's reservation.
+export function reserveLiveTurn(turnId: string, now = Date.now()): { allowed: boolean; remaining: number } {
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(turnId)) return { allowed: false, remaining: 0 };
+  if (!guardEnabled() || process.env.AINALYM_MODE !== "live") return { allowed: true, remaining: dailyLimit() };
+  const database = budgetDb();
+  try {
+    database.exec("CREATE TABLE IF NOT EXISTS demo_voice_turn (day TEXT NOT NULL, turn_id TEXT NOT NULL, PRIMARY KEY(day, turn_id))");
+    database.exec("BEGIN IMMEDIATE");
+    const day = dayKey(now);
+    const row = database.prepare("SELECT used FROM demo_daily_budget WHERE day = ?").get(day) as { used: number } | undefined;
+    const used = row?.used ?? 0;
+    const prior = database.prepare("SELECT 1 FROM demo_voice_turn WHERE day = ? AND turn_id = ?").get(day, turnId);
+    if (prior) { database.exec("COMMIT"); return { allowed: true, remaining: Math.max(0, dailyLimit() - used) }; }
+    if (used >= dailyLimit()) { database.exec("COMMIT"); return { allowed: false, remaining: 0 }; }
+    database.prepare("INSERT INTO demo_voice_turn (day, turn_id) VALUES (?, ?)").run(day, turnId);
+    database.prepare("INSERT INTO demo_daily_budget (day, used) VALUES (?, 1) ON CONFLICT(day) DO UPDATE SET used = used + 1").run(day);
+    database.exec("COMMIT");
+    return { allowed: true, remaining: dailyLimit() - used - 1 };
+  } catch (error) {
+    database.exec("ROLLBACK");
+    throw error;
+  } finally { database.close(); }
+}
+
 export function providerUnavailable(): Response {
   return Response.json({ error: "Provider unavailable", label: "Провайдер недоступен", ai: "unavailable", offline_path: "Правила без LLM · локальный запуск по README" }, { status: 503, headers: { "Cache-Control": "no-store" } });
 }

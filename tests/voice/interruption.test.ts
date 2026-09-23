@@ -1,7 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { TranscriptGate, VoiceTurnGate } from "../../src/voice/transport";
+import { AutomaticResponseGate, TranscriptGate, VoiceTurnGate } from "../../src/voice/transport";
 
 describe("Realtime interruption event stream", () => {
+  it("creates at most one automatic response per tool result and two per user turn", () => {
+    const gate = new AutomaticResponseGate();
+    const emitted: string[] = [];
+    for (const id of ["call-1", "call-1", "call-2", "call-3"]) {
+      if (gate.claim(id)) {
+        emitted.push(`output:${id}`);
+        if (gate.followUp()) emitted.push(`response:${id}`);
+      }
+    }
+    expect(emitted).toEqual(["output:call-1", "response:call-1", "output:call-2", "response:call-2", "output:call-3"]);
+    gate.resetTurn();
+    expect(gate.claim("call-1")).toBe(false);
+    expect(gate.claim("call-4")).toBe(true);
+    expect(gate.followUp()).toBe(true);
+  });
   it("drops a completed tool call from the interrupted response", () => {
     const turn = new VoiceTurnGate();
     turn.created("response-old");
@@ -9,6 +24,7 @@ describe("Realtime interruption event stream", () => {
     turn.track(pending);
     turn.cancel();
     expect(pending.signal.aborted).toBe(true);
+    expect(turn.accept("response-old")).toBeNull();
     expect(turn.accept("response-old")).toBeNull();
     turn.created("response-new");
     expect(turn.isCurrent(turn.accept("response-new")!)).toBe(true);

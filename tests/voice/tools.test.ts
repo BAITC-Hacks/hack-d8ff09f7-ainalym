@@ -20,15 +20,27 @@ afterEach(() => {
 });
 
 describe("voice tool bridge", () => {
-  function seedDemand() {
-    db().prepare("INSERT INTO sku (code_1c, supplier_id, name, unit_cost, moq) VALUES (?, ?, ?, ?, ?)").run("CODE-1", "SE", "Деталь", "12.50", 5);
+  function seedDemand(code = "CODE-1") {
+    db().prepare("INSERT INTO sku (code_1c, supplier_id, name, unit_cost, moq) VALUES (?, ?, ?, ?, ?)").run(code, "SE", "Деталь", "12.50", 5);
     for (let index = 0; index < 12; index++) {
       const ym = `${index < 4 ? 2025 : 2026}-${String(index < 4 ? index + 9 : index - 3).padStart(2, "0")}`;
-      db().prepare("INSERT INTO sales_month (code_1c, ym, qty_file) VALUES (?, ?, ?)").run("CODE-1", ym, "30");
-      db().prepare("INSERT INTO sales_line (code_1c, doc_no, at, qty) VALUES (?, ?, ?, ?)").run("CODE-1", `DOC-${ym}`, `${ym}-15`, "30");
+      db().prepare("INSERT INTO sales_month (code_1c, ym, qty_file) VALUES (?, ?, ?)").run(code, ym, "30");
+      db().prepare("INSERT INTO sales_line (code_1c, doc_no, at, qty) VALUES (?, ?, ?, ?)").run(code, `DOC-${ym}`, `${ym}-15`, "30");
     }
-    db().prepare("INSERT INTO stock_month (code_1c, ym, opening_qty) VALUES (?, ?, ?)").run("CODE-1", "2026-08", "0");
+    db().prepare("INSERT INTO stock_month (code_1c, ym, opening_qty) VALUES (?, ?, ?)").run(code, "2026-08", "0");
   }
+  it("uses one canonical code for status, explanation and a SKU calculation", async () => {
+    seedDemand("CODE-1_");
+    db().prepare("INSERT INTO agent_action (id, run_id, org_id, kind, code_1c, summary_ru, at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .run("AR-SKU", "RUN-SKU", "ORG-1", "recompute", "CODE-1_", "Расчёт товара", "2026-09-23T00:00:00Z");
+    const scope = { org_id: "ORG-1", supplier_id: "SE" };
+    const status = await executeVoiceTool("what_changed", { request_id: "canonical-status", scope, args: { code_1c: "CODE-1" } });
+    expect(status.result.changes).toHaveLength(1);
+    const calculated = await executeVoiceTool("recommend_for", { request_id: "canonical-calc", scope, args: { code_1c: "CODE-1", utterance: "Рассчитай товар" } });
+    expect(calculated.result).toMatchObject({ ok: true, recommended: 1 });
+    const explanation = await executeVoiceTool("explain_sku", { request_id: "canonical-explain", scope, args: { code_1c: "CODE-1" } });
+    expect(explanation.result).toMatchObject({ ok: true, code_1c: "CODE-1_" });
+  });
   it("reads only confirmed ledger actions for a status question", async () => {
     db().prepare("INSERT INTO agent_action (id, run_id, org_id, kind, summary_ru, at) VALUES (?, ?, ?, ?, ?, ?)")
       .run("AR-1", "RUN-1", "ORG-1", "recommendation_prepared", "Расчёт сохранён", "2026-09-23T00:00:00Z");
