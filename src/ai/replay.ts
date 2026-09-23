@@ -10,8 +10,13 @@ const Recording = z.object({
 const Replay = z.object({ mode: z.literal("replay"), recordings: z.array(Recording) });
 
 export function replayChoice(question: ChoiceQuestion, context: unknown): ChoiceResult {
-  const subject = typeof context === "object" && context !== null && "_replay_subject_ref" in context
-    ? String((context as { _replay_subject_ref: unknown })._replay_subject_ref) : "";
+  const input = typeof context === "object" && context !== null ? context as Record<string, unknown> : {};
+  let subject = input._replay_subject_ref === undefined ? "" : String(input._replay_subject_ref);
+  if (question.id === "change_summary") {
+    const before = Number((input.previous as Record<string, unknown> | undefined)?.qty);
+    const after = Number((input.current as Record<string, unknown> | undefined)?.qty);
+    if (Number.isFinite(before) && Number.isFinite(after) && after > before) subject = "DEMO-RUN-INCREASE";
+  }
   const base = { answer: null, distribution: {}, provider: "offline", model_version: "replay-v1", result_state: "unsupported" as const, label: "Replay · recorded decision" };
   if (!subject) return base;
   const data = Replay.parse(JSON.parse(readFileSync(join(process.cwd(), "fixtures", "replay_decisions.json"), "utf8")));
