@@ -1,4 +1,3 @@
-// @ts-nocheck -- fail-first imports become typed as the implementation lands.
 import { beforeEach, describe, expect, it } from "vitest";
 import { db, resetInstance } from "../../src/db/client";
 import { approveOrder, markOrderExported } from "../../src/domain/orders";

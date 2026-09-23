@@ -1,7 +1,6 @@
-L2b checkpoint — fail-first tests
-Done: 22 purchase-side domain cases in tests/domain/b_money_orders.test.ts.
-Evidence: vitest fails because src/domain/orders.ts has not been implemented.
-Undone: orders, obligations, cashflow, events, SKU view, recompute, routes, scenario, gates.
-Resumable: implement named functions imported by the test, then remove its temporary ts-nocheck.
-Base: 0d9406a; dependencies from main checked at this checkpoint.
-SHA: pending checkpoint commit.
+L2b checkpoint — purchase-side domain
+Done: orders, obligations, money view, SKU drilldown, world events and affected-code recompute.
+Evidence: 21/21 b_money_orders cases; tsc clean. Build pending this checkpoint.
+Undone: routes, scenario, real-data gates; L2a engine and L9 ETL still pending on main.
+Resumable: read Next route docs, add zod routes and scenario; merge main first.
+SHA: HEAD after this checkpoint commit.
