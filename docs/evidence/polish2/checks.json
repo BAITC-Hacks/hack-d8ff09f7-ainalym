@@ -1,0 +1,23 @@
+{
+  "date_utc": "2026-09-23",
+  "branch": "lane/polish2",
+  "base": "230b038d9c118146ff2ba9f59c7dacc394ead71e",
+  "source_commit": "93cdb10",
+  "checks": [
+    { "command": "npx tsc --noEmit", "exit_code": 0, "note": "Passed both before and after the production build; no stale generated-type exclusions needed." },
+    { "command": "env -u DATABASE_PATH AI_PROVIDER=rules npm run check", "exit_code": 0, "passed": 325, "failed": 0, "skipped": 7, "externally_unverified": 7 },
+    { "command": "env -u DATABASE_PATH AI_PROVIDER=rules npm run build", "exit_code": 0, "note": "Three existing Turbopack filesystem tracing warnings originate in unchanged src/db/path.mjs:5." },
+    { "command": "git diff 230b038d9c118146ff2ba9f59c7dacc394ead71e --check", "exit_code": 0 }
+  ],
+  "skipped_live_checks": [
+    "TypeSafe live choice",
+    "TypeSafe gateway",
+    "OpenAI structured output",
+    "Live EKT API",
+    "Live OpenAI email draft",
+    "Browser microphone flow",
+    "Browser realtime voice flow"
+  ],
+  "visual_gate": "YELLOW",
+  "remaining_gap": "Existing Today decision-column overflow at 390 px, owned by UX-FIX-D; measured document width 443 px."
+}

@@ -25,12 +25,12 @@ export function SettingsPage() {
   if (!data) return null;
   return <div className={styles.page}>
     {error && <StaleBanner>Обновление не удалось — показываю последние сохранённые значения.</StaleBanner>}
-    <PageHead crumbs={[{ label: "Настройки" }]} title="Настройки" sub="Всё, что нужно заполнить, чтобы разделы считали полностью. Под каждым полем — зачем оно." />
+    <PageHead priority crumbs={[{ label: "Настройки" }]} title="Настройки" sub="Всё, что нужно заполнить, чтобы разделы считали полностью. Под каждым полем — зачем оно." />
     <MoneyForm data={data} onSaved={() => { reload(); refresh(); }} />
     <SupplyForm data={data} onSaved={() => { reload(); refresh(); }} />
     <Section id="cost" title="Себестоимость">
-      <Card>
-        <p className={styles.count}>{fmtNum(data.cost.skus_without_cost)} <span className={styles.unit}>товаров без себестоимости из {fmtNum(data.cost.skus_total)}</span></p>
+      <Card priority>
+        <p className={`v2-metric-value ${styles.count}`}>{fmtNum(data.cost.skus_without_cost)} <span className={`v2-metric-label ${styles.unit}`}>товаров без себестоимости из {fmtNum(data.cost.skus_total)}</span></p>
         <p className={styles.costText}>Себестоимость берётся из прайс-листа 1С. У Systeme Electric она в выгрузке есть, у IEK — нет, поэтому заказы и склад по IEK показываются в штуках, а не в деньгах. Здесь мы ничего не придумываем: цена появится, когда появится файл.</p>
         <div className={styles.options}>
           <p className={styles.option}><a href={README_RUN} target="_blank" rel="noreferrer">Как загрузить прайс-лист из 1С</a><span className={styles.why}>инструкция по запуску: положите файл к остальным выгрузкам и обновите данные</span></p>

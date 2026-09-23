@@ -13,7 +13,7 @@
 .title { margin: 0; font: 500 17px/24px var(--v2-font); letter-spacing: -0.01em; }
 .meta { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font: var(--v2-meta); color: var(--v2-muted); }
 .sum { text-align: right; display: grid; gap: 4px; justify-items: end; }
-.sum strong { font: 500 19px/24px var(--v2-font); letter-spacing: -0.02em; }
+.sum strong { font: 600 19px/24px var(--v2-font); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .sum span { font: var(--v2-meta); color: var(--v2-muted); font-variant-numeric: tabular-nums; }
 /* Stake / due tints — one warm step for money, red only when the date has passed. */
 .sum [data-stake="medium"] { background: var(--v2-well); border-radius: 4px; padding: 0 6px; color: var(--v2-ink); }
@@ -45,7 +45,9 @@
 .kv span { font: var(--v2-meta); color: var(--v2-muted); }
 .kv .num { font: 500 15px/20px var(--v2-font); color: var(--v2-ink); }
 .muted { font: var(--v2-meta); color: var(--v2-muted); }
-.link { font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+.link { display: inline-flex; align-items: center; min-height: var(--v2-control-h); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; border-radius: var(--v2-r-control); }
+.link:hover { text-decoration-thickness: 2px; }
+.link:focus-visible { outline: 2px solid var(--v2-ring); outline-offset: 3px; }
 @media (max-width: 1100px) { .grid { grid-template-columns: minmax(0, 1fr); } .rail { position: static; } }
 @media (max-width: 767px) { .stages { grid-template-columns: repeat(3, minmax(0, 1fr)); } .top { grid-template-columns: 40px minmax(0, 1fr); } .sum { grid-column: 2; justify-items: start; text-align: left; } }
 

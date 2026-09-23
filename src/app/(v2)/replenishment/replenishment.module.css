@@ -38,7 +38,7 @@
 .chipOn { background: var(--v2-card-raised); border-color: var(--v2-ink); }
 .chipN { font: var(--v2-meta); color: var(--v2-muted); }
 .groupSum { margin-left: auto; display: flex; align-items: center; gap: 14px; font: var(--v2-body); color: var(--v2-ink-2); }
-.groupMoney { font: var(--v2-body-strong); color: var(--v2-ink); }
+.groupMoney { font: var(--v2-body-strong); color: var(--v2-ink); text-align: right; font-variant-numeric: tabular-nums; }
 .groupMoney em { font: var(--v2-meta); font-style: normal; color: var(--v2-muted); margin-left: 6px; }
 .groupNone { font: var(--v2-meta); color: var(--v2-muted); }
 
@@ -46,7 +46,8 @@
 .tableWrap[data-stale] .table { opacity: .75; }
 .staleBar { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--v2-alert-row); color: var(--v2-warn); font: var(--v2-meta); }
 .table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.table th { text-align: left; font: var(--v2-meta); color: var(--v2-muted); padding: 10px 12px; border-bottom: 1px solid var(--v2-line); background: var(--v2-wash); white-space: nowrap; }
+.table th { text-align: left; font: var(--v2-meta); font-weight: 500; color: var(--v2-muted); padding: 12px; border-bottom: 1px solid var(--v2-line); background: var(--v2-wash); white-space: nowrap; }
+.table th.num { text-align: right; }
 .table th:nth-child(2) { width: auto; }
 .table th:nth-child(3) { width: 128px; }
 .table th:nth-child(4), .table th:nth-child(5) { width: 108px; }

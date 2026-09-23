@@ -36,7 +36,7 @@ export default function TodayPage() {
       </div>
       {d && <p className={styles.lead}>{d.lead}</p>}
 
-      {t.loading && !d && <div className={styles.strip} aria-busy="true">{[0, 1, 2, 3].map(i => <div key={i} className={styles.tile}><Skeleton rows={2} height={i ? 14 : 30} /></div>)}</div>}
+      {t.loading && !d && <div className={`v2-priority-card ${styles.strip}`} aria-busy="true">{[0, 1, 2, 3].map(i => <div key={i} className={styles.tile}><Skeleton rows={2} height={i ? 14 : 30} /></div>)}</div>}
       {t.error && !d && <StateBlock kind={errorKind(t.error)} title={errorTitle(t.error)} detail={t.error.message} action={<Button onClick={t.reload}>Повторить</Button>} />}
       {d && <Pulse d={d} stale={!!t.error} />}
       {m.data && <Outlook m={m.data} />}
@@ -158,25 +158,25 @@ function Pulse({ d, stale }: { d: Today; stale: boolean }) {
   const ratio = Math.round(d.pulse.agents.ratio * 1000) / 10;
   const risks = d.pulse.money.risks ?? [];
   return (
-    <section className={styles.strip} aria-label="Пульс" data-stale={stale || undefined}>
+    <section className={`v2-priority-card ${styles.strip}`} aria-label="Пульс" data-stale={stale || undefined}>
       <div className={styles.tile} title={sv ? `Остаток × себестоимость; ${fmtInt(sv.cost_unknown_count)} позиций без цены не учтены` : "Себестоимость пока не задана"}>
-        <p className={styles.tileLabel}>Стоимость запаса</p>
-        <p className={styles.tileValue}>{sv ? fmtMoney(sv, true) : "—"}</p>
+        <p className={`v2-metric-label ${styles.tileLabel}`}>Стоимость запаса</p>
+        <p className={`v2-metric-value ${styles.tileValue}`}>{sv ? fmtMoney(sv, true) : "—"}</p>
         {sv ? <><div className={styles.bar} aria-hidden="true"><span style={{ width: `${share}%` }} className={styles.barA} /></div><p className={styles.tileMeta}>себестоимость известна для {share} % · {fmtInt(sv.cost_unknown_count)} позиций без цены</p></> : <p className={styles.tileMeta}>{risks.find(r => r.code === "cost_unknown")?.label_ru ?? "нет данных"}</p>}
       </div>
-      <Link href="/replenishment?urgency=critical" className={`${styles.tile} ${styles.tileLink}`} title="Позиции, чьё покрытие меньше срока поставки">
-        <p className={styles.tileLabel}>Риск дефицита</p>
-        <p className={styles.tileValue}>{fmtInt(d.pulse.stockout_risk.count)} <span className={styles.unit}>позиций</span> <ArrowRight size={18} className={styles.arrow} aria-hidden="true" /></p>
+      <Link href="/replenishment?urgency=critical" className={`v2-priority-link ${styles.tile} ${styles.tileLink}`} title="Позиции, чьё покрытие меньше срока поставки">
+        <p className={`v2-metric-label ${styles.tileLabel}`}>Риск дефицита</p>
+        <p className={`v2-metric-value ${styles.tileValue}`}>{fmtInt(d.pulse.stockout_risk.count)} <span className={styles.unit}>позиций</span> <ArrowRight size={18} className={styles.arrow} aria-hidden="true" /></p>
         <p className={styles.tileMeta}>покрытие меньше срока поставки (IEK 40 дн · SE 50 дн)</p>
       </Link>
       <div className={styles.tile} title="Предложения, ожидающие вашего решения">
-        <p className={styles.tileLabel}>Ждут вашего решения</p>
-        <p className={styles.tileValue}>{fmtInt(d.queue_count)}</p>
+        <p className={`v2-metric-label ${styles.tileLabel}`}>Ждут вашего решения</p>
+        <p className={`v2-metric-value ${styles.tileValue}`}>{fmtInt(d.queue_count)}</p>
         <p className={styles.tileMeta}>{d.pulse.agents.needs_you} эскалаций агентов · ничего не уходит поставщику без вас</p>
       </div>
       <div className={styles.tile} title="Действия агентов, завершённые без вашего участия">
-        <p className={styles.tileLabel}>Агенты сделали сами</p>
-        <p className={styles.tileValue}>{fmtInt(d.pulse.agents.auto)} <span className={styles.unit}>· {fmtNum(ratio)} %</span></p>
+        <p className={`v2-metric-label ${styles.tileLabel}`}>Агенты сделали сами</p>
+        <p className={`v2-metric-value ${styles.tileValue}`}>{fmtInt(d.pulse.agents.auto)} <span className={styles.unit}>· {fmtNum(ratio)} %</span></p>
         <div className={styles.bar} aria-hidden="true"><span style={{ width: `${ratio}%` }} className={styles.barB} /></div>
         <p className={styles.tileMeta}>из {fmtInt(d.pulse.agents.auto + d.pulse.agents.needs_you)} действий за последний расчёт</p>
       </div>

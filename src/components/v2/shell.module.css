@@ -37,6 +37,15 @@
 .main { flex: 1; padding: 36px 40px 80px; min-width: 0; }
 .scrim { display: none; }
 
+/* Priority surfaces share elevation; their existing layouts own spacing. */
+.root :global(.v2-priority-card) { min-width: 0; background: var(--v2-card-raised); border: 1px solid var(--v2-line); border-radius: var(--v2-r-card); box-shadow: var(--v2-shadow-card); }
+.root :global(.v2-metric-label) { font: var(--v2-metric-label); color: var(--v2-muted); }
+.root :global(.v2-metric-value) { font: var(--v2-metric-value); letter-spacing: var(--v2-value-tracking); font-variant-numeric: tabular-nums; }
+.root :global(.v2-hero-card) { padding: 24px; }
+.root :global(.v2-priority-link):hover { background: var(--v2-card); }
+
+@media (max-width: 767px) { .root :global(.v2-hero-card) { padding: 20px 16px; } }
+
 @media (max-width: 1100px) { .main { padding: 28px 24px 64px; } }
 @media (max-width: 767px) {
   .root { grid-template-columns: 1fr; }

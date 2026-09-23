@@ -2,10 +2,10 @@
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
 .card { padding: 22px 24px 20px; display: flex; flex-direction: column; gap: 18px; }
 .cardHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-.name { margin: 0; font: var(--v2-h2); letter-spacing: -.02em; display: flex; align-items: baseline; gap: 10px; }
+.name { margin: 0; font: var(--v2-h2); letter-spacing: -.02em; display: flex; align-items: baseline; gap: 6px 10px; flex-wrap: wrap; }
 .name small { font: var(--v2-meta); color: var(--v2-muted); }
 .origin { margin: 4px 0 0; font: var(--v2-meta); color: var(--v2-muted); }
-.big { font: 500 20px/24px var(--v2-font); letter-spacing: -.02em; }
+.big { font: 600 20px/24px var(--v2-font); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .big[data-stake="medium"] { background: var(--v2-well); border-radius: 4px; padding: 0 6px; }
 .big[data-stake="strong"] { background: var(--v2-alert-row); border-radius: 4px; padding: 0 6px; font-weight: 600; }
 .unit { font: var(--v2-meta); color: var(--v2-muted); margin-left: 4px; }
@@ -20,8 +20,9 @@
 .replyMeta a { color: var(--v2-ink-2); }
 .none { margin: 0; font: var(--v2-meta); color: var(--v2-muted); }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; padding-top: 4px; }
-.btn { min-height: 40px; padding: 0 16px; border-radius: var(--v2-radius-sm); border: 1px solid var(--v2-line-strong); background: var(--v2-card); color: var(--v2-ink); font: 500 14px/20px var(--v2-font); display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background var(--v2-fast) var(--v2-ease); }
+.btn { min-height: var(--v2-control-h); padding: 0 16px; border-radius: var(--v2-radius-sm); border: 1px solid var(--v2-line-strong); background: var(--v2-card-raised); color: var(--v2-ink); font: 500 14px/20px var(--v2-font); display: inline-flex; justify-content: center; align-items: center; gap: 8px; text-decoration: none; transition: background var(--v2-fast) var(--v2-ease); }
 .btn:hover { background: var(--v2-well); }
+.btn:focus-visible { outline: 2px solid var(--v2-ring); outline-offset: 2px; }
 .btnBlack { background: var(--v2-ink); border-color: var(--v2-ink); color: #fff; border-radius: 4px; }
 .btnBlack:hover { background: #2a2a28; }
 .btnPrimary { background: var(--v2-accent); border-color: var(--v2-accent); color: var(--v2-on-accent); }

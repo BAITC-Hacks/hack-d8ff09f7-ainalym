@@ -1,4 +1,4 @@
-.page { display: grid; gap: 28px; }
+.page { --muted: var(--v2-muted); --ink: var(--v2-ink); --line: var(--v2-line); --wash: var(--v2-wash); --panel: var(--v2-card); --accent: var(--v2-ink); --ring: var(--v2-ring); --t-meta: var(--v2-metric-label); --t-label: var(--v2-body-strong); --t-section: var(--v2-h2); --t-display: var(--v2-display); --tracking-display: var(--v2-display-tracking); --radius-control: var(--v2-r-control); --control-h: var(--v2-control-h); --button-h: var(--v2-control-h); display: grid; gap: 28px; }
 .pageHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
 .pageHead > div { display: grid; gap: 12px; }
 .eyebrow { color: var(--muted); font: var(--t-caption); letter-spacing: .08em; }
@@ -9,7 +9,7 @@
 .listHead > div { display: grid; gap: 4px; }
 .filters { display: flex; align-items: flex-end; gap: 16px; padding-block: 20px; }
 .filters label { display: grid; gap: 6px; font: var(--t-meta); color: var(--muted); }
-.filters input,.filters select { min-width: 0; min-height: var(--control-h); padding: 8px 12px; background: var(--panel); color: var(--ink); border: 1px solid var(--muted); }
+.filters input,.filters select { min-width: 0; min-height: var(--v2-control-h, var(--control-h)); padding: 8px 12px; background: var(--v2-card-raised, var(--panel)); color: var(--v2-ink, var(--ink)); border: 1px solid var(--v2-line-strong, var(--muted)); border-radius: var(--v2-r-control, var(--radius-control)); }
 .count { margin-inline-start: auto; color: var(--muted); font: var(--t-meta); padding-block: 12px; }
 .events { list-style: none; padding: 0; margin: 0; }
 .event { display: grid; grid-template-columns: 28px minmax(0,1fr) 144px; gap: 16px; border-top: 1px solid var(--line); padding-block: 20px; min-height: 136px; }
@@ -33,7 +33,7 @@
 .presets [aria-pressed=true] { background: var(--wash); border-color: var(--ink); }
 .composeFields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
 .compose label { display: grid; gap: 6px; font: var(--t-meta); color: var(--muted); }
-.compose input,.compose textarea { color: var(--ink); background: var(--panel); border: 1px solid var(--muted); min-height: var(--control-h); min-width: 0; width: 100%; padding: 10px 12px; }
+.compose input,.compose textarea { color: var(--v2-ink, var(--ink)); background: var(--v2-card-raised, var(--panel)); border: 1px solid var(--v2-line-strong, var(--muted)); border-radius: var(--v2-r-control, var(--radius-control)); min-height: var(--v2-control-h, var(--control-h)); min-width: 0; width: 100%; padding: 10px 12px; }
 .compose textarea { resize: vertical; line-height: 1.5; }
 .compose > button { justify-self: start; }
 .composeResult { display: grid; gap: 8px; overflow-wrap: anywhere; }

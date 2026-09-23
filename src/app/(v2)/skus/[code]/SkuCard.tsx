@@ -66,7 +66,7 @@ function SkuBody({ data, reload, rail, stale }: { data: SkuResponse; reload: () 
       sub={<>Код 1С {sku.code_1c}{sku.article && <> · артикул {sku.article}</>}{sku.category && <> · категория {sku.category}</>} · кратность {fmtNum(sku.moq)}</>}
       badges={<>{urgency && <Pill tone={urgency.tone}>{urgency.label}</Pill>}<Pill>{sku.supplier_name ?? sku.supplier_id}</Pill><Pill>Данные партнёра · обезличены</Pill></>}
       actions={canAdjust ? <button type="button" className={styles.headBtn} onClick={jumpToAdjust}>Изменить количество<ArrowRight size={16} aria-hidden /></button> : undefined} />
-    <dl className={styles.strip} aria-label="Запас и прогноз">
+    <dl className={`v2-priority-card ${styles.strip}`} aria-label="Запас и прогноз">
       <Metric label="Остаток" value={sku.on_hand_qty === null ? "не задан" : fmtNum(sku.on_hand_qty)} unit={sku.on_hand_qty === null ? undefined : unit} tone={sku.on_hand_qty === null ? "warn" : undefined}
         sub={sku.on_hand_as_of ? `на ${fmtDate(sku.on_hand_as_of)}${comp.stock_stale ? " · устарел" : ""}` : "остатков в файле нет"} />
       <Metric label="В пути" value={fmtNum(rec?.in_transit ?? transitTotal)} unit={unit}
@@ -133,7 +133,7 @@ function SkuBody({ data, reload, rail, stale }: { data: SkuResponse; reload: () 
 
 function Metric({ label, value, unit, sub, tone }: { label: string; value: string; unit?: string; sub: string; tone?: "bad" | "warn" }) {
   return <div className={`${styles.metric} ${tone ? styles[`metric_${tone}`] : ""}`}>
-    <dt>{label}</dt><dd>{value}{unit && <small>{unit}</small>}</dd><p className={styles.metricSub}>{sub}</p>
+    <dt className="v2-metric-label">{label}</dt><dd className="v2-metric-value">{value}{unit && <small>{unit}</small>}</dd><p className={styles.metricSub}>{sub}</p>
   </div>;
 }
 function Fact({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) { return <span className={styles.rowLabel}>{icon}<span>{children}</span></span>; }
@@ -161,7 +161,7 @@ function RecommendationCard({ rec, sku, unit, need, comp, reload, open, setOpen 
       else setStatus({ kind: "error", text: e.message || "Не удалось сохранить." });
     } finally { setBusy(false); }
   }
-  return <Card className={styles.recCard}>
+  return <Card priority className={styles.recCard}>
     <div className={styles.recTop} id="rec"><h2 className={styles.railTitle} style={{ margin: 0 }}>Рекомендация</h2><Pill tone={urgency.tone}>{urgency.label}</Pill></div>
     <div className={styles.recQtyRow}><p className={styles.recQty}>{fmtNum(current)}</p><span className={styles.recUnit}>{unit} к заказу у {sku.supplier_name ?? sku.supplier_id}</span></div>
     <div className={styles.chips}>
