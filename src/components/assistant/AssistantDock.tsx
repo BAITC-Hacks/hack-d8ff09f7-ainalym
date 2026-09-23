@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -102,19 +101,18 @@ export function AssistantDock({ base: baseProp }: { base?: string }) {
   const title = contextTitle(ctx);
   const chips = suggestedPrompts(ctx);
   const live = voice.active;
+  // On /assistant the shell's own «Помощник» item is active and the full-width surface owns the conversation — no trigger, no sheet.
+  if (onSurface) return null;
   const trigger = navHost ? createPortal(
-    onSurface
-      ? <Link href={`${base}/assistant`} prefetch={false} className={styles.navTrigger} aria-current="page" data-active="1"><span className={styles.navLabel}><Sparkles size={15} aria-hidden="true" />ИИ-ассистент</span></Link>
-      : <button type="button" className={styles.navTrigger} aria-expanded={open} aria-controls={`${id}-dock`} aria-keyshortcuts="Meta+J Control+J" onClick={() => open ? hide() : show()}>
-          <span className={styles.navLabel}><Sparkles size={15} aria-hidden="true" />ИИ-ассистент</span><kbd aria-hidden="true">⌘J</kbd>
-        </button>, navHost) : null;
-  if (onSurface) return <>{trigger}</>;
+    <button type="button" className={styles.navTrigger} aria-expanded={open} aria-controls={`${id}-dock`} aria-keyshortcuts="Meta+J Control+J" onClick={() => open ? hide() : show()}>
+      <span className={styles.navLabel}><Sparkles size={15} aria-hidden="true" />Спросить помощника</span><kbd aria-hidden="true">⌘J</kbd>
+    </button>, navHost) : null;
   return <>
     {trigger}
-    {open && <aside id={`${id}-dock`} role="dialog" aria-label="ИИ-ассистент" className={styles.sheet}>
+    {open && <aside id={`${id}-dock`} role="dialog" aria-label="Помощник" className={styles.sheet}>
       <header className={styles.head}>
         <Sparkles size={16} aria-hidden="true" className={styles.spark} />
-        <h2 className={styles.title}>ИИ-ассистент</h2>
+        <h2 className={styles.title}>Помощник</h2>
         <span className={styles.scope} title={title}>{title}</span>
         <div className={styles.headActions}>
           <button type="button" className={styles.iconBtn} onClick={openSeparately}><ExternalLink size={14} aria-hidden="true" />Открыть отдельно</button>

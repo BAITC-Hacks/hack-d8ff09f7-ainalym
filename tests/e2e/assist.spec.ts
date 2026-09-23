@@ -3,7 +3,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 
 const BASE = process.env.ASSIST_URL ?? "http://localhost:3118";
-const PREFIX = process.env.ASSIST_PREFIX ?? "/v2";
+const PREFIX = process.env.ASSIST_PREFIX ?? "";
 const SKU = process.env.ASSIST_SKU ?? "130300027_";
 const OUT = "docs/evidence/v2/assist";
 mkdirSync(OUT, { recursive: true });
@@ -15,10 +15,10 @@ test.beforeEach(async ({ page }) => { await page.setViewportSize({ width: 1440, 
 
 test("money: ⌘J opens the dock, a chip answers, «Открыть отдельно» opens page mode, Esc closes", async ({ page, context }) => {
   await go(page, `${PREFIX}/money`);
-  await expect(page.getByRole("button", { name: /ИИ-ассистент/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Спросить помощника/ })).toBeVisible();
   await page.screenshot({ path: `${OUT}/01_money_closed.png` });
   await page.keyboard.press("Control+j");
-  const dock = page.getByRole("dialog", { name: "ИИ-ассистент" });
+  const dock = page.getByRole("dialog", { name: "Помощник" });
   await expect(dock).toBeVisible();
   await expect(dock.getByText("Деньги", { exact: true })).toBeVisible();
   await page.screenshot({ path: `${OUT}/02_money_dock_open.png` });
@@ -48,8 +48,8 @@ test("money: ⌘J opens the dock, a chip answers, «Открыть отдель�
 
 test("sku: both chips get data-backed answers with links onto the shell", async ({ page }) => {
   await go(page, `${PREFIX}/skus/${SKU}`);
-  await page.getByRole("button", { name: /ИИ-ассистент/ }).click();
-  const dock = page.getByRole("dialog", { name: "ИИ-ассистент" });
+  await page.getByRole("button", { name: /Спросить помощника/ }).click();
+  const dock = page.getByRole("dialog", { name: "Помощник" });
   await expect(dock.getByText(`Позиция ${SKU}`, { exact: true })).toBeVisible();
   await dock.getByRole("button", { name: "Почему столько?" }).click();
   await expect(dock.getByRole("article", { name: "Почему столько?" })).toBeVisible({ timeout: 20_000 });
@@ -66,9 +66,9 @@ test("assistant page: chip → inline card, typed «почему 130200122» →
   const OUT2 = "docs/evidence/v2/assist2";
   mkdirSync(OUT2, { recursive: true });
   await go(page, `${PREFIX}/assistant`);
-  const surface = page.getByRole("region", { name: "ИИ-ассистент" });
-  await expect(surface.getByRole("heading", { name: "ИИ-ассистент", level: 1 })).toBeVisible();
-  await expect(page.getByRole("dialog", { name: "ИИ-ассистент" })).toHaveCount(0);
+  const surface = page.getByRole("region", { name: "Помощник" });
+  await expect(surface.getByRole("heading", { name: "Помощник", level: 1 })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Помощник" })).toHaveCount(0);
   await expect(surface.getByRole("button", { name: "Говорить с ассистентом" })).toBeVisible();
   await page.screenshot({ path: `${OUT2}/01_assistant_empty_1440.png` });
   await surface.getByRole("button", { name: "Что нужно от меня?" }).click();
@@ -86,12 +86,13 @@ test("assistant page: chip → inline card, typed «почему 130200122» →
   await page.screenshot({ path: `${OUT2}/02_assistant_cards_1440.png`, fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(surface.getByRole("button", { name: "Говорить с ассистентом" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.screenshot({ path: `${OUT2}/03_assistant_390.png` });
   // The dock still works on other pages and shares the same conversation.
   await page.setViewportSize({ width: 1440, height: 900 });
   await go(page, `${PREFIX}/money`);
   await page.keyboard.press("Control+j");
-  const dock = page.getByRole("dialog", { name: "ИИ-ассистент" });
+  const dock = page.getByRole("dialog", { name: "Помощник" });
   await expect(dock).toBeVisible();
   await expect(dock.getByRole("article", { name: "почему 130200122" })).toBeVisible();
   await page.screenshot({ path: `${OUT2}/04_dock_shared_thread.png` });

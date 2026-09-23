@@ -77,10 +77,10 @@ export function AssistantSurface({ base: baseProp }: { base?: string }) {
   const live = voice.active;
   const MicIcon = live ? Square : Mic;
 
-  return <section className={styles.surface} aria-label="ИИ-ассистент">
+  return <section className={styles.surface} aria-label="Помощник">
     <div className={styles.column}>
       <header className={styles.head}>
-        <div><h1 className={styles.title}>ИИ-ассистент</h1><p className={styles.sub}>Отвечаю по данным склада{ctx.route !== "assistant" && ctx.route !== "other" ? ` — ${title}` : ""}. Голосом или текстом.</p></div>
+        <div><h1 className={styles.title}>Помощник</h1><p className={styles.sub}>Отвечаю по данным склада{ctx.route !== "assistant" && ctx.route !== "other" ? ` — ${title}` : ""}. Голосом или текстом.</p></div>
         {entries.length > 0 && <button type="button" className={styles.linkBtn} onClick={clear}>Очистить разговор</button>}
       </header>
       <div className={styles.transcript} aria-live="polite">
