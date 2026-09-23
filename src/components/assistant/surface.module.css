@@ -75,3 +75,20 @@
   .waveInline { width: 72px; }
   .hint { display: none; }
 }
+
+/* The big green «Говорить с помощником» button: to the right of send; while live it shows «Завершить» with the sound wave. */
+.talk { flex: none; display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 20px; border: 0; border-radius: 999px; background: var(--v2-ok); color: #fff; font: 600 15px/1 var(--v2-font); cursor: pointer; box-shadow: 0 6px 18px rgba(31,122,62,.28); white-space: nowrap; transition: background var(--v2-fast) var(--v2-ease), transform var(--v2-fast) var(--v2-ease), box-shadow var(--v2-fast) var(--v2-ease); }
+.talk:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(31,122,62,.34); }
+.talk:disabled { background: var(--v2-well); color: var(--v2-muted); box-shadow: none; cursor: default; transform: none; }
+.talk[aria-pressed="true"] { background: var(--v2-ink); box-shadow: var(--v2-shadow-pop); }
+.talk[data-state="listening"] { box-shadow: 0 0 0 4px rgba(31,122,62,.22), var(--v2-shadow-pop); }
+.talk canvas { height: 22px; }
+.talkWave { display: inline-flex; align-items: center; width: 72px; height: 28px; }
+.talk:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.greet { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin: 4px 0 0; color: var(--v2-ink); font: var(--v2-body); text-wrap: pretty; }
+.followRow { margin: 0 0 0 36px; }
+@media (max-width: 767px) {
+  .controls { flex-wrap: wrap; }
+  .talk { width: 100%; justify-content: center; height: 46px; }
+  .followRow { margin-left: 0; }
+}

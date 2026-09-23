@@ -42,7 +42,7 @@ export function SettingsPage() {
       <div className={styles.sources}>
         <p><b>1С</b> — отчёты загружаются файлами; последняя загрузка {data.org.data_as_of ? fmtDate(data.org.data_as_of) : "ещё не выполнялась"}.</p>
         <p><b>Поставщики</b> — заказ и письмо готовятся здесь, ничего не отправляется автоматически; отправляете вы.</p>
-        <p><b>Помощник</b> — {AI_WORDS[modes.data?.ai ?? data.ai ?? "rules"] ?? AI_WORDS.rules}.</p>
+        <p><b>ИИ-Помощник</b> — {AI_WORDS[modes.data?.ai ?? data.ai ?? "rules"] ?? AI_WORDS.rules}.</p>
       </div>
     </Section>
   </div>;

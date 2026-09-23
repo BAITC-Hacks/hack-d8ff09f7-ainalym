@@ -66,3 +66,10 @@
 .actionBtn { display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border-radius: 999px; background: var(--ink); color: var(--panel) !important; font: var(--t-row-title); text-decoration: none !important; }
 .actionBtn:hover { opacity: .9; }
 @media (max-width: 767px) { .structName { white-space: normal; } .structList li { flex-wrap: wrap; } }
+
+/* Product rows inside answers: thumbnail (or neutral tile), name, code, key figure. */
+.product { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+.productBody { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.productBody a, .productBody > span:first-child { font: var(--t-row-title, 500 14px/20px inherit); overflow-wrap: anywhere; }
+.thumb, .thumbNone { flex: none; width: 36px; height: 36px; border-radius: 8px; background: var(--v2-well, #ecebe6); object-fit: cover; }
+.thumbNone { display: inline-block; border: 1px solid var(--v2-line, #e2e1db); }
