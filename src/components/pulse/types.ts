@@ -2,7 +2,7 @@ import type { TruthAxes } from "@/components/labels";
 export type Money = { amount: string; currency: string };
 export type Source = string | { id?: string; ref?: string; label?: string; title?: string; kind?: string; href?: string; version?: number };
 export type Labelled = TruthAxes & { axes?: TruthAxes; labels?: TruthAxes };
-export type MoneyView = {
+export type MoneyView = Labelled & {
   cash: Money[];
   committed_by_supplier: (Money & { supplier_id: string; lines: number; cost_known_lines: number })[];
   next_60d: { out: (Money & { at: string; po_id: string; kind?: string })[] };

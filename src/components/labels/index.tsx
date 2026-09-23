@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 import styles from "./labels.module.css";
 export type TruthAxes = { provenance?: "partner_anonymised" | "synthetic"; ai?: "live" | "rules" | "replay" | "unavailable"; external?: "export_only" | "local_simulator" | "unavailable" };
+/** Result metadata only: never infer historical execution from the current provider mode. */
+export function resultAxes(value?: TruthAxes & { axes?: TruthAxes; labels?: TruthAxes } | null): TruthAxes {
+  return { provenance: value?.axes?.provenance ?? value?.labels?.provenance ?? value?.provenance, ai: value?.axes?.ai ?? value?.labels?.ai ?? value?.ai, external: value?.axes?.external ?? value?.labels?.external ?? value?.external };
+}
 export const LABELS = {
   provenance: { partner_anonymised: "Данные партнёра · обезличены", synthetic: "Синтетические данные" },
   ai: { live: "Живой AI", rules: "Правила без LLM", replay: "Воспроизведение · записанное решение", unavailable: "Провайдер недоступен" },

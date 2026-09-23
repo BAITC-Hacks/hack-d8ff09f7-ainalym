@@ -11,6 +11,16 @@ const item: QueueItem = { id: "PR-test", version: 7, kind: "proposal", title: "�
 beforeEach(() => vi.stubGlobal("fetch", vi.fn()));
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 describe("a_real action boundaries", () => {
+  it("keeps a recorded result's top-level replay axes even when current mode differs", () => {
+    render(<DecisionQueue data={{ items: [{ ...item, ai: "replay", provenance: "synthetic", external: "local_simulator" }] }} error={null} loading={false} reload={() => {}} axes={{ ai: "live", provenance: "partner_anonymised", external: "export_only" }} />);
+    expect(screen.getByText("Воспроизведение · записанное решение")).toBeTruthy(); expect(screen.queryByText("Живой AI")).toBeNull(); expect(screen.getByText("Синтетические данные")).toBeTruthy();
+  });
+  it("does not call a calculation complete merely because compose returns a run id", async () => {
+    vi.mocked(fetch).mockImplementation(async (_path, options) => json(options?.method === "POST" ? { event: { id: "WE-test" }, run_id: "AR-running" } : { events: [] }));
+    render(<WorldFeed />); fireEvent.click(screen.getByRole("button", { name: "Сочинить событие" })); fireEvent.change(screen.getByLabelText("Что изменилось?"), { target: { value: "Проверить остатки" } }); fireEvent.click(screen.getByRole("button", { name: "Добавить событие" }));
+    await screen.findByText(/Событие сохранено\. Результат обработки появится/); expect(screen.queryByText(/расчёт выполнен/)).toBeNull(); expect(screen.getByText("Режим AI не указан")).toBeTruthy();
+  });
+
   it("posts calculation scope once, paints busy, and preserves input on provider failure", async () => {
     let resolve!: (response: Response) => void; const pending = new Promise<Response>(r => resolve = r); vi.mocked(fetch).mockReturnValue(pending);
     render(<CalculationComposer />); fireEvent.change(screen.getByLabelText("Поставщик"), { target: { value: "SE" } }); fireEvent.change(screen.getByLabelText("Категория"), { target: { value: "0302" } });
@@ -25,8 +35,8 @@ describe("a_real action boundaries", () => {
     expect(vi.mocked(fetch).mock.calls[0][0]).toBe("/api/proposals/PR-test/approve"); expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string)).toEqual({ proposal_version: 7 });
   });
   it("never guesses a proposal version when the queue omits it", async () => {
-    vi.mocked(fetch).mockResolvedValue(json({ proposals: [] })); render(<ul><QueueRow item={{ ...item, version: undefined }} /></ul>); fireEvent.click(screen.getByRole("button", { name: "Отклонить" })); await screen.findByText(/Версия устарела/);
-    expect(fetch).toHaveBeenCalledTimes(1); expect(vi.mocked(fetch).mock.calls[0][0]).toBe("/api/proposals?state=needs_review");
+    vi.mocked(fetch).mockResolvedValue(json({ proposals: [{ id: item.id, version: 8 }] })); render(<ul><QueueRow item={{ ...item, version: undefined }} /></ul>); fireEvent.click(screen.getByRole("button", { name: "Отклонить" })); await screen.findByText(/Версия предложения не получена/);
+    expect(fetch).not.toHaveBeenCalled();
   });
   it("keeps the last decision readable on refresh failure", () => {
     render(<DecisionQueue data={{ items: [item] }} loading={false} error={Object.assign(new Error("network"), { status: 0, code: "network" })} reload={() => {}} axes={{ provenance: "partner_anonymised", ai: "rules", external: "export_only" }} />);

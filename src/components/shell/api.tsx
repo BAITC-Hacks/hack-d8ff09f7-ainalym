@@ -52,20 +52,34 @@ export function ApiProvider({ children }: { children: ReactNode }) {
 export const useApiSync = () => useContext(SyncContext);
 export function useApi<T>(path: string, initial?: T) {
   const { revision, reportNetwork } = useApiSync();
-  const [data, setData] = useState<T | undefined>(initial);
-  const [error, setError] = useState<ApiError | null>(null);
-  const [loading, setLoading] = useState(initial === undefined);
+  const [snapshot, setSnapshot] = useState<{ path: string; data?: T; error: ApiError | null; loading: boolean }>({ path, data: initial, error: null, loading: initial === undefined });
   const [attempt, setAttempt] = useState(0);
   const reload = useCallback(() => setAttempt(n => n + 1), []);
   const generation = useRef(0);
   useEffect(() => {
-    const controller = new AbortController(); const request = ++generation.current;
+    let disposed = false; let timer: ReturnType<typeof setTimeout>; let backoff = 2000;
+    let controller: AbortController | undefined;
     const load = async () => {
-      try { const value = await apiRequest<T>(path, { signal: controller.signal }); if (request !== generation.current) return; setData(value); setError(null); reportNetwork(false); }
-      catch (failure) { if (controller.signal.aborted) return; const e = failure instanceof ApiError ? failure : new ApiError(500, "unknown", "Не удалось загрузить данные."); setError(e); if (e.status === 0) reportNetwork(true); }
-      finally { if (!controller.signal.aborted) setLoading(false); }
+      clearTimeout(timer);
+      if (disposed || document.hidden) return;
+      controller?.abort(); controller = new AbortController(); const signal = controller.signal;
+      const request = ++generation.current;
+      try {
+        const value = await apiRequest<T>(path, { signal });
+        if (disposed || signal.aborted || request !== generation.current) return;
+        setSnapshot({ path, data: value, error: null, loading: false }); reportNetwork(false); backoff = 2000;
+      } catch (failure) {
+        if (disposed || signal.aborted || request !== generation.current) return;
+        const error = failure instanceof ApiError ? failure : new ApiError(500, "unknown", "Не удалось загрузить данные.");
+        setSnapshot(previous => ({ path, data: previous.path === path ? previous.data : undefined, error, loading: false }));
+        if (error.status === 0) reportNetwork(true);
+        timer = setTimeout(load, backoff); backoff = Math.min(backoff * 2, 30000);
+      }
     };
-    void load(); return () => controller.abort();
+    const visible = () => { if (document.hidden) { clearTimeout(timer); controller?.abort(); } else void load(); };
+    document.addEventListener("visibilitychange", visible); void load();
+    return () => { disposed = true; clearTimeout(timer); controller?.abort(); document.removeEventListener("visibilitychange", visible); };
   }, [path, revision, attempt, reportNetwork]);
-  return { data, error, loading, reload };
+  // A changed URL never exposes the previous object's response as the new object.
+  return snapshot.path === path ? { ...snapshot, reload } : { data: undefined, error: null, loading: true, reload };
 }

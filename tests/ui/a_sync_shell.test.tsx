@@ -14,6 +14,19 @@ function Probe() {
 beforeEach(() => { vi.stubGlobal("fetch", vi.fn()); Object.defineProperty(document, "hidden", { configurable: true, value: false }); Object.defineProperty(navigator, "onLine", { configurable: true, value: true }); HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); }; HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); }; });
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe("a_live snapshots and shell", () => {
+  it("retries a failed resource even when the state fingerprint has not changed", async () => {
+    vi.useFakeTimers(); let available = false;
+    vi.mocked(fetch).mockImplementation(async path => path === "/api/state" ? json({ state_version: 1 }) : available ? json({ value: "recovered" }) : json({ ok: false, message: "service warming", code: "unavailable" }, 503));
+    render(<ApiProvider><Probe /></ApiProvider>); await act(async () => { await vi.advanceTimersByTimeAsync(0); }); expect(screen.getByText("service warming")).toBeTruthy(); available = true;
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); }); expect(screen.getByText("recovered")).toBeTruthy(); expect(screen.queryByText("service warming")).toBeNull();
+  });
+  it("does not show a previous object's payload under a changed API URL", async () => {
+    let resolve!: (value: Response) => void;
+    vi.mocked(fetch).mockImplementation(async path => path === "/api/first" ? json({ value: "first record" }) : new Promise<Response>(r => resolve = r));
+    function Routed({ path }: { path: string }) { const resource = useApi<{ value: string }>(path); return <p>{resource.loading ? "loading new record" : resource.data?.value}</p>; }
+    const view = render(<Routed path="/api/first" />); await screen.findByText("first record"); view.rerender(<Routed path="/api/second" />); expect(screen.queryByText("first record")).toBeNull(); expect(screen.getByText("loading new record")).toBeTruthy();
+    await act(async () => resolve(json({ value: "second record" }))); expect(screen.getByText("second record")).toBeTruthy();
+  });
   it("polls at five seconds, refreshes changed state, keeps the input node and focus", async () => {
     vi.useFakeTimers(); let version = 1;
     vi.mocked(fetch).mockImplementation(async path => json(path === "/api/state" ? { state_version: version } : { value: `snapshot ${version}` }));
