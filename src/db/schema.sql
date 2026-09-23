@@ -2,7 +2,7 @@
 PRAGMA journal_mode = WAL;
 CREATE TABLE IF NOT EXISTS organization (id TEXT PRIMARY KEY, name TEXT NOT NULL, payload TEXT NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS supplier (id TEXT PRIMARY KEY, name TEXT NOT NULL, lead_time_days INTEGER NOT NULL, review_days INTEGER NOT NULL DEFAULT 30, terms TEXT NOT NULL DEFAULT '{}', currency TEXT NOT NULL DEFAULT 'KZT', version INTEGER NOT NULL DEFAULT 1);
-CREATE TABLE IF NOT EXISTS sku (code_1c TEXT PRIMARY KEY, supplier_id TEXT NOT NULL REFERENCES supplier(id), article TEXT, name TEXT NOT NULL, unit TEXT, category TEXT, unit_cost TEXT, moq INTEGER NOT NULL DEFAULT 1, weight TEXT, first_sale_ym TEXT, months_with_sales INTEGER, median_month_qty TEXT, p95_doc_qty TEXT, version INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS sku (code_1c TEXT PRIMARY KEY, supplier_id TEXT NOT NULL REFERENCES supplier(id), article TEXT, name TEXT NOT NULL, unit TEXT, category TEXT, unit_cost TEXT, moq INTEGER NOT NULL DEFAULT 1, weight TEXT, first_sale_ym TEXT, months_with_sales INTEGER, median_month_qty TEXT, p95_doc_qty TEXT, on_hand_qty TEXT, on_hand_as_of TEXT, version INTEGER NOT NULL DEFAULT 1);
 CREATE INDEX IF NOT EXISTS sku_supplier ON sku(supplier_id, category);
 CREATE TABLE IF NOT EXISTS sales_line (id INTEGER PRIMARY KEY AUTOINCREMENT, code_1c TEXT NOT NULL, doc_no TEXT, doc_type TEXT, at TEXT NOT NULL, warehouse TEXT, qty TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'file');
 CREATE INDEX IF NOT EXISTS sales_line_code_at ON sales_line(code_1c, at);
