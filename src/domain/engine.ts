@@ -183,7 +183,7 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     growth: numeric(growth.toDecimalPlaces(3)), horizon_days: horizonDays,
     forecast_qty: numeric(forecastQty.toDecimalPlaces(3)), monthly_forecast: Object.fromEntries([...monthlyForecast].map(([ym, qty]) => [ym, numeric(qty.toDecimalPlaces(3))])),
     stockout_months: stockoutMonths, stockout_uplift: numeric(stockoutUplift.toDecimalPlaces(3)),
-    outliers_excluded: excluded, outlier_threshold: numeric(threshold),
+    outliers_excluded: excluded, median_month_qty: numeric(medianMonth), p95_doc_qty: numeric(p95Doc), outlier_threshold: numeric(threshold),
     safety: numeric(safety.toDecimalPlaces(3)), on_hand: numeric(onHand), on_hand_as_of: freshOnHand ? sku.on_hand_as_of : `${stockMonth}-01`, in_transit: numeric(transit),
     in_transit_sources: transitRows, net_need: numeric(netNeed.toDecimalPlaces(6)), raw_need: numeric(rawNeed.toDecimalPlaces(3)), moq: sku.moq, urgency,
     raw_observed_forecast: baseRate.gt(0) ? numeric(forecastQty.times(rawObservedRate).div(baseRate).toDecimalPlaces(3)) : 0,

@@ -45,4 +45,11 @@ describe("typed decision service", () => {
     expect(insufficient.answer).toBeNull();
     expect(unrecorded.answer).toBeNull();
   });
+
+  it("maps an increasing worker summary to the recorded replay subject", async () => {
+    const increased = await decide("change_summary", "RUN-RANDOM", { previous: { qty: 10 }, current: { qty: 20 } });
+    expect(increased).toMatchObject({ answer: "increased", mode: "replay", result_state: "decided" });
+    const decreased = await decide("change_summary", "RUN-OTHER", { previous: { qty: 20 }, current: { qty: 10 } });
+    expect(decreased.result_state).toBe("unsupported");
+  });
 });

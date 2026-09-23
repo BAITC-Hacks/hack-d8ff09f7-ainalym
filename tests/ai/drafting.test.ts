@@ -44,7 +44,8 @@ describe("supplier draft", () => {
     process.env.OPENAI_API_KEY = "test-only-key";
     generated.mockResolvedValueOnce({ object: { greeting_ru: "Заказ отправлен поставщику.", closing_ru: "Спасибо." }, response: { modelId: "test-model" } });
     const artifact = await prepareSupplierEmail("PO-APPROVED");
-    expect(artifact).toMatchObject({ state: "needs_review", consistency: "revised", model_version: "test-model", label: "Подготовить, не отправлять" });
+    expect(artifact).toMatchObject({ state: "needs_review", consistency: "revised", model_version: "test-model", label: "Черновик заказа — не отправлен" });
+    expect(artifact.markdown).toContain("Черновик заказа — не отправлен");
     expect(artifact.markdown).toContain("SE-TEST");
     expect(artifact.markdown).toContain("12 шт");
     expect(artifact.markdown).not.toContain("Заказ отправлен");

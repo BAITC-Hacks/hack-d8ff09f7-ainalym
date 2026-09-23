@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
-import { loadEnvConfig } from "@next/env";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,11 +8,6 @@ import { prepareSupplierEmail } from "../../src/ai/drafting";
 let directory = "";
 const prior = { DATABASE_PATH: process.env.DATABASE_PATH, ARTIFACT_PATH: process.env.ARTIFACT_PATH };
 beforeAll(() => {
-  const env = process.env as Record<string, string | undefined>;
-  const mode = env.NODE_ENV;
-  env.NODE_ENV = "development";
-  loadEnvConfig(process.cwd(), true, undefined, true);
-  if (mode === undefined) delete env.NODE_ENV; else env.NODE_ENV = mode;
   resetInstance();
   directory = mkdtempSync(join(tmpdir(), "ainalym-draft-live-"));
   process.env.DATABASE_PATH = join(directory, "draft.db");
@@ -29,8 +23,9 @@ afterAll(() => {
   if (directory) rmSync(directory, { recursive: true, force: true });
 });
 
-it.skipIf(process.env.RUN_AI_DRAFT_LIVE !== "1")("prepares an approved PO email through live OpenAI", async () => {
-  if (!process.env.OPENAI_API_KEY) { console.log("draft: externally-unverified (missing key)"); return; }
+it("prepares an approved PO email through live OpenAI", async (ctx) => {
+  if (process.env.AINALYM_LIVE_SMOKE !== "1") ctx.skip("UNVERIFIED: live provider not exercised (set AINALYM_LIVE_SMOKE=1)");
+  if (!process.env.OPENAI_API_KEY) ctx.skip("UNVERIFIED: missing OpenAI credentials");
   const artifact = await prepareSupplierEmail("PO-LIVE-TEST");
   expect(artifact.state).toBe("needs_review");
   expect(artifact.markdown).toContain("SE-LIVE-TEST");

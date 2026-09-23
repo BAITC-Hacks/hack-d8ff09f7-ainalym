@@ -23,6 +23,11 @@ export function migrate(d: DatabaseSync = db()): void {
   d.exec(sql);
   const columns = new Set((d.prepare("PRAGMA table_info(sku)").all() as { name: string }[]).map((row) => row.name));
   for (const name of ["on_hand_qty", "on_hand_as_of"]) if (!columns.has(name)) d.exec(`ALTER TABLE sku ADD COLUMN ${name} TEXT`);
+  const eventColumns = new Set((d.prepare("PRAGMA table_info(world_event)").all() as { name: string }[]).map(row => row.name));
+  for (const [name, ddl] of [
+    ["claimed_at", "TEXT"], ["attempt", "INTEGER NOT NULL DEFAULT 0"],
+    ["processing_stage", "TEXT NOT NULL DEFAULT 'unclaimed'"], ["affected_codes", "TEXT NOT NULL DEFAULT '[]'"],
+  ]) if (!eventColumns.has(name)) d.exec(`ALTER TABLE world_event ADD COLUMN ${name} ${ddl}`);
 }
 
 export function withTx<T>(fn: (d: DatabaseSync) => T): T {
