@@ -1,7 +1,8 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, unlinkSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { databasePath } from "../src/db/path.mjs";
 
 const root = process.cwd();
 const loader = join(root, "scripts", "etl", "load.mjs");
@@ -9,23 +10,23 @@ if (!existsSync(loader)) {
   console.error("ETL unavailable: scripts/etl/load.mjs has not landed");
   process.exit(2);
 }
-const databasePath = resolve(process.env.DATABASE_PATH || join(root, "data", "partner.db"));
+const targetPath = databasePath();
 if (process.env.DATABASE_PATH === ":memory:") {
   console.error("demo:reset requires a database file path");
   process.exit(2);
 }
 for (const suffix of ["", "-wal", "-shm"]) {
-  const path = databasePath + suffix;
+  const path = targetPath + suffix;
   if (existsSync(path)) unlinkSync(path);
 }
-const etl = spawnSync(process.execPath, [loader, "--db", databasePath], {
-  cwd: root, encoding: "utf8", env: { ...process.env, DATABASE_PATH: databasePath },
+const etl = spawnSync(process.execPath, [loader, "--db", targetPath], {
+  cwd: root, encoding: "utf8", env: { ...process.env, DATABASE_PATH: targetPath },
 });
 if (etl.status !== 0 || etl.error) {
   console.error((etl.stderr || etl.error?.message || "ETL failed").trim());
   process.exit(etl.status || 1);
 }
-const d = new DatabaseSync(databasePath);
+const d = new DatabaseSync(targetPath);
 if (!d.prepare("SELECT id FROM organization WHERE id = 'partner'").get()) {
   d.prepare("INSERT INTO organization (id,name,payload) VALUES (?,?,?)").run("partner", "Электрокомплект · обезличено", JSON.stringify({ opening_cash: [] }));
 }

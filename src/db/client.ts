@@ -2,11 +2,12 @@
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { databasePath } from "./path.mjs";
 
 let instance: DatabaseSync | null = null;
 
 export function dbPath(): string {
-  return process.env.DATABASE_PATH || join(process.cwd(), "data", "partner.db");
+  return databasePath();
 }
 
 export function db(): DatabaseSync {

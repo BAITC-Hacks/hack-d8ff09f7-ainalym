@@ -1,8 +1,9 @@
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
+import { databasePath } from '../../src/db/path.mjs';
 
 const i = process.argv.indexOf('--db');
-const path = i < 0 ? join(process.cwd(),'data/partner.db') : process.argv[i+1];
+const path = i < 0 ? databasePath() : process.argv[i+1];
 if (!path) throw new Error('--db requires a path');
 const d = new DatabaseSync(path);
 const median = sorted => sorted.length ? (sorted[Math.floor((sorted.length-1)/2)] + sorted[Math.floor(sorted.length/2)])/2 : null;
