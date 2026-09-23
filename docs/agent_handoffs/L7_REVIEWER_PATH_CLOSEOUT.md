@@ -36,3 +36,4 @@ Live providers, live voice/microphone and live ekt.kz calls (UNVERIFIED in check
 - Clean clone runs used a local clone of main, except the 11:58Z run against GitHub.
 
 Gate: GREEN (README path verified on clean clones; unverified surface named)
+tip: 01548c7
