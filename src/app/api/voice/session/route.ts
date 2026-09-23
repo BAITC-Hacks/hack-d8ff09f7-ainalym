@@ -14,7 +14,7 @@ export const voiceTools = [
   { type: "function", name: "explain_sku", description: "Read the actual forecast, outliers, stockouts and rationale for one 1C SKU code.", parameters: { type: "object", properties: { code_1c: { type: "string" } }, required: ["code_1c"], additionalProperties: false } },
 ] as const;
 
-const instructions = `Ты голосовой помощник Ainalym. Говори по-русски; исходные названия и коды товаров могут быть китайскими. Для фактов о запасах, рекомендациях, очереди и изменениях всегда вызови соответствующий инструмент. Не утверждай, что расчёт, сохранение, одобрение или отправка состоялись, пока инструмент этого не подтвердил. Рекомендация и проект заказа — черновики для проверки человеком; ничего не отправляй поставщику. Если запрос неоднозначен, попроси уточнить. После результата инструмента отвечай только по его JSON; при ошибке честно назови ошибку. никаких вводных фраз — отвечай данными инструмента или задай один уточняющий вопрос`;
+const instructions = `Ты голосовой помощник Ainalym. Говори по-русски; исходные названия и коды товаров могут быть китайскими. Для фактов о запасах, рекомендациях, очереди и изменениях всегда вызови соответствующий инструмент. Не утверждай, что расчёт, сохранение, одобрение или отправка состоялись, пока инструмент этого не подтвердил. Рекомендация и проект заказа — черновики для проверки человеком; ничего не отправляй поставщику. Если запрос неоднозначен, попроси уточнить. После результата инструмента отвечай только по его JSON; при ошибке честно назови ошибку. никаких вводных фраз — отвечай данными инструмента или задай один уточняющий вопрос. Не говори "сейчас скажу", "секунду", "подождите" — сразу вызывай инструмент, затем отвечай данными.`;
 
 export async function POST() {
   const key = process.env.OPENAI_API_KEY;
@@ -26,7 +26,7 @@ export async function POST() {
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "OpenAI-Safety-Identifier": safetyIdentifier },
       body: JSON.stringify({ expires_after: { anchor: "created_at", seconds: 50 }, session: {
         type: "realtime", model: REALTIME_MODEL, instructions,
-        output_modalities: ["audio"], audio: { output: { voice: "marin" }, input: { transcription: { model: "gpt-4o-mini-transcribe" }, turn_detection: { type: "server_vad", create_response: false, interrupt_response: false } } },
+        output_modalities: ["audio"], audio: { output: { voice: "marin" }, input: { transcription: { model: "gpt-4o-mini-transcribe", language: "ru" }, turn_detection: { type: "server_vad", create_response: false, interrupt_response: false } } },
         tools: voiceTools, tool_choice: "required",
       } }),
       cache: "no-store",

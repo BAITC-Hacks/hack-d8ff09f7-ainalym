@@ -41,4 +41,13 @@ describe("Realtime interruption event stream", () => {
     expect(transcript.take()).toBe("");
     expect(transcript.completed("input-new", "late duplicate")).toBe(false);
   });
+  it("rejects the owner's hallucinated Korean line and tiny VAD noise", () => {
+    const transcript = new TranscriptGate();
+    transcript.started("input-noise");
+    expect(transcript.completed("input-noise", "운동이나 체킨더 운동이나")).toBe(false);
+    expect(transcript.completed("input-noise", "а!")).toBe(false);
+    expect(transcript.peek()).toBe("");
+    expect(transcript.completed("input-noise", "Покажи очередь")).toBe(true);
+    expect(transcript.take()).toBe("Покажи очередь");
+  });
 });
