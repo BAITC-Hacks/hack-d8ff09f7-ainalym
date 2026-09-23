@@ -5,6 +5,12 @@ export class HttpError extends Error {
   constructor(readonly status: number, readonly code: string, message: string, readonly field?: string) { super(message); }
 }
 
+export function truthAxes(): { provenance: "partner_anonymised"; ai: "live" | "rules" | "replay" | "unavailable"; external: "export_only" } {
+  const provider = process.env.AI_PROVIDER || (process.env.TYPESAFE_API_KEY || process.env.AI_GATEWAY_API_KEY || process.env.OPENAI_API_KEY ? "jev" : "rules");
+  const configured = provider === "jev" ? !!(process.env.TYPESAFE_API_KEY || process.env.AI_GATEWAY_API_KEY) : provider === "openai" ? !!process.env.OPENAI_API_KEY : false;
+  return { provenance: "partner_anonymised", ai: provider === "rules" ? "rules" : provider === "offline" ? "replay" : configured ? "live" : "unavailable", external: "export_only" };
+}
+
 export async function body<T>(request: Request, schema: ZodType<T>): Promise<T> {
   let value: unknown;
   try { value = await request.json(); }
@@ -13,7 +19,7 @@ export async function body<T>(request: Request, schema: ZodType<T>): Promise<T> 
 }
 
 export function ok(data: object = {}, status = 200): Response {
-  return Response.json({ ok: true, ...data, state_version: stateVersion() }, { status });
+  return Response.json({ ok: true, ...truthAxes(), ...data, state_version: stateVersion() }, { status });
 }
 
 export function failure(error: unknown): Response {

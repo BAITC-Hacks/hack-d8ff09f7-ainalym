@@ -48,11 +48,11 @@ The L1 repository accepts typed raw rows, validates column names, and provides g
 
 ## 3. JSON API
 
-App Router handlers use the zod schemas in src/server/contracts.ts. A successful L1 response carries ok:true and state_version:i, except health, which carries version:i. An error is {ok:false,code:s,message:s,field?:s}. HTTP 400 covers malformed JSON, validation, kind, or source; 404 covers unknown or foreign org and unknown IDs; 409 is stale version on delegated approval routes; 422 is business rejection; 503 is unavailable ETL, database, or provider. JSON numeric amounts remain strings; only counts, versions, and quantities are JSON numbers.
+App Router handlers use the zod schemas in src/server/contracts.ts. A successful L1 response carries ok:true, provenance:partner_anonymised, ai:live/rules/replay/unavailable, external:export_only and state_version:i, except health, which carries version:i. An error is {ok:false,code:s,message:s,field?:s}. HTTP 400 covers malformed JSON, validation, kind, or source; 404 covers unknown or foreign org and unknown IDs; 409 is stale version on delegated approval routes; 422 is business rejection; 503 is unavailable ETL, database, or provider. JSON numeric amounts remain strings; only counts, versions, and quantities are JSON numbers.
 
 | Method / path | Request and response fields | Status |
 |---|---|---|
-| GET /api/health | mode:live or offline; ai_provider:jev/openai/rules/offline; providers:{jev,openai,voice}:configured or missing; db:ok; version:i | 200, 503 |
+| GET /api/health | mode:live or offline; ai_provider:jev/openai/rules/offline; providers:{jev,openai,voice}:configured or missing; demo_guard:on/off; remaining_daily_budget:i or null; db:ok; version:i | 200, 503 |
 | GET /api/state | fingerprint:s, state_version:i, at:ISO string | 200 |
 | GET /api/modes | axes:{provenance,ai,external}, labels:map with section 5 values | 200 |
 | POST /api/demo/reset | Rebuild partner.db via ETL; returns counts: table-name to integer, including world_event=45 before processing | 200, 503 |

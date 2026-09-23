@@ -2,8 +2,9 @@ import { z } from "zod";
 
 export const MoneySchema = z.object({ amount: z.string(), currency: z.string() });
 export const ErrorSchema = z.object({ ok: z.literal(false), code: z.string(), message: z.string(), field: z.string().optional() });
-export const SuccessSchema = z.object({ ok: z.literal(true), state_version: z.number().int().nonnegative() });
-export const HealthSchema = z.object({ ok: z.literal(true), mode: z.enum(["live", "offline"]), ai_provider: z.enum(["jev", "openai", "rules", "offline"]), providers: z.object({ jev: z.enum(["configured", "missing"]), openai: z.enum(["configured", "missing"]), voice: z.enum(["configured", "missing"]) }), db: z.literal("ok"), version: z.number().int() });
+export const AxesSchema = z.object({ provenance: z.literal("partner_anonymised"), ai: z.enum(["live", "rules", "replay", "unavailable"]), external: z.literal("export_only") });
+export const SuccessSchema = AxesSchema.extend({ ok: z.literal(true), state_version: z.number().int().nonnegative() });
+export const HealthSchema = AxesSchema.extend({ ok: z.literal(true), mode: z.enum(["live", "offline"]), ai_provider: z.enum(["jev", "openai", "rules", "offline"]), providers: z.object({ jev: z.enum(["configured", "missing"]), openai: z.enum(["configured", "missing"]), voice: z.enum(["configured", "missing"]) }), demo_guard: z.enum(["on", "off"]), remaining_daily_budget: z.number().int().nonnegative().nullable(), db: z.literal("ok"), version: z.number().int() });
 export const StateSchema = SuccessSchema.extend({ fingerprint: z.string(), at: z.string() });
 export const ModesSchema = SuccessSchema.extend({ axes: z.object({ provenance: z.string(), ai: z.string(), external: z.string() }), labels: z.record(z.string(), z.unknown()) });
 export const ResetResponseSchema = SuccessSchema.extend({ counts: z.record(z.string(), z.number().int().nonnegative()) });

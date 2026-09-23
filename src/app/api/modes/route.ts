@@ -1,9 +1,9 @@
-import { handle, ok } from "@/server/http";
+import { handle, ok, truthAxes } from "@/server/http";
 
 export const runtime = "nodejs";
 export async function GET(): Promise<Response> {
   return handle(() => ok({
-    axes: { provenance: "partner_anonymised", ai: process.env.AI_PROVIDER || (process.env.TYPESAFE_API_KEY || process.env.AI_GATEWAY_API_KEY || process.env.OPENAI_API_KEY ? "live" : "rules"), external: "export_only" },
+    axes: truthAxes(),
     labels: {
       provenance: "Данные партнёра · обезличены", agents: "Агенты · данные партнёра", ai_live: "Живой AI",
       ai_rules: "Правила без LLM", ai_replay: "Воспроизведение · записанное решение", ai_unavailable: "Провайдер недоступен",
