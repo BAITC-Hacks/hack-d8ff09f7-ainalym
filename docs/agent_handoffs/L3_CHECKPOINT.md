@@ -1,4 +1,4 @@
-Done: providers, worker, drafts, columns; live AI gate 39 pass/0 fail/1 L1 skip; build/tsc green; L1 probe passed.
-Undone: L1 ledger not on main; portable persisted-trace gate awaits integration.
-Resumable: merge main when L1 lands, rerun tests/ai/worker_ledger.test.ts and full AI gate; update closeout.
-SHA: 22a65b6 (merged base before this checkpoint commit).
+Done: providers, worker, drafts, columns; L1 ledger integrated; live AI gate 41/41, build/tsc green.
+Undone: no L3 gate; AI artifact display on L6 supplier page remains cross-lane UI work.
+Resumable: merge latest main at review; rerun RUN_AI_DRAFT_LIVE=1 npm run check -- ai.
+SHA: 6e51887 (merged base before this checkpoint commit).

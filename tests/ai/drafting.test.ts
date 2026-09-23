@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { db, resetInstance } from "../../src/db/client";
 import { DraftProviderUnavailable, prepareSupplierEmail, readArtifact } from "../../src/ai/drafting";
+import { POST as postDraft } from "../../src/app/api/drafts/route";
 import { GET as getArtifact } from "../../src/app/api/artifacts/[id]/route";
 import { GET as downloadArtifact } from "../../src/app/api/artifacts/[id]/download/route";
 
@@ -63,5 +64,19 @@ describe("supplier draft", () => {
     expect(artifact.consistency).toBe("revised");
     expect(artifact.markdown).not.toContain("9999");
     expect(artifact.markdown).toContain("12 шт");
+  });
+
+  it("prepares a reviewable supplier artifact through POST /api/drafts", async () => {
+    process.env.OPENAI_API_KEY = "test-only-key";
+    generated.mockResolvedValueOnce({ object: { greeting_ru: "Здравствуйте.", closing_ru: "С уважением, отдел закупок." }, response: { modelId: "test-model" } });
+    const response = await postDraft(new Request("http://localhost/api/drafts", {
+      method: "POST", body: JSON.stringify({ kind: "supplier_email", po_id: "PO-APPROVED" }),
+    }));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.artifact).toMatchObject({ kind: "supplier_email", state: "needs_review", provider: "openai" });
+    expect(body.artifact.markdown).toContain("SE-TEST");
+    expect(body.artifact.markdown).toContain("12 шт");
+    expect(body.artifact.sources).toEqual(["PO-APPROVED", "sku:SE-TEST"]);
   });
 });
