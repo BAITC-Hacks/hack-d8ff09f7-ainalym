@@ -41,7 +41,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const modeChip = <ModeChip mode={modesError && !modes ? "unavailable" : modes?.mode} ai={modes?.axes?.ai ?? modes?.ai} />;
   return <div className={styles.shell} data-collapsed={collapsed}>
     <a className={styles.skip} href="#main">К содержимому</a>
-    <aside className={styles.rail} aria-label="Навигация приложения"><Link href="/today" className={styles.brand} aria-label="Айналым"><span className={styles.brandFull}>Айналым</span><span className={styles.brandShort} aria-hidden="true">А</span></Link>
+    <aside className={styles.rail} aria-label="Навигация приложения"><Link href="/today" className={styles.brand} aria-label="Ainalym"><span className={styles.brandFull}>Ainalym</span><span className={styles.brandShort} aria-hidden="true">А</span></Link>
       <nav className={styles.navigation} aria-label="Основные разделы">{navigation.map((item,i) => "unavailable" in item ? <button type="button" key={item.href} className={styles.navItem} title={item.unavailable} onClick={() => setNotice(item.unavailable)}><item.icon size={18} /><span>{item.label}</span></button> : <Link href={item.href} key={item.href} className={`${styles.navItem} ${i === 5 ? styles.navSecondary : ""}`} aria-current={selected(item.href) ? "page" : undefined} title={collapsed ? item.label : undefined}><item.icon size={18} /><span>{item.label}</span></Link>)}</nav>
       <div className={styles.railFoot}><p className={styles.meta}>Пополнение склада</p><Button variant="quiet" onClick={toggleRail} aria-label={collapsed ? "Развернуть меню" : "Свернуть меню"}>{collapsed ? <ArrowRightFromLine size={18} /> : <><ArrowLeftToLine size={18} /><span>Свернуть</span><kbd>[</kbd></>}</Button></div>
     </aside>

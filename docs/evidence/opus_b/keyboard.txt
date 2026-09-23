@@ -1,5 +1,5 @@
 today desktop: console errors 0
-today Tab order: a «Айналым» → a «Сегодня4» → a «Пополнение636» → a «Товар» → input[role=combobox] «» → button «Пересчитать» → a «Под риском дефицита636SKUзапаса меньше, чем срок поставки пл» → a «Ждёт вашего решения67,8 млн ₸SE 294 поз. · IEK 965 поз. · 1 » → button «Подготовить заказ»
+today Tab order: a «Ainalym» → a «Сегодня4» → a «Пополнение636» → a «Товар» → input[role=combobox] «» → button «Пересчитать» → a «Под риском дефицита636SKUзапаса меньше, чем срок поставки пл» → a «Ждёт вашего решения67,8 млн ₸SE 294 поз. · IEK 965 поз. · 1 » → button «Подготовить заказ»
 today ⌘K focus: input[role=combobox] «»
 today search ↓ Enter → /opus_b/skus/010300002_
 today phone: console errors 0

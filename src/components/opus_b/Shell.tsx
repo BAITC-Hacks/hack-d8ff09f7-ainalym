@@ -79,7 +79,7 @@ export function Shell({ children }: { children: ReactNode }) {
   return <div data-ob className={s.frame}>
     <a href="#ob-main" className={s.skip}>К содержимому</a>
     <aside className={s.rail} aria-label="Разделы">
-      <Link href="/opus_b/today" className={s.brand}><span className={s.brandDot} aria-hidden />Айналым</Link>
+      <Link href="/opus_b/today" className={s.brand}><span className={s.brandDot} aria-hidden />Ainalym</Link>
       <nav aria-label="Основное"><ul className={s.nav}>{links(false)}</ul></nav>
       <div className={s.railFoot}>
         <span className={s.sync}><span className={`${s.dot} ${offline || syncError ? s.dotOff : ""}`} aria-hidden />{offline ? "Нет связи — показываю последнее" : syncError ? "Обновления на паузе" : "Синхронизировано"}</span>
