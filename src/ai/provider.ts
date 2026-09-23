@@ -192,7 +192,7 @@ function ruleChoice(question: ChoiceQuestion, context: unknown): ChoiceResult {
       }
       break;
     case "supplier_terms_hint":
-      answer = /предоплат|prepay/.test(input) ? "prepayment" : /отсроч|net [0-9]/.test(input) ? "deferred" : "unknown";
+      answer = /предоплат|prepay|预付|预付款/.test(input) ? "prepayment" : /отсроч|net [0-9]|账期|後付/.test(input) ? "deferred" : "unknown";
       break;
     default: return empty("rules", "rules-v1", "unsupported", "Правила без LLM");
   }

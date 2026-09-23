@@ -26,11 +26,11 @@ export class DraftProviderUnavailable extends Error {
   constructor() { super("Provider unavailable"); }
 }
 
-function artifactDir(): string { return join(process.cwd(), "data", "artifacts"); }
+function artifactDir(): string { return process.env.ARTIFACT_PATH || join(process.cwd(), "data", "artifacts"); }
 function saveArtifact(artifact: Artifact): Artifact {
   const directory = artifactDir();
   mkdirSync(directory, { recursive: true });
-  const stem = join(directory, artifact.id);
+  const stem = join(/* turbopackIgnore: true */ directory, artifact.id);
   const nonce = randomUUID();
   writeFileSync(`${stem}.${nonce}.json.tmp`, JSON.stringify(artifact, null, 2), { mode: 0o600 });
   writeFileSync(`${stem}.${nonce}.md.tmp`, artifact.markdown, { mode: 0o600 });
@@ -41,7 +41,7 @@ function saveArtifact(artifact: Artifact): Artifact {
 
 export function readArtifact(id: string): Artifact | null {
   if (!/^ART-[a-f0-9-]{36}$/.test(id)) return null;
-  try { return JSON.parse(readFileSync(join(artifactDir(), `${id}.json`), "utf8")) as Artifact; }
+  try { return JSON.parse(readFileSync(join(/* turbopackIgnore: true */ artifactDir(), `${id}.json`), "utf8")) as Artifact; }
   catch { return null; }
 }
 

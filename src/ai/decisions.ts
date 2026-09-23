@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { db, stateVersion } from "../db/client";
+import { db, stateVersion, withTx, bumpStateVersion } from "../db/client";
 import { catalogQuestion } from "./catalog";
 import { decideChoice, selectedProvider, type ChoiceResult } from "./provider";
 
@@ -115,11 +115,14 @@ export async function decide(question_id: string, subject_ref: string, context: 
     ...result, id: `DR-${randomUUID()}`, question_id, subject_ref, evidence_versions: versions,
     rubric_version: rubric, mode, cache_key: key, at: new Date().toISOString(),
   };
-  db().prepare(`INSERT INTO decision_record
-    (id, question_id, subject_ref, answer, distribution, provider, model_version, result_state, mode, at, evidence_versions, rubric_version, cache_key)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-      record.id, question_id, subject_ref, record.answer, JSON.stringify(record.distribution), record.provider,
-      record.model_version, record.result_state, mode, record.at, JSON.stringify(versions), rubric, key,
-    );
+  withTx(tx => {
+    tx.prepare(`INSERT INTO decision_record
+      (id, question_id, subject_ref, answer, distribution, provider, model_version, result_state, mode, at, evidence_versions, rubric_version, cache_key)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+        record.id, question_id, subject_ref, record.answer, JSON.stringify(record.distribution), record.provider,
+        record.model_version, record.result_state, mode, record.at, JSON.stringify(versions), rubric, key,
+      );
+    bumpStateVersion(tx);
+  });
   return record;
 }

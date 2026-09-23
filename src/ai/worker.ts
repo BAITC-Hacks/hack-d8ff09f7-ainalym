@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { db, bumpStateVersion, withTx } from "../db/client";
 import { applyWorldEvent } from "../domain/events";
 import { computeNeed, type EngineParams } from "../domain/engine";
+import { paramsForSupplier } from "../domain/params";
 import { applyRecommendations } from "../domain/apply";
 import { startRun, recordAction, finishRun } from "../server/ledger";
 import { decide } from "./decisions";
@@ -17,6 +18,24 @@ function eventPayload(row: EventRow): Record<string, unknown> {
   const parsed: unknown = JSON.parse(row.payload);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("invalid_event_payload");
   return parsed as Record<string, unknown>;
+}
+
+function domainEvent(row: EventRow, payload: Record<string, unknown>, runId: string) {
+  if (row.kind !== "judge_message") return { ...row, run_id: runId };
+  if (payload.action === "inject_sales_line" && payload.line && typeof payload.line === "object") {
+    return { ...row, run_id: runId, payload: JSON.stringify(payload.line) };
+  }
+  if (payload.action === "adjust_in_transit") {
+    return { ...row, kind: "in_transit_update", run_id: runId, payload: JSON.stringify({
+      code_1c: payload.code_1c ?? row.code_1c, delta: payload.delta_qty, po_ref: row.source_id,
+    }) };
+  }
+  if (payload.action === "update_unit_cost") {
+    return { ...row, kind: "price_update", run_id: runId, payload: JSON.stringify({
+      code_1c: payload.code_1c ?? row.code_1c, unit_cost: payload.to,
+    }) };
+  }
+  return { ...row, run_id: runId };
 }
 
 async function recordDecision(runId: string, eventId: string, question: string, subject: string, context: Record<string, unknown>): Promise<void> {
@@ -67,12 +86,7 @@ async function recomputeAffected(row: EventRow, codes: string[], runId: string):
   for (const code of unique) {
     const supplier = d.prepare("SELECT supplier_id FROM sku WHERE code_1c=?").get(code) as { supplier_id: string } | undefined;
     if (!supplier) throw new Error(`sku_not_found:${code}`);
-    const terms = d.prepare("SELECT lead_time_days,review_days FROM supplier WHERE id=?").get(supplier.supplier_id) as { lead_time_days: number; review_days: number } | undefined;
-    if (!terms) throw new Error(`supplier_not_found:${supplier.supplier_id}`);
-    const params: EngineParams = {
-      lead_time_days: terms.lead_time_days, review_days: terms.review_days,
-      service_level: 0.9, growth_cap: 0.5, outlier: { k_month: 3, k_doc: 5, min_units: 20 },
-    };
+    const params: EngineParams = paramsForSupplier(supplier.supplier_id, d);
     const result = await computeNeed(code, params, { as_of: row.at || undefined });
     if (!result.forecast) throw new Error(`engine_unavailable:${code}`);
     computed.push({ code, supplier: supplier.supplier_id, result });
@@ -127,14 +141,18 @@ async function runEvent(id: string): Promise<ProcessResult> {
   if (!row) return { run_id: null, actions: 0, escalations: 0, reason: "world_event_not_found" };
   if (row.state !== "pending" || row.run_id) return { run_id: row.run_id, actions: 0, escalations: 0, reason: `already_${row.state}` };
   const runId = await startRun({ org_id: row.org_id, trigger_type: "world_event", trigger_ref: row.id });
-  const claimed = db().prepare("UPDATE world_event SET run_id=? WHERE id=? AND state='pending' AND run_id IS NULL").run(runId, id);
+  const claimed = withTx(tx => {
+    const result = tx.prepare("UPDATE world_event SET run_id=? WHERE id=? AND state='pending' AND run_id IS NULL").run(runId, id);
+    if (result.changes) bumpStateVersion(tx);
+    return result;
+  });
   if (!claimed.changes) {
     await finishRun(runId, "failed");
     return { run_id: null, actions: 0, escalations: 0, reason: "claimed_by_another_worker" };
   }
   try {
     const payload = eventPayload(row);
-    const sourceRow = { ...row, run_id: runId };
+    const sourceRow = domainEvent(row, payload, runId);
     const applied = await applyWorldEvent(sourceRow);
     if (!applied.applied && applied.reason !== "replayed") throw new Error(applied.reason || "event_not_applied");
     await recordAction(runId, {
@@ -143,7 +161,10 @@ async function runEvent(id: string): Promise<ProcessResult> {
     });
     await maybeSemanticDecisions(row, payload, runId);
     await recomputeAffected(row, applied.affected_codes, runId);
-    db().prepare("UPDATE world_event SET state='processed',run_id=?,processed_at=? WHERE id=?").run(runId, new Date().toISOString(), id);
+    withTx(tx => {
+      tx.prepare("UPDATE world_event SET state='processed',run_id=?,processed_at=? WHERE id=?").run(runId, new Date().toISOString(), id);
+      bumpStateVersion(tx);
+    });
     await finishRun(runId, "done");
     const count = db().prepare("SELECT actions_count,escalations_count FROM agent_run WHERE id=?").get(runId) as { actions_count: number; escalations_count: number } | undefined;
     return { run_id: runId, actions: count?.actions_count ?? 0, escalations: count?.escalations_count ?? 0 };
@@ -154,7 +175,10 @@ async function runEvent(id: string): Promise<ProcessResult> {
       summary_ru: `Событие требует проверки: ${reason}`, rationale_ru: reason,
       sources: [row.source_id], autonomy: "escalated", result: "failed", idempotency_key: `${row.id}:failed`,
     });
-    db().prepare("UPDATE world_event SET state='failed',run_id=?,processed_at=? WHERE id=?").run(runId, new Date().toISOString(), id);
+    withTx(tx => {
+      tx.prepare("UPDATE world_event SET state='failed',run_id=?,processed_at=? WHERE id=?").run(runId, new Date().toISOString(), id);
+      bumpStateVersion(tx);
+    });
     await finishRun(runId, "failed");
     const count = db().prepare("SELECT actions_count,escalations_count FROM agent_run WHERE id=?").get(runId) as { actions_count: number; escalations_count: number } | undefined;
     return { run_id: runId, actions: count?.actions_count ?? 0, escalations: count?.escalations_count ?? 0, reason };
@@ -180,7 +204,10 @@ export async function runScheduledChecks(now: Date = new Date()): Promise<string
       kind: "escalation", subject_ref: task.id, summary_ru: `Срок проверки: ${task.title}`,
       sources: [task.id], autonomy: "escalated", result: "needs_owner", idempotency_key: `scheduled:${task.id}:${now.toISOString()}`,
     });
-    db().prepare("UPDATE task SET next_event_at=NULL,updated_at=? WHERE id=?").run(now.toISOString(), task.id);
+    withTx(tx => {
+      tx.prepare("UPDATE task SET next_event_at=NULL,updated_at=? WHERE id=?").run(now.toISOString(), task.id);
+      bumpStateVersion(tx);
+    });
     await finishRun(runId, "done");
     runs.push(runId);
   }
