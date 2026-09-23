@@ -97,6 +97,7 @@ Client seam (L5 exports, L4 imports): `useVoiceSession(scope) → {state: idle|c
 | supplier channel | `Draft — not sent` / `Sent (controlled demo channel)` / `Confirmed (simulator)` | «Черновик заказа — не отправлен» / «Отправлено (контролируемый демо-канал)» / «Подтверждено (симулятор)» |
 | world | `World simulator · synthetic event` | «Симулятор мира — синтетическое событие» |
 | voice | `Voice: live` / `Voice: unavailable` | «Голос: живой» / «Голос недоступен» |
+| ekt catalog | `ekt_api_live` / `ekt_snapshot` | «Каталог ekt.kz · живой API» / «Снимок каталога ekt.kz от <дата>» |
 | urgency | `critical · soon · normal · none` | «критично · скоро · планово · не требуется» |
 | task states | `preparing · awaiting_supplier · needs_review · ready_to_handover · handed_over · handover_failed` | «Готовлю · Ждём поставщика · Нужна ваша проверка · Готово к передаче · Передано · Ошибка передачи» |
 | proposal states | `draft · needs_review · approved · stale · rejected · delivered · delivery_failed` | «черновик · ждёт вас · утверждено · устарело — есть новая версия · отклонено · передано · ошибка передачи» |
