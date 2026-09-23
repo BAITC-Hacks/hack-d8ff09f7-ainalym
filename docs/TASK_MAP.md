@@ -14,14 +14,14 @@
 | M4 | Исключение разовых документов (порог max(20, min(3×медиана, 5×p95))) | `src/domain/engine.ts` · `POST /api/world/compose` | `node scripts/scenario.mjs` → `[PASS] M4 (change=0.00%, excluded=true)` | GREEN · 09:48Z |
 | M5 | Список по поставщикам + обоснование + экспорт «Код 1с» | `GET /api/recommendations` · `/replenishment` · `GET /api/orders/:id/export.xlsx` | `node scripts/scenario.mjs` → `[PASS] M5-full`, `[PASS] M5 (rows=724)`; API: экспорт 294 строки, 7 колонок | GREEN · 09:48Z |
 | D1 | Загрузка данных партнёра, текущий остаток 22.09 | `scripts/etl/*.mjs` → `data/partner.db` | `npm run etl` → sku 3909, sales_line 248915, in_transit 313, stockout months 1591 | GREEN · 09:48Z |
-| D2 | Путь к базе: приложение и ETL в одном файле | `src/db/client.ts` · `.env.example` (`./data/ainalym.db`) · ETL (`data/partner.db`) | README §7: `DATABASE_PATH=./data/partner.db` | PARTIAL · 09:48Z (без правки .env.local приложение открывает пустую базу; исправление — L1-FIX-1) |
+| D2 | Путь к базе: приложение и ETL в одном файле | `src/db/path.mjs` (общий резолвер, по умолчанию `./data/ainalym.db`) | чистый клон `da810b1`: `npm run etl` → `data/ainalym.db`, приложение видит данные | GREEN · 10:31Z |
 | D3 | Данные партнёра и происхождение | `fixtures/partner/*` · `fixtures/PROVENANCE.md` · `DISCLOSURE.md` | `ls fixtures/partner/*/*.xlsx \| wc -l` → 12 | GREEN · 09:48Z |
 | D4 | События-фикстуры и эталоны | `fixtures/world_events.jsonl` (45) · `tests/fixtures/eval/replenishment_expectations.json` | `node scripts/scenario.mjs` → `[PASS] World (applied=45/45)` | GREEN · 09:48Z |
 | Q1 | Очередь решений, утверждение по версии | `/api/queue` · `/api/proposals/:id/approve` · `/review` | API: предложение SE (294 позиций) → утверждено → PO | GREEN · 09:48Z |
 | Q2 | Утверждение заказа, обязательства 30/70 | `POST /api/orders/:id/approve` · `src/domain/obligations.ts` | `node scripts/scenario.mjs` → `[PASS] Money`; API: заказ `approved`, версия 2 | GREEN · 09:48Z (в API-прогоне `next_60d.out` пуст — передано корню) |
 | Q3 | Воркер агентов и журнал | `src/ai/worker.ts` · `/api/agent/ledger` · `/api/agent/runs` | API: журнал карточки «Пересчитана потребность 300200745_: 24 шт» | GREEN · 09:48Z |
 | T1 | Задачи и плановые проверки | `src/domain/tasks.ts` · `schedule.ts` | `npm run check` | GREEN · 09:48Z |
-| A1 | Типизированные решения jev/openai/rules/replay | `src/ai/provider.ts` · `/api/decisions` | `npm run check` (без ключей — rules/replay) | GREEN · 09:48Z; живые — UNVERIFIED без `AINALYM_LIVE_SMOKE=1` |
+| A1 | Типизированные решения jev/openai/rules/replay | `src/ai/provider.ts` · `/api/decisions` | `npm run check` (без ключей — rules/replay; живые — `UNVERIFIED` без `AINALYM_LIVE_SMOKE=1`) | GREEN · 10:28Z |
 | A2 | Черновики письма поставщику и сводки | `src/ai/drafting.ts` · `/api/drafts` | живой — отдельно | UNVERIFIED · 09:48Z (нужен `OPENAI_API_KEY`) |
 | F1 | Деньги по поставщикам без выдуманной себестоимости | `GET /api/money` · `/money` | API: SE 67 449 839,07 KZT, 262 из 294 с себестоимостью | GREEN · 09:48Z |
 | W1 | Лента: воспроизведение, ввод жюри, однократность, метка | `/api/world/*` · `/world` | API: compose → `processed`, «Симулятор мира — синтетическое событие» | GREEN · 09:48Z |
@@ -29,8 +29,8 @@
 | S1 | Карточка артикула | `GET /api/skus/:code` · `/skus/:code` | API: рекомендация, в пути, журнал | GREEN · 09:48Z |
 | V1 | Голос: Realtime-сессия, инструменты; текстовый путь без ключа | `src/voice/*` · `/api/voice/*` · `/api/assistant/message` · `/assistant` | `npm run check` (voice) | PARTIAL · 09:48Z (живой микрофон — UNVERIFIED, 2 проверки пропущены) |
 | U1 | Экраны | `/today` `/replenishment` `/skus/:code` `/review` `/orders/:id` `/money` `/connections` `/assistant` `/world` `/peers` `/supplier/:po_id` | HTTP 200 на чистом клоне; снимки — `docs/evidence/ui`, `docs/evidence/peers`, `docs/evidence/voice` | PARTIAL · 09:48Z (L7 проверил ответы 200, не вёрстку; L4b/L4c: снимки не всех экранов) |
-| C2 | Сводная проверка | `scripts/check.mjs` | `npm run check` → `check: passed=203 failed=0 skipped=3 externally-unverified=0` | GREEN · 09:48Z |
-| C3 | Чистый клон | `scripts/clean_clone_check.sh` | локальный клон `9bd8972` → `CLEAN-CLONE: PASS` (passed=197 skipped=9) | GREEN · 09:48Z (GitHub-remote — ≈12:10Z) |
+| C2 | Сводная проверка | `scripts/check.mjs` | `npm run check` → `check: passed=221 failed=0 skipped=12 externally-unverified=6` | GREEN · 10:28Z (чистый клон `da810b1`) |
+| C3 | Чистый клон | `scripts/clean_clone_check.sh` | локальный клон `da810b1` → `CLEAN-CLONE: FAIL — founder filesystem path` (`docs/agent_handoffs/OPUS_A_CLOSEOUT.md`) | RED · 10:26Z (корень убирает путь; повтор на следующем коммите) |
 | C5 | Пересборка демо-базы | `scripts/demo_reset.mjs` · `POST /api/demo/reset` | `npm run demo:reset` | GREEN · 09:3xZ |
 | H1 | Хостинг-демо | `src/middleware.ts` · `src/server/demo_guard.ts` · `scripts/deploy/*` | `GET <URL>/api/health` → 200 | PARTIAL · 09:48Z (по данным корня; URL — через платформу) |
 | R1 | README: методика, выбросы, запуск | `README.md` §4, §7, §8 | чистый клон по §7–8 | GREEN (v1.7) · 09:48Z |
