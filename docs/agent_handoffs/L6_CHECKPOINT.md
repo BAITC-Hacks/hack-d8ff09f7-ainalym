@@ -1,6 +1,6 @@
-# L6 checkpoint — world feed
-done: scripted play ordered by seq; compose, dedupe, labels, org isolation; world API routes.
-done: fail-first world tests 3/3; build GREEN.
-undone: supplier/judge pages, export seam, peer view, live integration gate.
-resumable: implement supplier reply on the compose seam, then export approved PO.
+# L6 checkpoint — supplier and judge channel
+done: world feed/API; SKU judge compose page; prepared PO email and controlled supplier confirmation channel.
+done: supplier reply enters world_event verbatim; fail-first peer tests 5/5; build GREEN.
+undone: 1C file export seam, peer view, runtime integration gate.
+resumable: implement approved PO export with idempotent file path and ledger_peer_record.
 sha: HEAD (the commit containing this checkpoint).
