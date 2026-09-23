@@ -28,6 +28,8 @@ describe("1C file export boundary", () => {
     expect(first.replayed).toBe(false);
     expect(second.replayed).toBe(true);
     expect(first.external).toBe("export_only");
+    expect(first).toMatchObject({ provenance: "partner_anonymised", ai: "none", external: "export_only" });
+    expect(second).toMatchObject({ provenance: "partner_anonymised", ai: "none", external: "export_only" });
     expect(first.label).toBe("Экспорт для 1С (файл)");
     expect(readFileSync(first.csv_path, "utf8")).toContain("Код 1с;Артикул поставщика;Наименование;Кол-во;Кратность;Срочность;Обоснование");
     expect(readFileSync(first.csv_path, "utf8")).toContain("03001_");
