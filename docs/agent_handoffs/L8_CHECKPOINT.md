@@ -1,5 +1,5 @@
-L8 checkpoint 2 — 2026-09-23
-Done: container shell; signed 7-day access cookie, 60/min API bucket, SQLite UTC daily budget, honest 503.
-Undone: provider-boundary reserveLiveCall wiring by L3/L5; deploy scripts; container/offline proof; live integration.
-Resumable: run demo tests/build; L3/L5 call reserveLiveCall before every provider request.
-sha: 02e226d (previous checkpoint); this checkpoint = git rev-parse HEAD
+L8 checkpoint 3 — 2026-09-23
+Done: container, guard, Hetzner release/rollback deploy, tunnel fallback, platform handover note.
+Undone: L3/L5 provider-boundary cap wiring; container/offline proof; live integration.
+Resumable: run demo tests/build; deploy after L1/L9 merge; owner supplies env through shell only.
+sha: 81c6ac2 (previous checkpoint); this checkpoint = git rev-parse HEAD
