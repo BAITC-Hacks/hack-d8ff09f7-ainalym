@@ -84,7 +84,10 @@ test("assistant page: chip → inline card, typed «почему 130200122» →
   expect(await sku.innerText()).not.toMatch(TECH);
   await expect(sku.getByRole("link", { name: /Открыть карточку 130200122_/ })).toHaveAttribute("href", `${PREFIX}/skus/130200122_`);
   await page.screenshot({ path: `${OUT2}/02_assistant_cards_1440.png`, fullPage: true });
+  // Phone: a real load at 390 (the shared thread comes back from storage), not a desktop resize.
   await page.setViewportSize({ width: 390, height: 844 });
+  await go(page, `${PREFIX}/assistant`);
+  await expect(surface.getByRole("article", { name: "почему 130200122" })).toBeVisible();
   await expect(surface.getByRole("button", { name: "Говорить с ассистентом" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.screenshot({ path: `${OUT2}/03_assistant_390.png` });
