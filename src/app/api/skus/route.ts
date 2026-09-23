@@ -1,17 +1,18 @@
 import { countSkus, listSkus } from "@/domain/skus";
 import { SkuQuerySchema } from "@/server/contracts";
 import { handle, ok } from "@/server/http";
-import { loadMap, loadSnapshot } from "@/peers/ekt";
+import { loadMap, loadSkuImages, loadSnapshot } from "@/peers/ekt";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request): Promise<Response> {
   return handle(() => {
     const query = SkuQuerySchema.parse(Object.fromEntries(new URL(request.url).searchParams));
-    const map = loadMap(), snapshot = loadSnapshot();
+    const map = loadMap(), snapshot = loadSnapshot(), images = loadSkuImages();
     const items = listSkus(query).map(item => {
-      const product = snapshot.products[map[String(item.code_1c)]?.id];
-      return { ...item, image_url: product?.image_url ?? null, ekt_url: product?.product_url ?? null, ekt_stock_total: product?.stock_total ?? null };
+      const code = String(item.code_1c), product = snapshot.products[map[code]?.id];
+      return { ...item, image_url: images[code]?.path ?? product?.image_url ?? null, ekt_url: product?.product_url ?? null,
+        ekt_stock_total: product?.stock_total ?? null, ekt_source: product?.source ?? null, ekt_as_of: product?.as_of ?? null };
     });
     return ok({ items, skus: items, total: countSkus(query) });
   });

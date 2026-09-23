@@ -2,13 +2,13 @@ import Decimal from "decimal.js";
 import { db } from "@/db/client";
 import { RecommendationsQuerySchema } from "@/server/contracts";
 import { handle, ok } from "@/server/http";
-import { loadMap, loadSnapshot } from "@/peers/ekt";
+import { loadMap, loadSkuImages, loadSnapshot } from "@/peers/ekt";
 
 export const runtime = "nodejs";
 export async function GET(request: Request): Promise<Response> {
   return handle(() => {
     const query = RecommendationsQuerySchema.parse(Object.fromEntries(new URL(request.url).searchParams));
-    const ektMap = loadMap(), snapshot = loadSnapshot();
+    const ektMap = loadMap(), snapshot = loadSnapshot(), images = loadSkuImages();
     const runId = query.run_id || (db().prepare("SELECT id FROM calc_run ORDER BY started_at DESC LIMIT 1").get() as { id: string } | undefined)?.id;
     if (!runId) return ok({ groups: [] });
     const clauses = ["r.run_id = ?", "COALESCE(r.qty_adjusted, r.qty_recommended) > 0"];
@@ -40,7 +40,9 @@ export async function GET(request: Request): Promise<Response> {
         forecast_qty: components.forecast_qty == null ? row.base_rate : String(components.forecast_qty), qty_recommended: row.qty_recommended,
         qty_adjusted: row.qty_adjusted, moq: row.moq, urgency: row.urgency, rationale_ru: row.rationale_ru, components,
         outliers_excluded: outliers, stockout_months: stockouts,
-        image_url: product?.image_url ?? null, ekt_url: product?.product_url ?? null, ekt_stock_total: product?.stock_total ?? null });
+        image_url: images[String(row.code_1c)]?.path ?? product?.image_url ?? null, ekt_url: product?.product_url ?? null,
+        ekt_price: product?.price ?? null, ekt_currency: product?.currency ?? null, ekt_stock_total: product?.stock_total ?? null,
+        ekt_source: product?.source ?? null, ekt_as_of: product?.as_of ?? null });
     }
     return ok({ groups: [...groups.values()] });
   });
