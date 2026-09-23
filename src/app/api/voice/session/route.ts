@@ -24,7 +24,7 @@ export async function POST() {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "OpenAI-Safety-Identifier": safetyIdentifier },
-      body: JSON.stringify({ session: {
+      body: JSON.stringify({ expires_after: { anchor: "created_at", seconds: 50 }, session: {
         type: "realtime", model: REALTIME_MODEL, instructions,
         output_modalities: ["audio"], audio: { output: { voice: "marin" }, input: { transcription: { model: "gpt-4o-mini-transcribe" } } },
         tools: voiceTools, tool_choice: "required",
@@ -36,8 +36,8 @@ export async function POST() {
     const value = typeof data === "object" && data !== null && "value" in data ? data.value : undefined;
     const expiry = typeof data === "object" && data !== null && "expires_at" in data ? data.expires_at : undefined;
     const now = Math.floor(Date.now() / 1000);
-    if (typeof value !== "string" || !value || typeof expiry !== "number" || expiry <= now) throw new Error("invalid session response");
-    return NextResponse.json({ ok: true, client_secret: value, expires_at: Math.min(expiry, now + 60), model: REALTIME_MODEL, tools: voiceTools }, { headers: { "Cache-Control": "no-store" } });
+    if (typeof value !== "string" || !value || typeof expiry !== "number" || expiry <= now || expiry > now + 60) throw new Error("invalid session response");
+    return NextResponse.json({ ok: true, client_secret: value, expires_at: expiry, model: REALTIME_MODEL, tools: voiceTools }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ ok: false, code: "provider_unavailable", label: "Provider unavailable", message: "Voice provider could not start" }, { status: 503 });
   }
