@@ -16,7 +16,7 @@ const NAV = [
   { href: "/suppliers", label: "Поставщики", icon: Truck, count: null },
   { href: "/skus", label: "Товары", icon: Boxes, count: null },
   { href: "/money", label: "Деньги", icon: Wallet, count: null },
-  { href: "/world", label: "Лента", icon: Activity, count: null },
+  { href: "/world", label: "События", icon: Activity, count: null },
   { href: "/settings", label: "Настройки", icon: Settings2, count: null },
   { href: "/assistant", label: "ИИ-Помощник", icon: AudioLines, count: null },
 ];

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { WorldConsole } from "@/components/world-console/WorldConsole";
-export default WorldConsole;
+import { EventsPage } from "./EventsPage";
+export default EventsPage;
 
-export const metadata: Metadata = { title: "Лента" };
+export const metadata: Metadata = { title: "События" };
