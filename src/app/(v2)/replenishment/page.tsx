@@ -2,9 +2,9 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, Search, CircleAlert, PencilLine, Undo2, ArrowRight } from "lucide-react";
+import { ChevronRight, Search, CircleAlert, PencilLine, Undo2, ArrowRight, ArrowUp, ArrowDown, ArrowUpDown, Mail, RefreshCw } from "lucide-react";
 import { ApiError, apiRequest, useApi, useApiSync } from "@/components/shell/api";
-import { Button, MiniBars, Pill, Skeleton, Sparkline, StateBlock, TruthStrip, UrgencyPill, URGENCY_RU, errorKind, errorTitle, fmtInt, fmtMoney, fmtNum, fmtYm, type Money, type Urgency } from "@/components/v2/primitives";
+import { Button, MiniBars, Pill, Skeleton, Sparkline, StateBlock, TruthStrip, UrgencyPill, URGENCY_RU, errorKind, errorTitle, fmtInt, fmtMoney, fmtNum, fmtYm, stakeTier, type Money, type Urgency } from "@/components/v2/primitives";
 import styles from "./replenishment.module.css";
 
 type Components = { source_months?: number; sales_lines?: number; stock_month?: string; stock_stale?: boolean; transit_rows?: number; base_rate?: number; season_source?: string; season?: Record<string, number>; growth?: number; horizon_days?: number; forecast_qty?: number; monthly_forecast?: Record<string, number>; stockout_uplift?: number; safety?: number; on_hand?: number; on_hand_as_of?: string; in_transit?: number; in_transit_sources?: unknown[]; net_need?: number; raw_need?: number; moq?: number; days_of_cover?: number; outlier_threshold?: number; median_month_qty?: number; p95_doc_qty?: number; raw_observed_forecast?: number };
@@ -14,6 +14,17 @@ type Recs = { ai: string; external: string; state_version: number; groups: Group
 type Proposals = { proposals: { id: string; kind: string; subject_id: string; state: string; version: number; money_at_stake: Money | null; payload?: { run_id?: string } }[] };
 type Runs = { runs: { id: string; started_at: string; skus: number; recommended: number }[] };
 type Skus = { items: { code_1c: string; unit_cost: string | null }[]; total: number };
+type Orders = { orders: { id: string; supplier_id: string; state: string; created_at?: string | null }[] };
+type CalcResult = { run_id: string; skus: number; recommended: number; partial?: boolean };
+type SortKey = "name" | "urgency" | "on_hand" | "in_transit" | "forecast" | "qty" | "cost";
+const SORT_KEYS: SortKey[] = ["name", "urgency", "on_hand", "in_transit", "forecast", "qty", "cost"];
+const SORT_LABEL: Record<SortKey, string> = { name: "Позиция", urgency: "Срочность", on_hand: "Остаток", in_transit: "В пути", forecast: "Прогноз", qty: "Заказать", cost: "Стоимость" };
+const URGENCY_RANK: Record<Urgency, number> = { critical: 0, soon: 1, normal: 2, none: 3 };
+/** First click: text a→z, urgency critical-first, numbers largest-first; second click flips. */
+const DEFAULT_DIR: Record<SortKey, "asc" | "desc"> = { name: "asc", urgency: "asc", on_hand: "desc", in_transit: "desc", forecast: "desc", qty: "desc", cost: "desc" };
+const baseQty = (r: Row) => r.qty_adjusted ?? r.qty_recommended;
+/** Presentation only: the engine text starts with «Код 1С …»; the UI names it «Артикул …». */
+const humanRationale = (t: string) => t.replace(/^Код 1С\s+/, "Артикул ");
 
 const PAGE = 50;
 const URGENCIES: Urgency[] = ["critical", "soon", "normal"];
@@ -24,6 +35,7 @@ function Replenishment() {
   const params = useSearchParams(); const router = useRouter();
   const supplier = params.get("supplier") ?? "";
   const urgency = (params.get("urgency") ?? "") as Urgency | "";
+  const [sortKey, sortDir] = useMemo<[SortKey | "", "asc" | "desc"]>(() => { const [k, d] = (params.get("sort") ?? "").split(":"); return SORT_KEYS.includes(k as SortKey) ? [k as SortKey, d === "asc" ? "asc" : "desc"] : ["", "desc"]; }, [params]);
   const [query, setQuery] = useState(""); const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, number>>({});
@@ -35,6 +47,7 @@ function Replenishment() {
   const proposals = useApi<Proposals>("/api/proposals?state=needs_review");
   const runs = useApi<Runs>("/api/calc/runs");
   const run = runs.data?.runs[0];
+  const orders = useApi<Orders>("/api/orders");
   // Unit cost lives on the SKU (SE only — IEK has none); recommendation rows do not carry it.
   const seA = useApi<Skus>("/api/skus?supplier=SE&limit=500"); const seB = useApi<Skus>("/api/skus?supplier=SE&limit=500&offset=500");
   const costByCode = useMemo(() => { const m: Record<string, string> = {}; for (const i of [...(seA.data?.items ?? []), ...(seB.data?.items ?? [])]) if (i.unit_cost) m[i.code_1c] = i.unit_cost; return m; }, [seA.data, seB.data]);
@@ -45,8 +58,15 @@ function Replenishment() {
   const all = useMemo(() => groups.flatMap(g => g.rows.map(r => ({ ...r, supplier: g.supplier_id }))), [groups]);
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return all.filter(r => (!supplier || r.supplier === supplier) && (!urgency || r.urgency === urgency) && (!q || r.name.toLowerCase().includes(q) || r.code_1c.toLowerCase().includes(q)));
-  }, [all, supplier, urgency, query]);
+    const rows = all.filter(r => (!supplier || r.supplier === supplier) && (!urgency || r.urgency === urgency) && (!q || r.name.toLowerCase().includes(q) || r.code_1c.toLowerCase().includes(q)));
+    if (!sortKey) return rows;
+    const dir = sortDir === "asc" ? 1 : -1;
+    const key = (r: Row): string | number | null => sortKey === "name" ? r.name.replace(/\s+/g, " ").trim().toLowerCase() : sortKey === "urgency" ? URGENCY_RANK[r.urgency] : sortKey === "on_hand" ? Number(r.on_hand) : sortKey === "in_transit" ? Number(r.in_transit) : sortKey === "forecast" ? (r.forecast_qty == null ? null : Number(r.forecast_qty)) : sortKey === "qty" ? baseQty(r) : (costByCode[r.code_1c] ? Number(costByCode[r.code_1c]) * baseQty(r) : null);
+    // Unknown values (no cost, no forecast) always sink to the bottom regardless of direction.
+    return [...rows].sort((a, b) => { const ka = key(a), kb = key(b); if (ka == null && kb == null) return 0; if (ka == null) return 1; if (kb == null) return -1; if (typeof ka === "string" && typeof kb === "string") return ka.localeCompare(kb, "ru") * dir; return ((ka as number) - (kb as number)) * dir; });
+  }, [all, supplier, urgency, query, sortKey, sortDir, costByCode]);
+  const setSort = useCallback((k: SortKey) => { const next = sortKey === k ? (sortDir === "asc" ? "desc" : "asc") : DEFAULT_DIR[k]; setParam("sort", `${k}:${next}`); }, [sortKey, sortDir, setParam]);
+  const supplierOrders = useMemo(() => (orders.data?.orders ?? []).filter(o => o.supplier_id === supplier).sort((a, b) => String(b.created_at ?? b.id).localeCompare(String(a.created_at ?? a.id))), [orders.data, supplier]);
   const pageRows = visible.slice(page * PAGE, page * PAGE + PAGE);
   const urgencyCounts = useMemo(() => all.filter(r => !supplier || r.supplier === supplier).reduce<Record<string, number>>((a, r) => { a[r.urgency] = (a[r.urgency] ?? 0) + 1; return a; }, {}), [all, supplier]);
   const group = groups.find(g => g.supplier_id === supplier);
@@ -77,7 +97,10 @@ function Replenishment() {
       <p className={styles.eyebrow}>Закупки{run && <> · расчёт от {new Date(run.started_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · {fmtInt(run.skus)} SKU просчитано</>}</p>
       <div className={styles.head}>
         <h1 className={styles.display}>Пополнение</h1>
-        <PrepareOrder supplier={supplier} group={group} proposal={proposal} proposalsError={proposals.error} drafts={drafts} draftCount={draftCount} onDone={() => { setDrafts({}); refresh(); recs.reload(); proposals.reload(); }} />
+        <div className={styles.headStack}>
+          <CalcRun supplier={supplier} run={run} onDone={() => { refresh(); recs.reload(); runs.reload(); proposals.reload(); }} />
+          <PrepareOrder supplier={supplier} group={group} groups={groups} proposal={proposal} proposalsAll={proposals.data?.proposals ?? []} proposalsError={proposals.error} drafts={drafts} draftCount={draftCount} letterPo={supplierOrders[0]?.id ?? null} onDone={() => { setDrafts({}); refresh(); recs.reload(); proposals.reload(); orders.reload(); }} />
+        </div>
       </div>
 
       <div className={styles.tabs} role="tablist" aria-label="Поставщик">
@@ -103,7 +126,14 @@ function Replenishment() {
         <div className={styles.tableWrap} data-stale={recs.error ? "1" : undefined}>
           {recs.error && <div className={styles.staleBar} role="status"><CircleAlert size={14} aria-hidden="true" />{errorTitle(recs.error)} — показываю последний снимок</div>}
           <table className={styles.table}>
-            <thead><tr><th className={styles.thChevron} aria-label="Раскрыть" /><th>Позиция</th><th>Срочность</th><th className={styles.num}>Остаток</th><th className={styles.num}>В пути</th><th className={styles.num}>Прогноз</th><th className={styles.num}>Заказать</th><th className={styles.num}>Стоимость</th></tr></thead>
+            <thead><tr><th className={styles.thChevron} aria-label="Раскрыть" />{SORT_KEYS.map(k => {
+              const on = sortKey === k; const asc = on && sortDir === "asc";
+              return <th key={k} className={k === "name" || k === "urgency" ? undefined : styles.num} aria-sort={on ? (asc ? "ascending" : "descending") : "none"}>
+                <button type="button" className={`${styles.sortBtn} ${on ? styles.sortOn : ""}`} onClick={() => setSort(k)} title={on ? (asc ? "По возрастанию — нажмите, чтобы перевернуть" : "По убыванию — нажмите, чтобы перевернуть") : "Сортировать"}>
+                  {SORT_LABEL[k]}{on ? (asc ? <ArrowUp size={12} aria-hidden="true" /> : <ArrowDown size={12} aria-hidden="true" />) : <ArrowUpDown size={12} className={styles.sortIdle} aria-hidden="true" />}
+                  <span className={styles.srUrgency}>{on ? (asc ? " — по возрастанию" : " — по убыванию") : " — сортировать"}</span>
+                </button></th>;
+            })}</tr></thead>
             <tbody>
               {pageRows.map(r => {
                 const open = expanded === r.id; const c = r.components; const draft = drafts[r.code_1c]; const qty = draft ?? r.qty_adjusted ?? r.qty_recommended;
@@ -116,8 +146,8 @@ function Replenishment() {
                     <td className={styles.num} title={c.on_hand_as_of ? `Остаток на ${c.on_hand_as_of}` : undefined}><span>{fmtInt(r.on_hand)}</span><span className={styles.meta}>{c.on_hand_as_of ? `на ${c.on_hand_as_of.slice(5).replace("-", ".")}` : "дата неизвестна"}{c.stock_stale && " · устарел"}</span></td>
                     <td className={styles.num}><span>{fmtInt(r.in_transit)}</span><span className={styles.meta}>{c.transit_rows ? `${c.transit_rows} поставок` : "нет поставок"}</span></td>
                     <td className={styles.num} title={`Прогноз на ${c.horizon_days ?? "—"} дн + страховой запас ${fmtNum(c.safety)}`}><span>{fmtNum(r.forecast_qty)}</span><span className={styles.meta}>на {c.horizon_days ?? "—"} дн</span></td>
-                    <td className={`${styles.num} ${styles.qty}`}><span className={styles.qtyValue}>{fmtInt(qty)}{draft !== undefined && <PencilLine size={13} className={styles.draftMark} aria-label="черновик корректировки" />}</span><span className={styles.meta}>{draft !== undefined ? `черновик · было ${fmtInt(r.qty_adjusted ?? r.qty_recommended)}` : r.qty_adjusted != null ? `скорректировано · расчёт ${fmtInt(r.qty_recommended)}` : "по расчёту"}</span></td>
-                    <td className={styles.num}>{line ? <><span>{fmtMoney(line)}</span><span className={styles.meta}>{fmtMoney({ amount: cost!, currency: "KZT" })} / шт</span></> : <span className={styles.none}>не задана</span>}</td>
+                    <td className={`${styles.num} ${styles.qty}`} data-stake={stakeTier(line?.amount)}><span className={styles.qtyValue}>{fmtInt(qty)}{draft !== undefined && <PencilLine size={13} className={styles.draftMark} aria-label="в корзине" />}</span><span className={styles.meta}>{draft !== undefined ? `в корзине · было ${fmtInt(r.qty_adjusted ?? r.qty_recommended)}` : r.qty_adjusted != null ? `скорректировано · расчёт ${fmtInt(r.qty_recommended)}` : "по расчёту"}</span></td>
+                    <td className={styles.num} data-stake={stakeTier(line?.amount)}>{line ? <><span>{fmtMoney(line)}</span><span className={styles.meta}>{fmtMoney({ amount: cost!, currency: "KZT" })} / шт</span></> : <span className={styles.none}>не задана</span>}</td>
                   </tr>,
                   open && <tr key={`${r.id}-x`} id={`x-${r.id}`} className={styles.detailRow}><td colSpan={8}><Rationale r={r} draft={draft} onDraft={q => setDrafts(d => { const n = { ...d }; if (q === null) delete n[r.code_1c]; else n[r.code_1c] = q; return n; })} /></td></tr>,
                 ];
@@ -136,20 +166,52 @@ function Replenishment() {
   );
 }
 
-function PrepareOrder({ supplier, group, proposal, proposalsError, drafts, draftCount, onDone }: { supplier: string; group?: Group; proposal?: Proposals["proposals"][number]; proposalsError: ApiError | null; drafts: Record<string, number>; draftCount: number; onDone: () => void }) {
-  const [busy, setBusy] = useState(false); const [error, setError] = useState<ApiError | null>(null); const [receipt, setReceipt] = useState("");
-  useEffect(() => { setError(null); setReceipt(""); }, [supplier]);
-  if (!supplier) return <p className={styles.headNote}>Выберите поставщика, чтобы подготовить заказ</p>;
+function CalcRun({ supplier, run, onDone }: { supplier: string; run?: Runs["runs"][number]; onDone: () => void }) {
+  const [busy, setBusy] = useState(false); const [error, setError] = useState<ApiError | null>(null); const [result, setResult] = useState<CalcResult | null>(null);
+  useEffect(() => { setError(null); setResult(null); }, [supplier]);
+  const go = async () => {
+    setBusy(true); setError(null); setResult(null);
+    try { setResult(await apiRequest<CalcResult>("/api/calc/run", { method: "POST", body: JSON.stringify({ scope: supplier ? { supplier } : {} }) })); onDone(); }
+    catch (e) { setError(e instanceof ApiError ? e : new ApiError(500, "unknown", "Расчёт не выполнен")); }
+    finally { setBusy(false); }
+  };
+  const when = run ? new Date(run.started_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : null;
+  return (
+    <div className={styles.calcRow}>
+      {busy ? <span className={styles.headNote} role="status" aria-live="polite"><RefreshCw size={13} className={styles.spin} aria-hidden="true" />Считаю потребность{supplier ? ` по ${supplier}` : " по всем поставщикам"} — это занимает до минуты</span>
+        : result ? <span className={`${styles.headAlert} ${styles.ok}`} role="status">Рассчитано {fmtInt(result.skus)} позиций, рекомендаций {fmtInt(result.recommended)}{result.partial ? " · часть позиций без истории" : ""}</span>
+        : error ? <span className={`${styles.headAlert} ${styles.err}`} role="alert"><CircleAlert size={14} aria-hidden="true" />{error.message}</span>
+        : <span className={styles.headNote}>{when ? `Последний расчёт ${when}` : "Расчёт пока не запускался"}</span>}
+      <Button variant={run ? "secondary" : "primary"} busy={busy} disabled={busy} onClick={go} title={busy ? "Расчёт уже идёт — дождитесь результата" : supplier ? `Пересчитать потребность по ${supplier}` : "Пересчитать потребность по всем поставщикам"}>{run ? "Пересчитать" : "Рассчитать заказы"}{supplier && ` · ${supplier}`}</Button>
+    </div>
+  );
+}
+
+function PrepareOrder({ supplier, group, groups, proposal, proposalsAll, proposalsError, drafts, draftCount, letterPo, onDone }: { supplier: string; group?: Group; groups: Group[]; proposal?: Proposals["proposals"][number]; proposalsAll: Proposals["proposals"]; proposalsError: ApiError | null; drafts: Record<string, number>; draftCount: number; letterPo: string | null; onDone: () => void }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false); const [error, setError] = useState<ApiError | null>(null); const [receipt, setReceipt] = useState(""); const [receiptPo, setReceiptPo] = useState<string | null>(null);
+  useEffect(() => { setError(null); setReceipt(""); setReceiptPo(null); }, [supplier]);
+  if (!supplier) {
+    // «Все»: one order button per supplier with its line count → opens that supplier's proposal (or its tab when no proposal waits).
+    return (
+      <div className={styles.headActions}>
+        <span className={styles.headNote}>Заказ готовится по каждому поставщику отдельно</span>
+        {groups.map(g => { const p = proposalsAll.find(x => x.kind === "supplier_order" && x.subject_id === g.supplier_id && x.state === "needs_review");
+          return <Button key={g.supplier_id} variant="primary" onClick={() => router.push(p ? `/review/${encodeURIComponent(p.id)}` : `/replenishment?supplier=${encodeURIComponent(g.supplier_id)}`)} title={p ? `Открыть предложение по ${g.supplier_id}` : `Открыть закупки ${g.supplier_id}`}>Подготовить заказ {g.supplier_id}<span className={styles.btnCount}>{fmtInt(g.rows.length)} строк</span></Button>; })}
+      </div>
+    );
+  }
   const submit = async () => {
     if (!proposal || !group) return;
     setBusy(true); setError(null);
     const adjustments = Object.entries(drafts).filter(([code]) => group.rows.some(r => r.code_1c === code)).map(([code_1c, qty]) => ({ code_1c, qty }));
     try {
       const r = await apiRequest<{ po_id?: string; proposal_version: number }>(`/api/proposals/${encodeURIComponent(proposal.id)}/approve`, { method: "POST", body: JSON.stringify({ proposal_version: proposal.version, ...(adjustments.length ? { adjustments } : {}) }) });
-      setReceipt(`Черновик заказа — не отправлен${r.po_id ? ` · ${r.po_id}` : ""}${adjustments.length ? ` · корректировок: ${adjustments.length}` : ""}`); onDone();
+      setReceipt(`Черновик заказа — не отправлен${r.po_id ? ` · ${r.po_id}` : ""}${adjustments.length ? ` · корректировок: ${adjustments.length}` : ""}`); setReceiptPo(r.po_id ?? null); onDone();
     } catch (e) { setError(e instanceof ApiError ? e : new ApiError(500, "unknown", "Действие не выполнено")); if (e instanceof ApiError && e.status === 409) onDone(); }
     finally { setBusy(false); }
   };
+  const po = receiptPo ?? letterPo;
   return (
     <div className={styles.headActions}>
       {receipt ? <span className={`${styles.headAlert} ${styles.ok}`} role="status">{receipt}</span>
@@ -158,6 +220,8 @@ function PrepareOrder({ supplier, group, proposal, proposalsError, drafts, draft
         : !proposal ? <span className={styles.headNote}>Для {supplier} нет предложения «ждёт вас»</span>
         : <span className={styles.headNote}>Версия {proposal.version}{proposal.money_at_stake ? ` · ${fmtMoney(proposal.money_at_stake, true)}` : " · Себестоимость не задана"}</span>}
       <Button variant="primary" busy={busy} disabled={!proposal || !!receipt} onClick={submit} title="Создаст внутренний черновик заказа; ничего не отправляется поставщику">Подготовить заказ {supplier}{draftCount > 0 && <span className={styles.btnCount}>{draftCount}</span>}</Button>
+      {po ? <Link href={`/orders/${encodeURIComponent(po)}`} prefetch={false} className={styles.letterLink} title="Откроет черновик письма — ничего не отправляется автоматически"><Mail size={14} aria-hidden="true" />Подготовить сообщение поставщику</Link>
+        : <Button variant="secondary" disabled title="Сначала подготовьте заказ — письмо составляется по нему"><Mail size={14} aria-hidden="true" />Подготовить сообщение поставщику</Button>}
     </div>
   );
 }
@@ -180,12 +244,16 @@ function Rationale({ r, draft, onDraft }: { r: Row & { supplier: string }; draft
           <h3 className={styles.detailH}>Как получилось число</h3>
           <ol className={styles.terms}>
             <li><span className={styles.termV}>{fmtNum(c.forecast_qty ?? r.forecast_qty, 2)}</span><span className={styles.termL}>прогноз на {c.horizon_days} дн</span><span className={styles.termS}>{fmtNum(c.base_rate, 2)} шт/мес × сезонность ({c.season_source === "sku" ? "по SKU" : "по поставщику"}) × рост ×{fmtNum(c.growth, 2)}</span></li>
-            <li><span className={styles.termOp}>+</span><span className={styles.termV}>{fmtNum(c.safety, 2)}</span><span className={styles.termL}>страховой запас</span><span className={styles.termS}>уровень сервиса 90 % (z = 1,28)</span></li>
+            <li><span className={styles.termOp}>+</span><span className={styles.termV}>{fmtNum(c.safety, 2)}</span><span className={styles.termL}>страховой запас</span><span className={styles.termS}>чтобы покрыть 90 % колебаний спроса</span></li>
             <li><span className={styles.termOp}>−</span><span className={styles.termV}>{fmtInt(c.on_hand ?? r.on_hand)}</span><span className={styles.termL}>остаток</span><span className={styles.termS}>на {c.on_hand_as_of ?? "—"} · месяц {c.stock_month ?? "—"}{c.stock_stale ? " · устарел" : ""}</span></li>
             <li><span className={styles.termOp}>−</span><span className={styles.termV}>{fmtInt(c.in_transit ?? r.in_transit)}</span><span className={styles.termL}>в пути</span><span className={styles.termS}>{c.transit_rows ? `${c.transit_rows} поставок` : "открытых поставок нет"}</span></li>
             <li className={styles.termResult}><span className={styles.termOp}>=</span><span className={styles.termV}>{fmtNum(c.net_need, 2)}</span><span className={styles.termL}>потребность</span><span className={styles.termS}>кратность {r.moq} → <strong>{fmtInt(r.qty_recommended)} шт</strong>{r.qty_adjusted != null && ` · вы скорректировали до ${fmtInt(r.qty_adjusted)}`}</span></li>
           </ol>
-          <p className={styles.sourcesLine}>Источники: продажи {fmtInt(c.sales_lines)} строк за {c.source_months ?? "—"} мес · медиана {fmtNum(c.median_month_qty)} шт/мес · p95 документа {fmtNum(c.p95_doc_qty)} · порог разового {fmtNum(c.outlier_threshold)} шт</p>
+          <ul className={styles.sourcesList} aria-label="На чём основан расчёт">
+            <li>обычные продажи: {fmtNum(c.median_month_qty)} шт в месяц (медиана за {c.source_months ?? "—"} мес)</li>
+            <li>разовые заказы: крупнее {fmtNum(c.outlier_threshold)} шт считаем разовыми и не включаем в регулярный спрос</li>
+            <li>строк продаж: {fmtInt(c.sales_lines)}</li>
+          </ul>
         </section>
         <section className={styles.viz} aria-label="Прогноз по месяцам">
           <h3 className={styles.detailH}>Прогноз по месяцам</h3>
@@ -197,14 +265,14 @@ function Rationale({ r, draft, onDraft }: { r: Row & { supplier: string }; draft
           </div>
         </section>
       </div>
-      <p className={styles.rationaleText}>{r.rationale_ru}</p>
+      <section aria-label="Пояснение расчёта"><h3 className={styles.detailH}>Пояснение расчёта</h3><p className={styles.rationaleText}>{humanRationale(r.rationale_ru)}</p></section>
       {r.ekt_stock_total != null && <p className={styles.ektLine}>На складе ekt.kz сейчас: {fmtInt(r.ekt_stock_total)} ({r.ekt_stock_as_of ? `снимок от ${r.ekt_stock_as_of}` : "живой API"}){r.ekt_url && <> · <a href={r.ekt_url} target="_blank" rel="noreferrer">ekt.kz</a></>}</p>}
       <div className={styles.adjust}>
         <label className={styles.adjustLabel} htmlFor={`adj-${r.id}`}>Скорректировать количество</label>
         <input id={`adj-${r.id}`} type="number" min={0} step={r.moq} inputMode="numeric" className={styles.adjustInput} value={val} onChange={e => setVal(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); apply(); } }} />
-        <Button variant="dark" onClick={apply}>В черновик</Button>
+        <Button variant="dark" onClick={apply}>Добавить в корзину</Button>
         {draft !== undefined && <Button variant="quiet" onClick={() => { onDraft(null); setVal(String(r.qty_adjusted ?? r.qty_recommended)); }}><Undo2 size={14} aria-hidden="true" />Вернуть расчёт</Button>}
-        <span className={styles.adjustNote}>{draft !== undefined ? `Черновик ${fmtInt(draft)} шт — применится при «Подготовить заказ ${r.supplier}» (версия предложения проверяется)` : "Корректировка попадёт в заказ вместе с его утверждением"}</span>
+        <span className={styles.adjustNote}>{draft !== undefined ? `В корзине ${fmtInt(draft)} шт — попадёт в заказ поставщику ${r.supplier} при «Подготовить заказ»` : "Попадёт в заказ поставщику"}</span>
         <Link href={`/skus/${encodeURIComponent(r.code_1c)}`} prefetch={false} className={styles.skuLink}>Карточка SKU<ArrowRight size={13} aria-hidden="true" /></Link>
       </div>
       <p className={styles.srUrgency}>Срочность: {URGENCY_RU[r.urgency]}</p>

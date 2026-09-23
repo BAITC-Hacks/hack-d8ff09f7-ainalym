@@ -8,6 +8,13 @@
 .ok { background: var(--v2-ok-bg); color: var(--v2-ok); }
 .stale { background: var(--v2-alert-row); color: var(--v2-warn); }
 .err { background: var(--v2-danger-bg); color: var(--v2-danger); }
+.headStack { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.calcRow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+.spin { animation: uxSpin 1s linear infinite; margin-right: 6px; vertical-align: -2px; }
+@keyframes uxSpin { to { transform: rotate(360deg); } }
+.letterLink { display: inline-flex; align-items: center; gap: 6px; height: var(--v2-control-h); padding: 0 14px; border: 1px solid var(--v2-line-strong); border-radius: var(--v2-r-control); background: var(--v2-card-raised); color: var(--v2-ink); font: var(--v2-body-strong); text-decoration: none; }
+.letterLink:hover { background: var(--v2-wash); }
+.letterLink:focus-visible { outline: 2px solid var(--v2-ring); outline-offset: 1px; }
 .btnCount { min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--v2-r-pill); background: var(--v2-ink); color: #fff; font: 500 12px/20px var(--v2-font); }
 
 .tabs { display: flex; gap: 4px; margin-top: 28px; border-bottom: 1px solid var(--v2-line); }
@@ -47,6 +54,15 @@
 .table th:nth-child(7) { width: 132px; }
 .table th:nth-child(8) { width: 150px; }
 .thChevron { width: 36px; }
+.sortBtn { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font: inherit; color: inherit; border-radius: 4px; padding: 2px 4px; margin: -2px -4px; white-space: nowrap; transition: color var(--v2-fast) var(--v2-ease); }
+.sortBtn:hover { color: var(--v2-ink); }
+.sortBtn:focus-visible { outline: 2px solid var(--v2-ring); outline-offset: 1px; }
+.sortOn { color: var(--v2-ink); font-weight: 600; }
+.sortIdle { opacity: .4; }
+/* Stake scale — money on the line; one warm step, never rainbow. */
+.table td[data-stake="medium"] { background: var(--v2-wash); }
+.table td[data-stake="strong"] { background: var(--v2-alert-row); }
+.table td[data-stake="strong"] > span:first-child { font-weight: 600; color: var(--v2-ink); }
 .table td { padding: 11px 12px; border-bottom: 1px solid var(--v2-line); vertical-align: top; }
 .table td > span, .table td > .meta { display: block; }
 .row { cursor: pointer; transition: background var(--v2-fast) var(--v2-ease); }
@@ -84,6 +100,7 @@
 .termS { font: var(--v2-meta); color: var(--v2-muted); white-space: normal; }
 .termResult { border-bottom: 0 !important; background: var(--v2-wash); border-radius: 6px; padding: 8px 6px !important; margin-top: 4px; }
 .termResult .termS strong { font-weight: 600; color: var(--v2-ink); }
+.sourcesList { margin: 12px 0 0; padding: 0 0 0 16px; font: var(--v2-meta); color: var(--v2-muted); white-space: normal; display: flex; flex-direction: column; gap: 2px; }
 .sourcesLine { margin-top: 12px; font: var(--v2-meta); color: var(--v2-muted); white-space: normal; }
 .viz { min-width: 0; }
 .seasonRow { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
@@ -111,6 +128,8 @@
 @media (max-width: 767px) {
   .head { flex-direction: column; align-items: flex-start; }
   .headActions { justify-content: flex-start; }
+  .headStack { align-items: flex-start; }
+  .calcRow { justify-content: flex-start; }
   .tabs { margin-top: 20px; overflow-x: auto; }
   .tab { height: 44px; }
   .search { width: 100%; }

@@ -70,8 +70,8 @@ export function Btn({ variant = "secondary", className = "", busy, children, ...
   return <button {...props} type={props.type ?? "button"} className={`${styles.btn} ${styles[`btn_${variant}`]} ${className}`} aria-busy={busy || undefined} disabled={props.disabled || busy}>{children}</button>;
 }
 export function Rows({ children, className = "" }: { children: ReactNode; className?: string }) { return <div className={`${styles.rows} ${className}`}>{children}</div>; }
-export function Row({ label, meta, value, valueMeta, href }: { label: ReactNode; meta?: ReactNode; value?: ReactNode; valueMeta?: ReactNode; href?: string }) {
-  const body = <><div className={styles.rowText}><span className={styles.rowLabel}>{label}</span>{meta && <span className={styles.rowMeta}>{meta}</span>}</div>{(value !== undefined || valueMeta) && <div className={styles.rowValue}><span>{value}</span>{valueMeta && <span className={styles.rowMeta}>{valueMeta}</span>}</div>}</>;
+export function Row({ label, meta, value, valueMeta, href, lead }: { label: ReactNode; meta?: ReactNode; value?: ReactNode; valueMeta?: ReactNode; href?: string; lead?: ReactNode }) {
+  const body = <>{lead && <div className={styles.rowLead}>{lead}</div>}<div className={styles.rowText}><span className={styles.rowLabel}>{label}</span>{meta && <span className={styles.rowMeta}>{meta}</span>}</div>{(value !== undefined || valueMeta) && <div className={styles.rowValue}><span>{value}</span>{valueMeta && <span className={styles.rowMeta}>{valueMeta}</span>}</div>}</>;
   return href ? <Link href={href} className={`${styles.row} ${styles.rowLink}`}>{body}</Link> : <div className={styles.row}>{body}</div>;
 }
 
