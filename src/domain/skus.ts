@@ -2,15 +2,27 @@ import { db } from "../db/client";
 
 type Row = Record<string, unknown>;
 
-export function listSkus(filters: { q?: string; supplier?: string; category?: string; limit?: number } = {}): Row[] {
+export interface SkuFilters { q?: string; supplier?: string; category?: string; limit?: number; offset?: number }
+function skuWhere(filters: SkuFilters) {
   const clauses: string[] = [];
   const args: (string | number)[] = [];
   if (filters.q) { clauses.push("(s.code_1c LIKE ? OR s.name LIKE ? OR s.article LIKE ?)"); args.push(...Array(3).fill(`%${filters.q}%`)); }
   if (filters.supplier) { clauses.push("s.supplier_id=?"); args.push(filters.supplier); }
   if (filters.category) { clauses.push("s.category=?"); args.push(filters.category); }
+  return { where: clauses.length ? `WHERE ${clauses.join(" AND ")}` : "", args };
+}
+
+export function countSkus(filters: SkuFilters = {}): number {
+  const { where, args } = skuWhere(filters);
+  return (db().prepare(`SELECT count(*) AS n FROM sku s ${where}`).get(...args) as { n: number }).n;
+}
+
+export function listSkus(filters: SkuFilters = {}): Row[] {
+  const { where, args } = skuWhere(filters);
   const limit = Math.min(500, Math.max(1, filters.limit ?? 100));
+  const offset = Math.max(0, filters.offset ?? 0);
   return db().prepare(`SELECT s.*,sup.name AS supplier_name FROM sku s JOIN supplier sup ON sup.id=s.supplier_id
-    ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""} ORDER BY s.supplier_id,s.code_1c LIMIT ?`).all(...args, limit) as Row[];
+    ${where} ORDER BY s.supplier_id,s.code_1c LIMIT ? OFFSET ?`).all(...args, limit, offset) as Row[];
 }
 
 export async function skuView(code_1c: string): Promise<Record<string, unknown> | null> {

@@ -11,15 +11,16 @@ export interface MoneyView {
   committed_by_supplier: { supplier_id: string; amount: string; currency: string; lines: number; cost_known_lines: number }[];
   next_60d: { out: { at: string; amount: string; currency: string; po_id: string; kind: string }[] };
   stock_value: { amount: string; currency: string; cost_known_share: number; cost_unknown_count: number } | null;
-  risks: { code: string; count: number; label_ru: string }[];
+  risks: { code: string; count: number; label_ru: string; amount?: string; currency?: string }[];
 }
 
 /** Cash, commitments and stock value are views over persisted rows, never independent balances. */
 export async function moneyView(orgId: string, asOf = new Date()): Promise<MoneyView> {
   const d = db();
   const org = d.prepare("SELECT payload FROM organization WHERE id=?").get(orgId) as { payload: string } | undefined;
-  if (!org) throw new Error("organization_not_found");
-  const opening = (JSON.parse(org.payload).opening_cash || []) as MoneyRow[];
+  const payload = org ? JSON.parse(org.payload) as { opening_cash?: MoneyRow[] } : {};
+  const hasOpening = Array.isArray(payload.opening_cash);
+  const opening = hasOpening ? payload.opening_cash! : [];
   const cash = new Map<string, Decimal>();
   for (const row of opening) cash.set(row.currency, (cash.get(row.currency) || new Decimal(0)).plus(row.amount));
   const payments = d.prepare("SELECT direction,amount,currency FROM payment").all() as Row[];
@@ -48,8 +49,8 @@ export async function moneyView(orgId: string, asOf = new Date()): Promise<Money
   const committed_by_supplier = [...bySupplier.values()].map(r => ({ ...r, amount: amount(r.amount) }));
   const horizon = new Date(asOf);
   horizon.setUTCDate(horizon.getUTCDate() + 60);
-  const out = (d.prepare("SELECT kind,po_id,amount,currency,due_at FROM obligation WHERE state='open' AND due_at>=? AND due_at<=? ORDER BY due_at,id")
-    .all(asOf.toISOString(), horizon.toISOString()) as Row[])
+  const out = (d.prepare("SELECT kind,po_id,amount,currency,due_at FROM obligation WHERE state='open' AND due_at<=? ORDER BY due_at,id")
+    .all(horizon.toISOString()) as Row[])
     .map(r => ({ at: String(r.due_at), amount: String(r.amount), currency: String(r.currency), po_id: String(r.po_id), kind: String(r.kind) }));
 
   const stock = d.prepare(`SELECT s.code_1c,s.unit_cost,sup.currency,sm.opening_qty,sm.known FROM sku s
@@ -69,8 +70,18 @@ export async function moneyView(orgId: string, asOf = new Date()): Promise<Money
   } : null;
   const unknownSkuCost = (d.prepare("SELECT count(*) AS n FROM sku WHERE unit_cost IS NULL").get() as { n: number }).n;
   const unknownCount = unknownSkuCost;
+  const dueByCurrency = new Map<string, Decimal>();
+  for (const row of out) dueByCurrency.set(row.currency, (dueByCurrency.get(row.currency) || new Decimal(0)).plus(row.amount));
+  const cashShortfalls = hasOpening ? [...dueByCurrency].flatMap(([currency, due]) => {
+    const shortfall = due.minus(cash.get(currency) || 0);
+    return shortfall.gt(0) ? [{ code: "cash_shortfall", count: 1, label_ru: "Не хватает денег на обязательства", amount: amount(shortfall), currency }] : [];
+  }) : [];
   return {
     cash: cashRows, committed_by_supplier, next_60d: { out }, stock_value,
-    risks: unknownCount ? [{ code: "cost_unknown", count: unknownCount, label_ru: "Себестоимость не задана" }] : [],
+    risks: [
+      ...(unknownCount ? [{ code: "cost_unknown", count: unknownCount, label_ru: "Себестоимость не задана" }] : []),
+      ...(!hasOpening ? [{ code: "opening_cash_unknown", count: 1, label_ru: "Начальный остаток денег не задан" }] : []),
+      ...cashShortfalls,
+    ],
   };
 }

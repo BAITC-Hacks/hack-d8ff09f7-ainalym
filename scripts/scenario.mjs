@@ -41,6 +41,26 @@ function params(d, code) {
 }
 
 try {
+  if (process.argv.includes("--via-api")) {
+    const origin = process.env.SCENARIO_BASE_URL || "http://localhost:3000";
+    const call = async (path, body) => {
+      const response = await fetch(new URL(path, origin), body === undefined ? {} : {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) throw new Error(`${path}: ${payload.code || response.status}`);
+      return payload;
+    };
+    const reset = await call("/api/demo/reset", {});
+    report("API-reset", "Офлайн-сброс загрузил данные партнёра", (reset.counts?.sku ?? 0) > 0);
+    const before = await call("/api/money");
+    const world = await call("/api/world/play", { steps: 45 });
+    const after = await call("/api/money");
+    report("API-world", "Сценарные события прошли через API и worker", world.processed === 45, `processed=${world.processed}`);
+    report("API-money", "API отдаёт деньги по валютам и график 60 дней", Array.isArray(before.cash) && Array.isArray(after.cash) && Array.isArray(after.next_60d?.out));
+    console.log("Money view before world:", JSON.stringify(before));
+    console.log("Money view after world:", JSON.stringify(after));
+  } else {
   const loader = join(root, "scripts/etl/load.mjs");
   const expectedPath = join(root, "tests/fixtures/eval/replenishment_expectations.json");
   if (!existsSync(loader) || !existsSync(expectedPath)) throw new Error("partner ETL or replenishment expectations have not landed");
@@ -60,10 +80,7 @@ try {
     const path = join(temp, `${name}.db`);
     copyFileSync(basePath, path);
     process.env.DATABASE_PATH = path;
-    const d = db();
-    d.prepare("INSERT OR IGNORE INTO organization(id,name,payload) VALUES ('partner','Partner',?)")
-      .run(JSON.stringify({ opening_cash: [{ amount: "0.00", currency: "KZT" }] }));
-    return d;
+    return db();
   };
   const code = (name) => expected.skus[name].code_1c;
   const calculate = (d, name, date = asOf) => computeNeed(code(name), params(d, code(name)), { database: d, as_of: date });
@@ -159,6 +176,7 @@ try {
     const processed = d.prepare("SELECT count(*) AS n FROM world_event WHERE state='processed'").get().n;
     report("World", "Лента событий применяется один раз по source_id", applied === events.length && processed === events.length && !repeated.applied,
       `applied=${applied}/${events.length}, processed=${processed}`);
+  }
   }
 } catch (error) {
   report("scenario", "Сценарий выполняется на данных партнёра", false, error instanceof Error ? error.message : String(error));

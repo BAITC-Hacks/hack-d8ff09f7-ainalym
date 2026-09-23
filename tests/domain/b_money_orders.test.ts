@@ -86,6 +86,12 @@ describe("money derived from ledger rows", () => {
     const view = await moneyView("ORG");
     expect(view.cash).toEqual(expect.arrayContaining([{ amount: "1000.00", currency: "KZT" }, { amount: "50.00", currency: "USD" }]));
   });
+  it("states when the ETL has no opening cash row", async () => {
+    q("DELETE FROM organization WHERE id='ORG'");
+    const view = await moneyView("partner");
+    expect(view.cash).toEqual([]);
+    expect(view.risks).toEqual(expect.arrayContaining([expect.objectContaining({ code: "opening_cash_unknown" })]));
+  });
   it("adds incoming and subtracts outgoing payments once", async () => {
     q("INSERT INTO payment(id,direction,counterparty_id,amount,currency,payment_ref,at) VALUES ('P-1','in','X','500.00','KZT','REF-1','2026-09-23')");
     q("INSERT INTO payment(id,direction,counterparty_id,amount,currency,payment_ref,at) VALUES ('P-2','out','SE','300.00','KZT','REF-2','2026-09-23')");
@@ -101,6 +107,18 @@ describe("money derived from ledger rows", () => {
     approveOrder("PO-1", 2);
     const view = await moneyView("ORG", new Date("2026-09-23T00:00:00Z"));
     expect(view.next_60d.out.map(r => r.amount).sort()).toEqual(["300.00", "700.00"]);
+  });
+  it("keeps an overdue open prepayment visible", async () => {
+    approveOrder("PO-1", 2);
+    q("UPDATE obligation SET due_at='2026-09-20T00:00:00Z' WHERE kind='supplier_prepayment'");
+    const view = await moneyView("ORG", new Date("2026-09-23T00:00:00Z"));
+    expect(view.next_60d.out.map(r => r.amount).sort()).toEqual(["300.00", "700.00"]);
+  });
+  it("states a cash shortfall in the obligation's currency", async () => {
+    q("UPDATE organization SET payload=? WHERE id='ORG'", JSON.stringify({ opening_cash: [{ amount: "200.00", currency: "KZT" }] }));
+    approveOrder("PO-1", 2);
+    const view = await moneyView("ORG", new Date("2026-09-23T00:00:00Z"));
+    expect(view.risks).toEqual(expect.arrayContaining([expect.objectContaining({ code: "cash_shortfall", amount: "800.00", currency: "KZT" })]));
   });
   it("counts missing cost instead of summing it as zero", async () => {
     approveOrder("PO-2", 1);
