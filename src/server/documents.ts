@@ -19,15 +19,20 @@ export function orderLines(po_id: string): OrderLine[] {
   return db().prepare(`SELECT l.code_1c,l.qty,l.unit_cost,s.article,s.name,s.unit FROM purchase_order_line l
     JOIN sku s ON s.code_1c=l.code_1c WHERE l.po_id=? ORDER BY l.id`).all(po_id) as OrderLine[];
 }
-export function inferOrder(extracted: ExtractedDocument): { po_id: string; supplier_id: string } | null {
+export function listDocuments(limit = 200) {
+  const rows = db().prepare("SELECT id FROM document ORDER BY created_at DESC LIMIT ?").all(limit) as { id: string }[];
+  return rows.map(row => documentById(row.id)!);
+}
+/** Best order for a document: the order whose lines the document covers best (share of the order matched), then absolute matches — a 10-line invoice must not bind to a 1 000-line order. */
+export function inferOrder(extracted: ExtractedDocument): { po_id: string; supplier_id: string; ratio: number } | null {
   if (!extracted.lines.length) return null;
   const suppliers = db().prepare("SELECT id,name FROM supplier").all() as { id: string; name: string }[];
   const supplier = suppliers.find(s => extracted.supplier && (extracted.supplier.toLocaleLowerCase("ru-RU").includes(s.name.toLocaleLowerCase("ru-RU")) || extracted.supplier.toLocaleLowerCase("ru-RU").includes(s.id.toLocaleLowerCase("ru-RU"))));
   if (!supplier) return null;
   const orders = db().prepare("SELECT id,supplier_id FROM purchase_order WHERE supplier_id=? ORDER BY id").all(supplier.id) as { id: string; supplier_id: string }[];
-  const ranked = orders.map(order => ({ ...order, match: matchDocumentToOrder(extracted, orderLines(order.id)).summary.matched }))
-    .sort((a,b) => b.match - a.match);
-  return ranked[0]?.match > 0 ? { po_id: ranked[0].id, supplier_id: ranked[0].supplier_id } : null;
+  const ranked = orders.map(order => { const lines = orderLines(order.id); const match = matchDocumentToOrder(extracted, lines).summary.matched; return { ...order, match, ratio: lines.length ? match / lines.length : 0 }; })
+    .sort((a,b) => b.ratio - a.ratio || b.match - a.match);
+  return ranked[0]?.match > 0 ? { po_id: ranked[0].id, supplier_id: ranked[0].supplier_id, ratio: ranked[0].ratio } : null;
 }
 export function insertDocument(input: { po_id: string | null; supplier_id: string | null; kind: string; source: "upload" | "fixture" | "world_event";
   file_name: string; mime: string; sha256: string; stored_path: string; size_bytes: number; extracted: ExtractedDocument; extraction_mode: string; package_key: string | null }) {

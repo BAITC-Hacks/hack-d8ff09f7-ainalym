@@ -4,7 +4,7 @@ import { basename, dirname, join } from "node:path";
 import { db, dbPath, stateVersion } from "@/db/client";
 import { extractDeterministic, packageForRoute, type ExtractedDocument } from "@/domain/documents";
 import { extractWithModel, replayExtraction } from "@/ai/extract";
-import { documentsForOrder, ensureDocumentsDemoOrder, inferOrder, insertDocument } from "@/server/documents";
+import { documentsForOrder, ensureDocumentsDemoOrder, inferOrder, insertDocument, listDocuments } from "@/server/documents";
 
 export const runtime = "nodejs";
 const limit = 10 * 1024 * 1024;
@@ -63,7 +63,7 @@ export async function POST(request: Request): Promise<Response> {
   }
   let inferred = po_id ? null : inferOrder(extracted);
   // Fixture without any matching order (fresh demo host): seed the synthetic IEK order and match against it.
-  if (!po_id && !inferred && source === "fixture") { ensureDocumentsDemoOrder(); inferred = inferOrder(extracted); }
+  if (!po_id && source === "fixture" && (!inferred || inferred.ratio < 0.5)) { ensureDocumentsDemoOrder(); inferred = inferOrder(extracted); }
   po_id ||= inferred?.po_id || null;
   const supplier_id = po?.supplier_id || inferred?.supplier_id || null;
   // Uploads live next to the database (the only writable place on the demo host), never inside the release tree.
@@ -84,6 +84,6 @@ export async function POST(request: Request): Promise<Response> {
 
 export async function GET(request: Request): Promise<Response> {
   const po_id = new URL(request.url).searchParams.get("po_id");
-  if (!po_id) return bad("Укажите po_id");
-  return Response.json({ ok: true, documents: documentsForOrder(po_id), state_version: stateVersion() });
+  // Without po_id: the whole inbox (newest first, bounded) — one request instead of a per-order fan-out.
+  return Response.json({ ok: true, documents: po_id ? documentsForOrder(po_id) : listDocuments(), state_version: stateVersion() });
 }
