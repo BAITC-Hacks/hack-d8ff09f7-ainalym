@@ -7,6 +7,7 @@ import { moneyView } from "../../src/domain/cashflow";
 import { applyWorldEvent } from "../../src/domain/events";
 import { skuView } from "../../src/domain/skus";
 import { recomputeAffected } from "../../src/domain/recompute";
+import { computeNeed, type EngineParams } from "../../src/domain/engine";
 import { GET as getMoney } from "../../src/app/api/money/route";
 import { GET as getOrder } from "../../src/app/api/orders/[id]/route";
 
@@ -189,6 +190,20 @@ describe("money derived from ledger rows", () => {
 
 describe("world events and SKU drilldown", () => {
   const event = (id: string, kind: string, code_1c: string, payload: object, text?: string) => ({ id, kind, code_1c, payload: JSON.stringify(payload), text });
+  it("preserves a late ETA after +1 transit so need stays 80 instead of falling to 0", async () => {
+    q("INSERT INTO sales_month(code_1c,ym,qty_file) VALUES ('SE-1','2025-01','80')");
+    for (let i = 0; i < 8; i++) q("INSERT INTO sales_line(code_1c,doc_no,at,qty) VALUES ('SE-1',?,'2025-01-15','10')", `D-${i}`);
+    q("INSERT INTO stock_month(code_1c,ym,opening_qty) VALUES ('SE-1','2025-01','0')");
+    q("INSERT INTO in_transit(code_1c,po_ref,qty,expected_at) VALUES ('SE-1','LATE','100','2025-06-01')");
+    const params: EngineParams = { lead_time_days: 30, review_days: 0, service_level: 0.9, growth_cap: 0.5, outlier: { k_month: 3, k_doc: 5, min_units: 20 } };
+    const before = await computeNeed("SE-1", params, { database: db(), as_of: "2025-02-01" });
+    await applyWorldEvent(event("WE-LATE-PLUS-1", "in_transit_update", "SE-1", { po_ref: "LATE", delta: 1 }));
+    const after = await computeNeed("SE-1", params, { database: db(), as_of: "2025-02-01" });
+    expect(before.need).toBe(80);
+    expect(one("SELECT qty,expected_at FROM in_transit WHERE po_ref='LATE'")).toMatchObject({ qty: "101", expected_at: "2025-06-01" });
+    expect(after.components.in_transit).toBe(0);
+    expect(after.need).toBe(80);
+  });
   it("keeps B once and drops zero-need A from the supplier basket after an event", async () => {
     q("INSERT INTO sku(code_1c,supplier_id,name,unit_cost,moq) VALUES ('SE-2','SE','Second','2.00',1)");
     for (const code of ["SE-1", "SE-2"]) {
