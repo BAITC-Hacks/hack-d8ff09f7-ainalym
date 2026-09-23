@@ -5,6 +5,7 @@ import { ArrowRight, FileText, Bot, CircleAlert, RefreshCw } from "lucide-react"
 import { ApiError, apiRequest, useApi, useApiSync } from "@/components/shell/api";
 import { Button, Pill, Skeleton, StateBlock, TruthStrip, UrgencyPill, errorKind, errorTitle, fmtInt, fmtMoney, fmtNum, type Money, type Urgency } from "@/components/v2/primitives";
 import { useTodaySnapshot } from "@/components/v2/Shell";
+import { humanize, orderStateLabel, roleLabel } from "@/components/labels";
 import styles from "./today.module.css";
 
 type Decision = { id: string; kind: string; title: string; why: string; sources: string[]; money_at_stake?: Money | null; options: { key: string; label: string; effect: string }[]; href: string; since: string };
@@ -62,14 +63,14 @@ export default function TodayPage() {
             <section className={styles.railBlock} aria-labelledby="bg-h">
               <div className={styles.sectionHead}><h2 id="bg-h" className={styles.h3}>Агенты в фоне</h2><Pill tone="neutral"><Bot size={12} aria-hidden="true" />Агенты · данные партнёра</Pill></div>
               <ul className={styles.list}>
-                {d.background.slice(0, 5).map(b => <li key={b.id} className={styles.listRow}><span className={styles.rowMain}><span className={styles.rowTitleSm}>{b.summary_ru}</span></span><time className={styles.rowTime} dateTime={b.at}>{time(b.at)}</time></li>)}
+                {d.background.slice(0, 5).map(b => <li key={b.id} className={styles.listRow}><span className={styles.rowMain}><span className={styles.rowTitleSm}>{humanize(b.summary_ru)}</span></span><time className={styles.rowTime} dateTime={b.at}>{time(b.at)}</time></li>)}
                 {d.background.length === 0 && <li className={styles.emptyRow}>Пока ничего — расчёт не запускался</li>}
               </ul>
             </section>
             <section className={styles.railBlock} aria-labelledby="cm-h">
               <h2 id="cm-h" className={styles.h3}>Обязательства и расчёты</h2>
               <ul className={styles.list}>
-                {d.commitments.map(c => <li key={c.id} className={styles.listRow}><span className={styles.rowMain}><span className={styles.rowTitleSm}>{c.title}</span><span className={styles.rowMeta}>{c.owner} · {c.next_event ? time(c.next_event) : "—"}</span></span><Pill tone={c.state === "done" ? "ok" : c.state === "draft" ? "neutral" : "warn"}>{c.state === "done" ? "готово" : c.state === "draft" ? "черновик — не отправлен" : c.state === "approved" ? "утверждено" : c.state}</Pill></li>)}
+                {d.commitments.map(c => <li key={c.id} className={styles.listRow}><span className={styles.rowMain}><span className={styles.rowTitleSm}>{humanize(c.title)}</span><span className={styles.rowMeta}>{roleLabel(c.owner)} · {c.next_event ? time(c.next_event) : "—"}</span></span><Pill tone={c.state === "done" ? "ok" : c.state === "draft" ? "neutral" : "warn"}>{orderStateLabel(c.state)}</Pill></li>)}
                 {d.commitments.length === 0 && <li className={styles.emptyRow}>Обязательств нет — заказы не утверждались</li>}
               </ul>
             </section>
@@ -88,22 +89,22 @@ function Pulse({ d, stale }: { d: Today; stale: boolean }) {
   const risks = d.pulse.money.risks ?? [];
   return (
     <section className={styles.strip} aria-label="Пульс" data-stale={stale || undefined}>
-      <div className={styles.tile} title={sv ? `Σ остаток × себестоимость по ${fmtInt((sv as { cost_unknown_count: number }).cost_unknown_count)} SKU без цены = не учтено · /api/today` : "/api/money"}>
+      <div className={styles.tile} title={sv ? `Остаток × себестоимость; ${fmtInt(sv.cost_unknown_count)} позиций без цены не учтены` : "Себестоимость пока не задана"}>
         <p className={styles.tileLabel}>Стоимость запаса</p>
         <p className={styles.tileValue}>{sv ? fmtMoney(sv, true) : "—"}</p>
-        {sv ? <><div className={styles.bar} aria-hidden="true"><span style={{ width: `${share}%` }} className={styles.barA} /></div><p className={styles.tileMeta}>себестоимость известна для {share} % · {fmtInt(sv.cost_unknown_count)} SKU без цены</p></> : <p className={styles.tileMeta}>{risks.find(r => r.code === "cost_unknown")?.label_ru ?? "нет данных"}</p>}
+        {sv ? <><div className={styles.bar} aria-hidden="true"><span style={{ width: `${share}%` }} className={styles.barA} /></div><p className={styles.tileMeta}>себестоимость известна для {share} % · {fmtInt(sv.cost_unknown_count)} позиций без цены</p></> : <p className={styles.tileMeta}>{risks.find(r => r.code === "cost_unknown")?.label_ru ?? "нет данных"}</p>}
       </div>
-      <Link href="/replenishment?urgency=critical" className={`${styles.tile} ${styles.tileLink}`} title="SKU, чьё покрытие меньше срока поставки · /api/today">
+      <Link href="/replenishment?urgency=critical" className={`${styles.tile} ${styles.tileLink}`} title="Позиции, чьё покрытие меньше срока поставки">
         <p className={styles.tileLabel}>Риск дефицита</p>
-        <p className={styles.tileValue}>{fmtInt(d.pulse.stockout_risk.count)} <span className={styles.unit}>SKU</span> <ArrowRight size={18} className={styles.arrow} aria-hidden="true" /></p>
+        <p className={styles.tileValue}>{fmtInt(d.pulse.stockout_risk.count)} <span className={styles.unit}>позиций</span> <ArrowRight size={18} className={styles.arrow} aria-hidden="true" /></p>
         <p className={styles.tileMeta}>покрытие меньше срока поставки (IEK 40 дн · SE 50 дн)</p>
       </Link>
-      <div className={styles.tile} title="Предложения в состоянии «ждёт вас» · /api/queue">
+      <div className={styles.tile} title="Предложения, ожидающие вашего решения">
         <p className={styles.tileLabel}>Ждут вашего решения</p>
         <p className={styles.tileValue}>{fmtInt(d.queue_count)}</p>
         <p className={styles.tileMeta}>{d.pulse.agents.needs_you} эскалаций агентов · ничего не уходит поставщику без вас</p>
       </div>
-      <div className={styles.tile} title="Действия агентов, завершённые без вашего участия · /api/agent/ledger">
+      <div className={styles.tile} title="Действия агентов, завершённые без вашего участия">
         <p className={styles.tileLabel}>Агенты сделали сами</p>
         <p className={styles.tileValue}>{fmtInt(d.pulse.agents.auto)} <span className={styles.unit}>· {fmtNum(ratio)} %</span></p>
         <div className={styles.bar} aria-hidden="true"><span style={{ width: `${ratio}%` }} className={styles.barB} /></div>
@@ -120,14 +121,14 @@ function TaskCard({ item }: { item: Decision }) {
       <div className={styles.cardRow}>
         <span className={styles.cardIcon} aria-hidden="true"><Bot size={18} /></span>
         <div className={styles.cardMain}>
-          <h3 id={`c-${item.id}`} className={styles.cardTitle}>{item.title}</h3>
-          <p className={styles.cardWhy}>{item.why.length > 220 ? `${item.why.slice(0, 220)}…` : item.why}</p>
-          <details className={styles.sources}><summary>Источники · {item.sources.length} · с {time(item.since)}</summary><ul>{item.sources.slice(0, 6).map(s => <li key={s}><code>{s}</code></li>)}{item.sources.length > 6 && <li>… и ещё {item.sources.length - 6}</li>}</ul></details>
+          <h3 id={`c-${item.id}`} className={styles.cardTitle}>{humanize(item.title)}</h3>
+          <p className={styles.cardWhy}>{item.why.length > 220 ? `${humanize(item.why.slice(0, 220))}…` : humanize(item.why)}</p>
+          <details className={styles.sources}><summary>Источники · {item.sources.length} · с {time(item.since)}</summary><ul>{item.sources.slice(0, 6).map(s => <li key={s}>{humanize(s)}</li>)}{item.sources.length > 6 && <li>… и ещё {item.sources.length - 6}</li>}</ul></details>
         </div>
         <div className={styles.cardMoney}><Pill tone="warn">Нужна ваша проверка</Pill><span className={styles.moneyMeta}>задача агента</span></div>
       </div>
       <div className={styles.cardActions}>
-        <span className={styles.versionNote}>Действия по задаче: маршрут /api/tasks не подключён — решение по задаче здесь не принимается</span>
+        <span className={styles.taskNote}>Задача агента — решение по позициям принимается в разделе «Закупки»</span>
         {supplier && <Link href={`/replenishment?supplier=${encodeURIComponent(supplier)}`} className={styles.reviewLink}>Позиции {supplier}<ArrowRight size={14} aria-hidden="true" /></Link>}
       </div>
     </article>
@@ -147,7 +148,7 @@ function DecisionCard({ item, onDone }: { item: Decision; onDone: () => void }) 
     setBusy(key); setError(null);
     try {
       const r = await apiRequest<{ po_id?: string; proposal_version: number }>(`/api/proposals/${encodeURIComponent(item.id)}/${key}`, { method: "POST", body: JSON.stringify({ proposal_version: version }) });
-      setReceipt(key === "approve" ? `Черновик заказа — не отправлен${r.po_id ? ` · ${r.po_id}` : ""}` : "Предложение отклонено");
+      setReceipt(key === "approve" ? "Черновик заказа подготовлен — поставщику не отправлен. Смотрите раздел «Заказы»." : "Предложение отклонено");
       refresh(); onDone();
     } catch (e) { setError(e instanceof ApiError ? e : new ApiError(500, "unknown", "Действие не выполнено")); if (e instanceof ApiError && e.status === 409) p.reload(); }
     finally { setBusy(null); }
@@ -159,11 +160,11 @@ function DecisionCard({ item, onDone }: { item: Decision; onDone: () => void }) 
       <div className={styles.cardRow}>
         <span className={styles.cardIcon} aria-hidden="true"><FileText size={18} /></span>
         <div className={styles.cardMain}>
-          <h3 id={`c-${item.id}`} className={styles.cardTitle}>{item.title}</h3>
-          <p className={styles.cardWhy}>{item.why}</p>
+          <h3 id={`c-${item.id}`} className={styles.cardTitle}>{humanize(item.title)}</h3>
+          <p className={styles.cardWhy}>{humanize(item.why)}</p>
           <details className={styles.sources}>
             <summary>Источники · {item.sources.length} · с {time(item.since)}{version !== undefined && ` · версия ${version}`}</summary>
-            <ul>{item.sources.slice(0, 6).map(s => <li key={s}><code>{s}</code></li>)}{item.sources.length > 6 && <li>… и ещё {item.sources.length - 6}</li>}</ul>
+            <ul>{item.sources.slice(0, 6).map(s => <li key={s}>{humanize(s)}</li>)}{item.sources.length > 6 && <li>… и ещё {item.sources.length - 6}</li>}</ul>
           </details>
         </div>
         <div className={styles.cardMoney}>
@@ -174,7 +175,7 @@ function DecisionCard({ item, onDone }: { item: Decision; onDone: () => void }) 
       {receipt && <div className={`${styles.alert} ${styles.alertOk}`} role="status">{receipt}</div>}
       {!receipt && (
         <div className={styles.cardActions}>
-          {p.error && <span className={styles.versionNote}>Версия недоступна — {p.error.message}</span>}
+          {p.error && <span className={styles.versionNote}>Версия предложения недоступна — обновите страницу</span>}
           {approveOpt && <Button variant="primary" busy={busy === "approve"} disabled={version === undefined || busy !== null} onClick={() => decide("approve")} title={approveOpt.effect}>{approveOpt.label}</Button>}
           {rejectOpt && <Button variant="quiet" busy={busy === "reject"} disabled={version === undefined || busy !== null} onClick={() => decide("reject")} title={rejectOpt.effect}>{rejectOpt.label}</Button>}
           <Link href={`/replenishment?supplier=${encodeURIComponent(item.title.match(/поставщику (\S+)/)?.[1] ?? "")}`} className={styles.reviewLink}>Смотреть позиции<ArrowRight size={14} aria-hidden="true" /></Link>
