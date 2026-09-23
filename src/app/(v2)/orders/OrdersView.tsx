@@ -74,7 +74,7 @@ export function OrdersView() {
     <PageHead crumbs={crumbs} title="Заказы"
       badges={<><Truth>Данные партнёра · обезличены</Truth><Pill tone={waiting.length ? "warn" : "good"}>{waiting.length ? `${fmtNum(waiting.length)} ${plural(waiting.length, "ждёт", "ждут", "ждут")} ответа поставщика` : "ответы поставщиков получены"}</Pill></>}
       sub={<>{fmtNum(system.length)} {plural(system.length, "заказ", "заказа", "заказов")} в работе · {fmtNum(inTransit.length)} {plural(inTransit.length, "поставка", "поставки", "поставок")} в пути по отчётам 1С · этапы показаны по фактическому состоянию — что не произошло, отмечено как не пройденное</>}
-      actions={<Link href="/v2/replenishment" className={styles.link}>К пополнению</Link>} />
+      actions={<Link href="/replenishment" className={styles.link}>К пополнению</Link>} />
     <Kpis items={[
       { label: "В работе", value: fmtNum(system.length), meta: "черновики и утверждённые заказы" },
       { label: "В пути", value: fmtNum(inTransit.length), meta: inTransit.length ? `${fmtNum(inTransit.reduce((s, r) => s + r.qty, 0))} шт по отчётам 1С` : "по отчётам 1С поставок нет" },
@@ -99,7 +99,7 @@ export function OrdersView() {
                 {selected.kind === "system" ? <li><FileSpreadsheet size={15} aria-hidden /><span>{selected.total_cost ? `Сумма ${fmtMoney(selected.total_cost)} · цена известна для ${fmtNum(selected.cost_known_lines)} из ${fmtNum(selected.lines)}` : "Себестоимость не задана"}</span></li> : null}
                 {selected.source_file ? <li><FileText size={15} aria-hidden /><span>Из файла «{selected.source_file}»{selected.file_date ? ` от ${fmtDate(selected.file_date)}` : ""}</span></li> : null}
               </ul>
-              {selected.kind === "system" ? <p style={{ margin: "12px 0 0" }}><Link className={styles.link} href={`/v2/supplier/${encodeURIComponent(selected.id)}`}>Открыть письмо поставщику</Link></p> : null}
+              {selected.kind === "system" ? <p style={{ margin: "12px 0 0" }}><Link className={styles.link} href={`/supplier/${encodeURIComponent(selected.id)}`}>Открыть письмо поставщику</Link></p> : null}
             </Card>
           </Section>
           <Section title="Ответ поставщика">

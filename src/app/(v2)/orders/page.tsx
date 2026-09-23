@@ -1,4 +1,4 @@
 import type { Metadata } from "next";
-import { OrdersIndex } from "@/components/v2/OrdersIndex";
+import { OrdersView } from "./OrdersView";
 export const metadata: Metadata = { title: "Заказы" };
-export default function Page() { return <OrdersIndex />; }
+export default function Page() { return <OrdersView />; }

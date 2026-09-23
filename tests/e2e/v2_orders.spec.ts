@@ -6,7 +6,7 @@ const OUT = "docs/evidence/v2/orders";
 
 test("orders — pipeline list, stage rail, evidence rail (1440×900)", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(`${BASE}/v2/orders`);
+  await page.goto(`${BASE}/orders`);
   await page.waitForLoadState("networkidle"); await page.waitForTimeout(800);
   await expect(page.getByRole("heading", { level: 1, name: "Заказы" })).toBeVisible();
   await expect(page.getByRole("list", { name: "Этапы заказа" }).first()).toBeVisible();
