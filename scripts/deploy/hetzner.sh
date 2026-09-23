@@ -21,10 +21,13 @@ awk -F= '
   /^[[:space:]]*(#|$)/ { next }
   {
     name=$1
+    value=substr($0, index($0, "=") + 1)
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+    present=(value != "" && value != "\"\"" && value != "\047\047")
     if (name !~ /^(DEMO_ACCESS_CODE|DEMO_DAILY_LIVE_CALLS|OPENAI_API_KEY|AI_GATEWAY_API_KEY|TYPESAFE_API_KEY|OPENAI_MODEL|AI_PROVIDER|AINALYM_FEED_AUTOPLAY)$/) bad=1
-    if (name == "DEMO_ACCESS_CODE" && length($2) > 0) access=1
-    if (name == "OPENAI_API_KEY" && length($2) > 0) openai=1
-    if (name == "AI_GATEWAY_API_KEY" && length($2) > 0) gateway=1
+    if (name == "DEMO_ACCESS_CODE" && present) access=1
+    if (name == "OPENAI_API_KEY" && present) openai=1
+    if (name == "AI_GATEWAY_API_KEY" && present) gateway=1
   }
   END { exit (bad || !access || !openai || !gateway) }
 ' "$AINALYM_DEPLOY_ENV_FILE" || { printf 'Deployment environment is missing required names or contains an unexpected name.\n' >&2; exit 2; }
@@ -32,7 +35,6 @@ test -f package-lock.json
 if [ -n "$(git status --porcelain)" ]; then printf 'Commit the release before deployment.\n' >&2; exit 2; fi
 command -v rsync >/dev/null
 command -v ssh >/dev/null
-command -v scp >/dev/null
 
 release=$(git rev-parse --short=12 HEAD)
 domain=${AINALYM_DOMAIN:-$ip.sslip.io}
@@ -97,8 +99,9 @@ rsync -az -e "ssh $ssh_opts" "$stage/.next/static/" "$remote:/opt/ainalym/releas
 # shellcheck disable=SC2086
 rsync -az -e "ssh $ssh_opts" "$stage/public" "$stage/src" "$stage/fixtures" "$stage/scripts" \
   "$stage/package.json" "$stage/package-lock.json" "$remote:/opt/ainalym/releases/$release/"
+# The receiving file is created with mode 600 before any secret bytes arrive.
 # shellcheck disable=SC2086
-scp $ssh_opts -q "$AINALYM_DEPLOY_ENV_FILE" "$remote:/etc/ainalym.env.new"
+ssh $ssh_opts "$remote" 'install -o root -g root -m 600 /dev/null /etc/ainalym.env.new && cat > /etc/ainalym.env.new' < "$AINALYM_DEPLOY_ENV_FILE"
 
 # shellcheck disable=SC2086
 ssh $ssh_opts "$remote" bash -s -- "$release" "$domain" <<'REMOTE_ACTIVATE'
@@ -107,14 +110,31 @@ release=$1
 domain=$2
 app=/opt/ainalym
 cd "$app/releases/$release"
-npm ci --omit=dev
+npm ci --include=dev
 chown -R ainalym:ainalym "$app/releases/$release"
+previous=$(readlink "$app/current" || true)
+had_env=0
+if [ -f /etc/ainalym.env ]; then cp -p /etc/ainalym.env /etc/ainalym.env.previous; had_env=1; fi
+if [ -f /etc/caddy/Caddyfile ]; then cp -p /etc/caddy/Caddyfile /etc/caddy/Caddyfile.previous; fi
+if [ -f /etc/systemd/system/ainalym.service ]; then cp -p /etc/systemd/system/ainalym.service /etc/systemd/system/ainalym.service.previous; fi
+healthy=0
+rollback() {
+  if [ "$had_env" -eq 1 ]; then cp -p /etc/ainalym.env.previous /etc/ainalym.env; else rm -f /etc/ainalym.env; fi
+  if [ -f /etc/caddy/Caddyfile.previous ]; then cp -p /etc/caddy/Caddyfile.previous /etc/caddy/Caddyfile; fi
+  if [ -f /etc/systemd/system/ainalym.service.previous ]; then cp -p /etc/systemd/system/ainalym.service.previous /etc/systemd/system/ainalym.service; fi
+  if [ -n "$previous" ]; then
+    ln -sfn "$previous" "$app/current.new"
+    mv -Tf "$app/current.new" "$app/current"
+    systemctl daemon-reload
+    systemctl restart ainalym || true
+  else
+    systemctl stop ainalym || true
+  fi
+  systemctl restart caddy || true
+}
+trap 'if [ "$healthy" -ne 1 ]; then rollback; fi' EXIT
 install -o root -g root -m 600 /etc/ainalym.env.new /etc/ainalym.env
 rm -f /etc/ainalym.env.new
-
-previous=$(readlink "$app/current" || true)
-if [ -f /etc/ainalym.env ]; then cp -p /etc/ainalym.env /etc/ainalym.env.previous; fi
-if [ -f /etc/caddy/Caddyfile ]; then cp -p /etc/caddy/Caddyfile /etc/caddy/Caddyfile.previous; fi
 ln -sfn "$app/releases/$release" "$app/current.new"
 mv -Tf "$app/current.new" "$app/current"
 cat >/etc/systemd/system/ainalym.service <<'UNIT'
@@ -133,6 +153,7 @@ Environment=PORT=3000
 Environment=DATABASE_PATH=/var/lib/ainalym/ainalym.db
 Environment=AINALYM_MODE=live
 Environment=AINALYM_WORKER=1
+Environment=DEMO_PROXY=caddy
 EnvironmentFile=/etc/ainalym.env
 ExecStartPre=/opt/ainalym/current/scripts/deploy/first_etl.sh
 Environment=HOSTNAME=127.0.0.1
@@ -153,20 +174,11 @@ systemctl daemon-reload
 systemctl enable --now ainalym caddy
 systemctl restart ainalym caddy
 
-healthy=0
 for _attempt in $(seq 1 24); do
   if curl -fsS "https://$domain/api/health" >/dev/null 2>&1; then healthy=1; break; fi
   sleep 5
 done
 if [ "$healthy" -ne 1 ]; then
-  if [ -f /etc/ainalym.env.previous ]; then cp -p /etc/ainalym.env.previous /etc/ainalym.env; fi
-  if [ -f /etc/caddy/Caddyfile.previous ]; then cp -p /etc/caddy/Caddyfile.previous /etc/caddy/Caddyfile; fi
-  if [ -n "$previous" ]; then
-    ln -sfn "$previous" "$app/current.new"
-    mv -Tf "$app/current.new" "$app/current"
-    systemctl restart ainalym
-  fi
-  systemctl restart caddy
   printf 'Deployment health failed; previous release restored when available.\n' >&2
   exit 1
 fi

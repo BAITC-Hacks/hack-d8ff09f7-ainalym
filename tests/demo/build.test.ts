@@ -22,4 +22,11 @@ describe("production container", () => {
     expect(ignore).toMatch(/^data\/?$/m);
     expect(ignore).toMatch(/^docs\/evidence\/?$/m);
   });
+
+  it("passes the persistent database path to the ETL on every startup target", () => {
+    // The ETL script defaults to an app-local file when --db is omitted.
+    for (const file of ["Dockerfile", "scripts/start_prod.sh", "scripts/deploy/first_etl.sh"]) {
+      expect(readFileSync(join(root, file), "utf8")).toMatch(/npm run etl -- --db/);
+    }
+  });
 });
