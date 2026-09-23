@@ -2,6 +2,7 @@ import { db, stateVersion } from "../db/client";
 
 export const WORLD_LABEL = "Симулятор мира — синтетическое событие";
 export const WORLD_EXTERNAL = "local_simulator";
+export const WORLD_AI = "none";
 
 export class WorldError extends Error {
   constructor(public code: string, public status: number, message = code) { super(message); }
@@ -13,7 +14,8 @@ export interface WorldRow {
   code_1c: string | null; po_id: string | null; at: string | null; source_id: string;
   text: string | null; payload: Record<string, unknown>; state: WorldState;
   run_id: string | null; emitted_at: string | null; processed_at: string | null;
-  label: typeof WORLD_LABEL; external: typeof WORLD_EXTERNAL;
+  label: typeof WORLD_LABEL; provenance: "partner_anonymised" | "synthetic";
+  ai: typeof WORLD_AI; external: typeof WORLD_EXTERNAL;
 }
 
 export function activeOrg(orgId?: string): string {
@@ -27,7 +29,9 @@ export function activeOrg(orgId?: string): string {
 export function mapWorldRow(row: Record<string, unknown>): WorldRow {
   let payload: Record<string, unknown> = {};
   try { payload = JSON.parse(String(row.payload || "{}")); } catch { /* preserve event text even if an old payload is invalid */ }
-  return { ...row, payload, label: WORLD_LABEL, external: WORLD_EXTERNAL } as unknown as WorldRow;
+  const source = String(row.source_id ?? "");
+  const provenance = /^(JUDGE|SUPPLIER)-/.test(source) ? "synthetic" : "partner_anonymised";
+  return { ...row, payload, label: WORLD_LABEL, provenance, ai: WORLD_AI, external: WORLD_EXTERNAL } as unknown as WorldRow;
 }
 
 export function getWorldEvent(id: string, orgId = activeOrg()): WorldRow | null {

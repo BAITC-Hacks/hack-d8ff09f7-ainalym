@@ -18,7 +18,8 @@ function displayedVersion(item: QueueItem): number {
 export function QueueRow({ item, axes, stale = false }: { item: QueueItem; axes?: TruthAxes; stale?: boolean }) {
   const action = useApiAction();
   return <li className={styles.queueRow} data-result-record={item.id}><div className={styles.rowHead}><Link href={safeHref(item.href, `/review/${encodeURIComponent(item.id)}`)}>{item.title}</Link><MoneyAtStake value={item.money_at_stake} /></div>
-    <details className={styles.why}><summary>Почему?</summary><p>{item.why}</p><Sources sources={item.sources} /><TruthAxisLabels axes={Object.values(resultAxes(item)).some(Boolean) ? resultAxes(item) : axes} /></details>
+    <details className={styles.why}><summary>Почему?</summary><p>{item.why}</p><Sources sources={item.sources} /></details>
+    <TruthAxisLabels axes={Object.values(resultAxes(item)).some(Boolean) ? resultAxes(item) : axes} />
     <div className={styles.rowOptions}>{item.options?.map(option => item.kind === "proposal" && (option.key === "approve" || option.key === "reject") ? <Button key={option.key} aria-disabled={stale || undefined} busy={action.busy} title={option.effect} onClick={() => action.run(async () => { const version = displayedVersion(item); return apiRequest(`/api/proposals/${encodeURIComponent(item.id)}/${option.key}`, { method: "POST", body: JSON.stringify({ proposal_version: version }) }); }, option.key === "approve" ? "✓ Решение утверждено. Заказ не отправлен." : "✓ Предложение отклонено.")}>{option.label}</Button> : <Link className={styles.secondaryLink} title={option.effect} key={option.key} href={safeHref(item.href, `/review/${encodeURIComponent(item.id)}`)}>{option.label}</Link>)}</div><ActionStatus error={action.error} receipt={action.receipt} />
   </li>;
 }

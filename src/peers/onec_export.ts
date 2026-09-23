@@ -29,7 +29,7 @@ export function exportOrder(poId: string) {
   const peer = db().prepare("SELECT id,payload,state FROM ledger_peer_record WHERE peer = 'onec_export' AND external_identity = ?").get(poId) as PeerRecord | undefined;
   const existing = peer ? JSON.parse(peer.payload) as { csv_path: string; xlsx_path: string } : null;
   if (existing && existsSync(existing.csv_path) && existsSync(existing.xlsx_path)) {
-    return { peer_record_id: peer!.id, po_id: poId, csv_path: existing.csv_path, xlsx_path: existing.xlsx_path, state: "exported" as const, replayed: true, label: EXPORT_LABEL, external: "export_only" as const, state_version: stateVersion() };
+    return { peer_record_id: peer!.id, po_id: poId, csv_path: existing.csv_path, xlsx_path: existing.xlsx_path, state: "exported" as const, replayed: true, label: EXPORT_LABEL, provenance: "partner_anonymised" as const, ai: "none" as const, external: "export_only" as const, state_version: stateVersion() };
   }
   if (order.state !== "approved" && order.state !== "exported") throw new WorldError("po_not_approved", 403);
   const lines = db().prepare("SELECT l.code_1c, s.article, s.name, l.qty, s.moq, (SELECT r.urgency FROM recommendation r WHERE r.code_1c = l.code_1c AND r.run_id = po.run_id ORDER BY r.rowid DESC LIMIT 1) AS urgency, COALESCE(l.rationale_ru, (SELECT r.rationale_ru FROM recommendation r WHERE r.code_1c = l.code_1c AND r.run_id = po.run_id ORDER BY r.rowid DESC LIMIT 1)) AS rationale_ru FROM purchase_order_line l JOIN purchase_order po ON po.id = l.po_id JOIN sku s ON s.code_1c = l.code_1c WHERE l.po_id = ? ORDER BY l.id")
@@ -52,5 +52,5 @@ export function exportOrder(poId: string) {
     d.prepare("UPDATE purchase_order SET state = 'exported', export_path = ?, version = version + 1 WHERE id = ?").run(xlsxPath, poId);
     bumpStateVersion(d);
   });
-  return { peer_record_id: peerId, po_id: poId, csv_path: csvPath, xlsx_path: xlsxPath, state: "exported" as const, replayed: Boolean(peer), label: EXPORT_LABEL, external: "export_only" as const, state_version: stateVersion() };
+  return { peer_record_id: peerId, po_id: poId, csv_path: csvPath, xlsx_path: xlsxPath, state: "exported" as const, replayed: Boolean(peer), label: EXPORT_LABEL, provenance: "partner_anonymised" as const, ai: "none" as const, external: "export_only" as const, state_version: stateVersion() };
 }
