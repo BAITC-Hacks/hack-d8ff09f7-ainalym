@@ -29,7 +29,7 @@ describe("voice tool bridge", () => {
     }
     db().prepare("INSERT INTO stock_month (code_1c, ym, opening_qty) VALUES (?, ?, ?)").run(code, "2026-08", "0");
   }
-  it("uses one canonical code for status, explanation and a SKU calculation", async () => {
+  it("uses one canonical code for status, queue, explanation and a SKU calculation", async () => {
     seedDemand("CODE-1_");
     db().prepare("INSERT INTO agent_action (id, run_id, org_id, kind, code_1c, summary_ru, at) VALUES (?, ?, ?, ?, ?, ?, ?)")
       .run("AR-SKU", "RUN-SKU", "ORG-1", "recompute", "CODE-1_", "Расчёт товара", "2026-09-23T00:00:00Z");
@@ -38,6 +38,8 @@ describe("voice tool bridge", () => {
     expect(status.result.changes).toHaveLength(1);
     const calculated = await executeVoiceTool("recommend_for", { request_id: "canonical-calc", scope, args: { code_1c: "CODE-1", utterance: "Рассчитай товар" } });
     expect(calculated.result).toMatchObject({ ok: true, recommended: 1 });
+    const queue = await executeVoiceTool("what_needs_me", { request_id: "canonical-queue", scope, args: { code_1c: "CODE-1" } });
+    expect(queue.result.items).toHaveLength(1);
     const explanation = await executeVoiceTool("explain_sku", { request_id: "canonical-explain", scope, args: { code_1c: "CODE-1" } });
     expect(explanation.result).toMatchObject({ ok: true, code_1c: "CODE-1_" });
   });

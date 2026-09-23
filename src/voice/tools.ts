@@ -134,6 +134,9 @@ async function run(name: ToolName, call: ToolCall): Promise<{ status: number; re
 export async function executeVoiceTool(name: string, raw: unknown): Promise<{ status: number; result: ToolResult }> {
   if (!toolNames.includes(name as ToolName)) return err("unknown_tool", "Unknown voice tool", 404);
   if (!own(raw) || typeof raw.request_id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(raw.request_id) || !own(raw.scope) || typeof raw.scope.org_id !== "string" || !raw.scope.org_id || !own(raw.args)) return err("invalid", "Invalid tool call", 400);
+  if ((raw.scope.supplier_id != null && typeof raw.scope.supplier_id !== "string") ||
+      (raw.scope.code_1c != null && typeof raw.scope.code_1c !== "string") ||
+      (raw.args.code_1c != null && typeof raw.args.code_1c !== "string")) return err("invalid", "Неверный код товара", 400);
   const call = raw as unknown as ToolCall;
   const canonicalScope = call.scope.code_1c ? resolveSkuCode(call.scope.code_1c, { org_id: call.scope.org_id, supplier_id: call.scope.supplier_id }) : null;
   if (call.scope.code_1c && !canonicalScope) {

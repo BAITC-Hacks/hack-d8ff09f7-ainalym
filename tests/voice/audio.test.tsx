@@ -13,7 +13,6 @@ describe("voice audio unlock", () => {
       .mockRejectedValueOnce(new Error("blocked"))
       .mockResolvedValue(undefined);
     const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
-    vi.stubGlobal("MediaStream", class {});
     vi.stubGlobal("fetch", vi.fn(() => new Promise(() => undefined)));
     const { result, unmount } = renderHook(() => useVoiceSession({ org_id: "ORG-1" }));
     act(() => { void result.current.start(); expect(play).toHaveBeenCalledTimes(1); });
