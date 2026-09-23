@@ -2,6 +2,7 @@ import { db } from "../db/client";
 import { moneyView } from "../domain/cashflow";
 import { orderById } from "../domain/orders";
 import { queueView } from "../domain/views";
+import { resolveSkuCode as lookupSku } from "./sku_lookup";
 import type { AssistantContext } from "../components/assistant/context";
 
 /** Data-backed answers for the assistant, built from saved recommendations and orders. No AI key needed. */
@@ -38,29 +39,11 @@ export function detectKind(text: string, context: AssistantContext): AnswerKind 
   return "unknown";
 }
 
-const like = (value: string) => value.replace(/[\\%_]/g, ch => `\\${ch}`);
-/** Resolves a typed or spoken SKU reference to a stored code (same order as the voice lane): trim → exact → code + "_" → prefix → article/name. */
-export function resolveSkuCode(raw: string): string | undefined {
-  const text = (raw ?? "").trim();
-  const code = text.replace(/\s+/g, "");
-  if (!code || code.length > 80) return undefined;
-  const d = db();
-  const one = (sql: string, ...args: string[]) => (d.prepare(sql).get(...args) as { code_1c: string } | undefined)?.code_1c;
-  return one("SELECT code_1c FROM sku WHERE code_1c = ?", code)
-    ?? one("SELECT code_1c FROM sku WHERE code_1c = ?", `${code}_`)
-    ?? one("SELECT code_1c FROM sku WHERE code_1c LIKE ? ESCAPE '\\' ORDER BY code_1c LIMIT 1", `${like(code)}%`)
-    ?? one("SELECT code_1c FROM sku WHERE article = ? OR article = ? LIMIT 1", code, text)
-    ?? (text.length >= 4 ? byNameOrArticle(text) : undefined);
-}
-/** Case-insensitive Cyrillic-safe match on article or name (SQLite LIKE only folds ASCII). */
-function byNameOrArticle(text: string): string | undefined {
-  const needle = text.toLowerCase();
-  const rows = db().prepare("SELECT code_1c, article, name FROM sku ORDER BY code_1c").all() as { code_1c: string; article: string | null; name: string }[];
-  return rows.find(row => (row.article ?? "").toLowerCase().includes(needle) || row.name.toLowerCase().includes(needle))?.code_1c;
-}
+/** Resolves a typed or spoken SKU reference to a stored code — the voice lane's resolver (trim → exact → code + "_" → prefix → article → name). */
+export function resolveSkuCode(raw: string, orgId = "partner"): string | undefined { return lookupSku(raw ?? "", { org_id: orgId }) ?? undefined; }
 /** A SKU mentioned in free text: a 7–12 digit code, with or without the trailing underscore («почему 130200122» → 130200122_). */
-export function mentionedSku(text: string): string | undefined {
-  for (const match of text.matchAll(/(?<!\d)(\d{7,12}_?)(?!\d)/g)) { const hit = resolveSkuCode(match[1]); if (hit) return hit; }
+export function mentionedSku(text: string, orgId = "partner"): string | undefined {
+  for (const match of text.matchAll(/(?<!\d)(\d{7,12}_?)(?!\d)/g)) { const hit = resolveSkuCode(match[1], orgId); if (hit) return hit; }
   return undefined;
 }
 
@@ -207,14 +190,14 @@ function changed(orgId: string): Answer {
 
 export async function answerInContext(ask: Ask): Promise<Answer> {
   const base = ask.base && /^\/[a-z0-9_-]*$/i.test(ask.base) ? ask.base.replace(/\/$/, "") : "/v2";
-  const mentioned = mentionedSku(ask.text);
+  const mentioned = mentionedSku(ask.text, ask.org_id);
   let context: AssistantContext = mentioned ? { ...ask.context, entity: { ...ask.context.entity, code_1c: mentioned } } : ask.context;
   let kind = detectKind(ask.text, context);
   if (kind === "unknown" && mentioned) kind = "why_qty";
   if (kind === "unknown") {
     // «почему <название или артикул>» — look the position up by article or name.
     const rest = ask.text.replace(/^(почему|объясни|расскажи про|что с|покажи|сколько заказать)\s+/i, "").trim();
-    const byName = rest !== ask.text.trim() && rest.length >= 4 ? resolveSkuCode(rest) : undefined;
+    const byName = rest !== ask.text.trim() && rest.length >= 4 ? resolveSkuCode(rest, ask.org_id) : undefined;
     if (byName) { context = { ...context, entity: { ...context.entity, code_1c: byName } }; kind = "why_qty"; }
   }
   const { code_1c, po_id } = context.entity;

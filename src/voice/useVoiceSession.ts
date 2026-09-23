@@ -6,7 +6,7 @@ import { AutomaticResponseGate, TranscriptGate, VoiceTurnGate, mentionedSupplier
 
 export type VoiceState = "idle" | "connecting" | "listening" | "checking" | "preparing" | "waiting_review" | "ended" | "unavailable";
 export interface Caption { who: "user" | "assistant" | "tool"; text: string }
-export interface VoiceSession { state: VoiceState; reason?: string; audioBlocked: boolean; enableAudio: () => void; start: () => Promise<void>; stop: () => void; mute: (on: boolean) => void; interrupt: () => void; captions: Caption[] }
+export interface VoiceSession { state: VoiceState; reason?: string; audioBlocked: boolean; enableAudio: () => void; localStream: MediaStream | null; remoteStream: MediaStream | null; start: () => Promise<void>; stop: () => void; mute: (on: boolean) => void; interrupt: () => void; captions: Caption[] }
 export interface VoiceScope { org_id: string; supplier_id?: string; code_1c?: string }
 
 type FunctionCall = { type: "function_call"; name: string; call_id: string; arguments: string };
@@ -19,6 +19,9 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
   const [reason, setReason] = useState<string>();
   const [captions, setCaptions] = useState<Caption[]>([]);
   const [audioBlocked, setAudioBlocked] = useState(false);
+  // Exposed for the live sound wave (AnalyserNode on the microphone and on the assistant's track).
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const peer = useRef<RTCPeerConnection | null>(null);
   const starting = useRef(false);
   const channel = useRef<RTCDataChannel | null>(null);
@@ -50,6 +53,8 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
     dataChannel?.close();
     stream.current?.getTracks().forEach(track => track.stop());
     stream.current = null;
+    setLocalStream(null);
+    setRemoteStream(null);
     const connection = peer.current;
     peer.current = null;
     connection?.close();
@@ -214,10 +219,12 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       const media = await navigator.mediaDevices.getUserMedia({ audio: true });
       if (sessionGeneration !== generation.current) { media.getTracks().forEach(track => track.stop()); return; }
       stream.current = media;
+      setLocalStream(media);
       const connection = new RTCPeerConnection();
       peer.current = connection;
       connection.ontrack = e => {
         speaker.srcObject = e.streams[0];
+        setRemoteStream(e.streams[0] ?? null);
       };
       connection.onconnectionstatechange = () => {
         if (sessionGeneration !== generation.current) return;
@@ -256,5 +263,5 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
   }, [handleEvent, release]);
 
   useEffect(() => () => { generation.current++; release(); }, [release]);
-  return { state, reason, audioBlocked, enableAudio, start, stop, mute, interrupt, captions };
+  return { state, reason, audioBlocked, enableAudio, localStream, remoteStream, start, stop, mute, interrupt, captions };
 }
