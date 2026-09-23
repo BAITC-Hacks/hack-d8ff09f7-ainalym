@@ -20,5 +20,27 @@
     ],
     "assistantRequests": 0,
     "waitingCut": false
+  },
+  "purchases": {
+    "width": 1280,
+    "height": 800,
+    "durationSeconds": 9,
+    "audio": false,
+    "files": [
+      {
+        "file": "purchases.webm",
+        "bytes": 1177889
+      },
+      {
+        "file": "purchases.mp4",
+        "bytes": 551534
+      },
+      {
+        "file": "purchases.png",
+        "bytes": 236891
+      }
+    ],
+    "assistantRequests": 0,
+    "waitingCut": false
   }
 }
