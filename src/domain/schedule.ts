@@ -41,7 +41,7 @@ export async function runScheduledChecks(now: string | Date = new Date(), ctx: {
   }).map((event) => event.code_1c);
   if (!followups.length && !crossing.length && !staleCodes.length) return { runs: [], processed: 0, proposals: [], affected: [] };
 
-  const runId = await startRun({ org_id: orgId, trigger_type: "scheduled_check", trigger_ref: at });
+  const runId = await startRun({ org_id: orgId, trigger_type: "scheduled_check", trigger_ref: at }, database);
   const proposals: string[] = [];
   const affected = new Set<string>();
   for (const task of followups) {
@@ -56,7 +56,7 @@ export async function runScheduledChecks(now: string | Date = new Date(), ctx: {
     proposals.push(id);
     await recordAction(runId, { kind: "escalation", subject_ref: id, summary_ru: `Нужно уточнение по задаче ${task.id}`,
       rationale_ru: rationale, sources, autonomy: "escalated", result: "needs_owner",
-      idempotency_key: `schedule:followup:${task.id}:${task.version}` });
+      idempotency_key: `schedule:followup:${task.id}:${task.version}` }, database);
   }
   for (const row of crossing) {
     const components = JSON.parse(row.components) as Record<string, unknown>;
@@ -67,7 +67,7 @@ export async function runScheduledChecks(now: string | Date = new Date(), ctx: {
     affected.add(row.code_1c);
     await recordAction(runId, { kind: "status_change", subject_ref: row.id, code_1c: row.code_1c,
       summary_ru: `Критичный срок пополнения ${row.code_1c}`, rationale_ru: `Покрытие остатком пересекло срок поставки ${row.lead_time_days} дн.`,
-      sources: [`recommendation:${row.id}`], autonomy: "auto", idempotency_key: `schedule:critical:${row.id}` });
+      sources: [`recommendation:${row.id}`], autonomy: "auto", idempotency_key: `schedule:critical:${row.id}` }, database);
   }
   const runs: string[] = [];
   if (staleCodes.length) {
@@ -75,6 +75,6 @@ export async function runScheduledChecks(now: string | Date = new Date(), ctx: {
     runs.push(result.run_id);
     for (const code of staleCodes) affected.add(code);
   }
-  await finishRun(runId, "done");
+  await finishRun(runId, "done", database);
   return { runs: [runId, ...runs], processed: followups.length + crossing.length + staleCodes.length, proposals, affected: [...affected] };
 }

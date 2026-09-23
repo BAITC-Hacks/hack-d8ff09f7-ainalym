@@ -1,5 +1,5 @@
-# L2a checkpoint — main integration
-Done: latest main merged with on-hand snapshot and L2b money formatting; named M1–M5 pass; domain check 74 pass/2 fail; strict no-float and L2b recompute tests now pass; TypeScript passes.
-Undone: two ledger tests await L1's persisted ledger on main; queue/today HTTP after L1 merge; L3 tick still uses its own scheduled check.
-Resumable: merge L1 main checkpoint, rerun domain/HTTP gates and scenario; closeout with final evidence.
-SHA: this merge commit (parent 7862095).
+# L2a checkpoint — integrated domain gate
+Done: money, need engine, proposals, tasks, schedule, views, and proposal routes; L1 ledger/routes merged. Domain 79/79, scenario 11/11, peers 15/15, build and TypeScript pass. Local HTTP queue/today agree on the first decision; stale approval returns 409.
+Undone: L3 tick still calls its own scheduled checker; the UI quantity editor calls an absent recommendations adjust route outside this lane's write scope.
+Resumable: root/L3 wire tick to `src/domain/schedule.ts`; route owner exposes `adjustRecommendation`; rerun their integration checks. L2a domain and HTTP gates need no further code.
+SHA: a6310c0 (latest domain implementation commit before this checkpoint).
