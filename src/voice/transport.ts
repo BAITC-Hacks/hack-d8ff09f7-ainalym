@@ -20,3 +20,19 @@ export class VoiceTurnGate {
   track(controller: AbortController) { this.pending.add(controller); }
   done(controller: AbortController) { this.pending.delete(controller); }
 }
+
+export class TranscriptGate {
+  private inputItemId?: string;
+  private transcript = "";
+  private active = false;
+  started(itemId?: string) { this.inputItemId = itemId; this.transcript = ""; this.active = true; }
+  completed(itemId: string | undefined, text: string): boolean {
+    if (!this.active) return false;
+    if (this.inputItemId && itemId !== this.inputItemId) return false;
+    this.transcript = text.trim();
+    return Boolean(this.transcript);
+  }
+  peek() { return this.transcript; }
+  take() { const text = this.transcript; this.transcript = ""; this.active = false; return text; }
+  clear() { this.transcript = ""; this.active = false; this.inputItemId = undefined; }
+}

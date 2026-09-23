@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { VoiceTurnGate } from "./transport";
+import { TranscriptGate, VoiceTurnGate } from "./transport";
 
 export type VoiceState = "idle" | "connecting" | "listening" | "checking" | "preparing" | "waiting_review" | "ended" | "unavailable";
 export interface Caption { who: "user" | "assistant" | "tool"; text: string }
@@ -10,7 +10,7 @@ export interface VoiceSession { state: VoiceState; reason?: string; start: () =>
 export interface VoiceScope { org_id: string; supplier_id?: string; code_1c?: string }
 
 type FunctionCall = { type: "function_call"; name: string; call_id: string; arguments: string };
-type RealtimeEvent = { type: string; transcript?: string; response?: { id?: string; status?: string; output?: FunctionCall[] } };
+type RealtimeEvent = { type: string; item_id?: string; transcript?: string; response?: { id?: string; status?: string; output?: FunctionCall[] } };
 type SessionResponse = { client_secret?: string; expires_at?: number };
 
 export function useVoiceSession(scope: VoiceScope): VoiceSession {
@@ -25,7 +25,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
   const audio = useRef<HTMLAudioElement | null>(null);
   const generation = useRef(0);
   const turn = useRef(new VoiceTurnGate());
-  const latestUtterance = useRef("");
+  const transcript = useRef(new TranscriptGate());
   const latestStateVersion = useRef<number | undefined>(undefined);
   const scopeRef = useRef(scope);
   scopeRef.current = scope;
@@ -37,6 +37,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
   const release = useCallback(() => {
     starting.current = false;
     turn.current.cancel();
+    transcript.current.clear();
     channel.current?.close();
     channel.current = null;
     stream.current?.getTracks().forEach(track => track.stop());
@@ -55,6 +56,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
 
   const interrupt = useCallback(() => {
     turn.current.cancel();
+    transcript.current.clear();
     send({ type: "response.cancel" });
     setState("listening");
   }, [send]);
@@ -67,7 +69,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
     if (sessionGeneration !== generation.current) return;
     if (event.type === "response.created" && event.response?.id) turn.current.created(event.response.id);
     if (event.type === "conversation.item.input_audio_transcription.completed" && event.transcript?.trim()) {
-      latestUtterance.current = event.transcript.trim();
+      transcript.current.completed(event.item_id, event.transcript);
       setCaptions(lines => [...lines, { who: "user", text: event.transcript!.trim() }]);
     }
     if (event.type === "response.output_audio_transcript.done" && event.transcript?.trim()) {
@@ -75,6 +77,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
     }
     if (event.type === "input_audio_buffer.speech_started") {
       turn.current.cancel();
+      transcript.current.started(event.item_id);
       setState("listening");
     }
     if (event.type !== "response.done" || event.response?.status !== "completed") return;
@@ -90,15 +93,30 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       setCaptions(lines => [...lines, { who: "tool", text: "Проверяю…" }]);
       let output: Record<string, unknown>;
       try {
-        const args = JSON.parse(call.arguments || "{}");
-        if (call.name === "recommend_for" && latestUtterance.current) args.utterance = latestUtterance.current;
-        if (call.name === "recommend_for" && latestStateVersion.current !== undefined) args.expected_state_version = latestStateVersion.current;
-        const response = await fetch(`/api/voice/tools/${encodeURIComponent(call.name)}`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ request_id: call.call_id, scope: scopeRef.current, args }), signal: controller.signal,
-        });
-        output = await response.json();
-        if (!response.ok) output = { ...output, ok: false };
+        const args = JSON.parse(call.arguments || "{}") as Record<string, unknown>;
+        if (call.name === "recommend_for") {
+          for (let attempt = 0; attempt < 30 && !transcript.current.peek() && !controller.signal.aborted; attempt++) await new Promise(resolve => setTimeout(resolve, 100));
+          const utterance = transcript.current.take();
+          if (!utterance) {
+            output = { ok: false, code: "needs_clarification", message: "Не удалось надёжно распознать запрос. Повторите его или используйте текст." };
+          } else {
+            args.utterance = utterance;
+            if (latestStateVersion.current !== undefined) args.expected_state_version = latestStateVersion.current;
+            const response = await fetch(`/api/voice/tools/${encodeURIComponent(call.name)}`, {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ request_id: call.call_id, scope: scopeRef.current, args }), signal: controller.signal,
+            });
+            output = await response.json();
+            if (!response.ok) output = { ...output, ok: false };
+          }
+        } else {
+          const response = await fetch(`/api/voice/tools/${encodeURIComponent(call.name)}`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ request_id: call.call_id, scope: scopeRef.current, args }), signal: controller.signal,
+          });
+          output = await response.json();
+          if (!response.ok) output = { ...output, ok: false };
+        }
       } catch {
         if (controller.signal.aborted) return;
         output = { ok: false, code: "tool_unavailable", message: "Не удалось проверить данные" };
