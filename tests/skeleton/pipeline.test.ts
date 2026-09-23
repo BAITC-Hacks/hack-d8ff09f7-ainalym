@@ -38,6 +38,15 @@ describe("world inbox and reviewer views", () => {
     expect(todayBody.queue_count).toBe(1);
     expect(todayBody.pulse.agents.ratio).toBe(1);
     expect(todayBody.background).toHaveLength(1);
+    expect(todayBody.commitments).toEqual([expect.objectContaining({ id: "PR-1", state: "needs_review" })]);
     expect(queueBody.items[0].title).toContain("SE");
+  });
+
+  it("keeps the pending explanation and no commitment for a zero recommendation run", async () => {
+    db().prepare("INSERT INTO calc_run (id,started_at,skus,recommended) VALUES (?,?,?,?)")
+      .run("RUN-ZERO", "2026-09-23T00:00:00Z", 0, 0);
+    const body = await (await today()).json();
+    expect(body.commitments).toEqual([]);
+    expect(body.pending_reason).toContain("Нет предложений");
   });
 });

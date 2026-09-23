@@ -16,9 +16,17 @@ const counts = { passed: 0, failed: 0, skipped: 0, externallyUnverified: 0 };
 try {
   const args = ["vitest", "run", ...(filter ? [`tests/${filter}`] : []), "--reporter=./scripts/vitest_reporter.mjs"];
   const result = spawnSync("npx", args, { cwd: process.cwd(), encoding: "utf8", env: { ...process.env, DATABASE_PATH: ":memory:", AINALYM_CHECK_REPORT: output } });
-  if (existsSync(output)) {
-    const report = JSON.parse(readFileSync(output, "utf8"));
-    for (const test of report.cases ?? []) {
+  let report;
+  try {
+    if (!existsSync(output)) throw new Error("missing Vitest report");
+    report = JSON.parse(readFileSync(output, "utf8"));
+    if (!report || !Array.isArray(report.cases) || !Array.isArray(report.errors)) throw new Error("invalid Vitest report");
+  } catch (error) {
+    counts.failed++;
+    console.log(`[FAIL] vitest report — ${error.message}`);
+  }
+  if (report && Array.isArray(report.cases) && Array.isArray(report.errors)) {
+    for (const test of report.cases) {
         const name = test.name;
         const note = test.note || "";
         if (test.status === "passed") { counts.passed++; console.log(`[PASS] ${name}`); }
@@ -30,7 +38,7 @@ try {
           } else console.log(`[SKIP] ${name}`);
         } else { counts.failed++; console.log(`[FAIL] ${name} — ${(test.errors || []).join(" ")}`); }
     }
-    for (const error of report.errors ?? []) { counts.failed++; console.log(`[FAIL] vitest — ${error}`); }
+    for (const error of report.errors) { counts.failed++; console.log(`[FAIL] vitest — ${error}`); }
   }
   if (result.error || result.status !== 0) {
     if (counts.failed === 0) counts.failed++;

@@ -3,11 +3,13 @@ import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import XLSX from 'xlsx';
 import Decimal from 'decimal.js';
+import { databasePath } from '../../src/db/path.mjs';
 
 const root = process.cwd();
 const dbArg = process.argv.indexOf('--db');
-const dbPath = dbArg < 0 ? join(root, 'data/partner.db') : process.argv[dbArg + 1];
+const dbPath = dbArg < 0 ? databasePath() : process.argv[dbArg + 1];
 if (!dbPath) throw new Error('--db requires a path');
+process.env.DATABASE_PATH = dbPath;
 mkdirSync(dirname(dbPath), { recursive: true });
 const d = new DatabaseSync(dbPath);
 d.exec(readFileSync(join(root, 'src/db/schema.sql'), 'utf8'));
