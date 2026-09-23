@@ -2,7 +2,7 @@
 
 Единственный источник статусов для README. Статус ставится только по коду на `main` и проверке L7 (чистый клон без ключей) или закрытиям в `docs/agent_handoffs/*`. Обновляется после каждого слияния (L7).
 
-Наблюдение: **2026-09-23 11:10Z**, `main` @ `9b01fcb` (после MERGE-2, L5 voice, L4a/L4b/L4c, L6, L3, L8, INTEG-1). Чистый клон: `/tmp`, `.env.local` из `.env.example` + `DATABASE_PATH=./data/partner.db`, без ключей.
+Наблюдение: **2026-09-23 11:10Z** (L7, чистый клон `9b01fcb`; строка U1 — 11:11Z по `docs/agent_handoffs/SHELL_1_CLOSEOUT.md`), `main` @ `220d777` (после MERGE-2, L5 voice, L4a/L4b/L4c, L6, L3, L8, INTEG-1, MERGE-4/5, ONEC-1, ENGINE-1, WORLD-2, SHELL-1). Чистый клон: `/tmp`, `.env.local` из `.env.example` + `DATABASE_PATH=./data/partner.db`, без ключей.
 
 Статусы: `GREEN` — проверено командой в это время · `PARTIAL` — есть код, проверка неполная · `RED` — проверка падает · `PENDING` — нет на `main` · `UNVERIFIED` — нужен внешний ресурс (ключ, микрофон).
 
@@ -30,7 +30,7 @@
 | P1 | Экспорт для 1С и канал поставщика | `/api/peers/onec-export/*` · `/supplier/:po_id` | API: страница поставщика — «Черновик заказа — не отправлен» | GREEN · 09:48Z |
 | S1 | Карточка артикула | `GET /api/skus/:code` · `/skus/:code` | API: рекомендация, в пути, журнал | GREEN · 09:48Z |
 | V1 | Голос: Realtime-сессия, инструменты; текстовый путь без ключа | `src/voice/*` · `/api/voice/*` · `/api/assistant/message` · `/assistant` | `npm run check` (voice) | PARTIAL · 09:48Z (живой микрофон — UNVERIFIED, 2 проверки пропущены) |
-| U1 | Экраны | `/today` `/replenishment` `/skus/:code` `/review` `/orders/:id` `/money` `/connections` `/assistant` `/world` `/peers` `/supplier/:po_id` | HTTP 200 на чистом клоне; снимки — `docs/evidence/ui`, `docs/evidence/peers`, `docs/evidence/voice` | PARTIAL · 09:48Z (L7 проверил ответы 200, не вёрстку; L4b/L4c: снимки не всех экранов) |
+| U1 | Экраны (одна оболочка Fable, девять разделов) | `/today` `/replenishment` `/orders` `/orders/:po_id` `/suppliers` `/skus` `/skus/:code` `/money` `/world` `/connections` `/assistant` · вне меню: `/review`, `/review/:id`, `/peers`, `/supplier/:po_id`; `/v2/*`, `/opus_a/*` → 307 на новые пути | `next start -p 3511`: 200 на всех девяти разделах и `/skus/130200122_`, `/` → 307 `/today`; `npm run check` 287/0; снимки 1440×900 — `docs/evidence/shell` (прежние — `docs/evidence/ui`, `peers`, `voice`) | PARTIAL · 11:11Z (SHELL-1 на `main` 220d777: ответы и 0 ошибок консоли проверены на сборке ветки; чистый клон — L7 после слияния; вёрстка старых разделов `/world` `/connections` `/review` не перерисована) |
 | C2 | Сводная проверка | `scripts/check.mjs` | `npm run etl && npm run check` → `check: passed=267 failed=0 skipped=7 externally-unverified=7` | GREEN · 11:10Z (чистый клон `9b01fcb`) |
 | C3 | Чистый клон | `scripts/clean_clone_check.sh` (клон → install → etl → check) | локальный клон `9b01fcb` → `CLEAN-CLONE: PASS` (passed=267 failed=0 skipped=7 externally-unverified=7) | GREEN · 11:10Z (GitHub-remote — ≈12:10Z) |
 | C5 | Пересборка демо-базы | `scripts/demo_reset.mjs` · `POST /api/demo/reset` | `npm run demo:reset` | GREEN · 09:3xZ |
