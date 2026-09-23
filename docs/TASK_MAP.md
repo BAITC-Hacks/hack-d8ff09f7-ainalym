@@ -2,7 +2,7 @@
 
 Единственный источник статусов для README. Статус ставится только по коду на `main` и `Gate: GREEN` в `docs/agent_handoffs/*`. Обновляется после каждого слияния (L7).
 
-Наблюдение: **2026-09-23 08:55Z**, `main` @ `3e964a0` (L9 ETL влит).
+Наблюдение: **2026-09-23 08:56Z**, `main` @ `2b29bd2` (L9 ETL, L1 check/health/reset, L4a оболочка).
 
 Статусы: `GREEN` — проверено командой в это время · `PARTIAL` — есть код, проверки нет или неполная · `PENDING` — кода нет на `main`.
 
@@ -22,9 +22,12 @@
 | F1 | Деньги и обязательства по утверждённым заказам | `src/domain/cashflow.ts` · `GET /api/money` | `npm run check` | PENDING · 08:45Z |
 | W1 | Лента событий: воспроизведение и ввод события | `/api/world/*` | `npm run check` | PENDING · 08:45Z |
 | V1 | Голос и текстовый ассистент на тех же инструментах | `src/voice/*` · `/api/voice/*` · `/api/assistant/message` | ручная проверка (микрофон) | PENDING · 08:45Z |
-| U1 | Интерфейс: пульс, рекомендации, карточка артикула, заказы | `src/app/**` | `npm run dev` | PENDING · 08:45Z (стандартная страница) |
+| U0 | Оболочка интерфейса: навигация, метки режимов, Inter | `src/components/shell/*` · `src/components/labels/*` · `src/app/(app)/layout.tsx` | `npm run dev` → `/` ведёт на `/today` | PARTIAL · 08:56Z (код влит, в браузере L7 не проверял) |
+| U1 | Интерфейс: пульс, рекомендации, карточка артикула, заказы | `src/app/(app)/**` | `npm run dev` | PENDING · 08:56Z («Сегодня» — пустая заготовка) |
 | C1 | Сборка и типы | весь проект | `npx next typegen && npx tsc --noEmit` | GREEN · 08:43Z |
-| C2 | Сводная проверка | `package.json` script `check` | `npm run check` | PENDING · 08:45Z (скрипта нет) |
+| C2 | Сводная проверка | `scripts/check.mjs` | `npm run check` → `check: passed=2 failed=0 skipped=0 externally-unverified=0` | GREEN · 08:56Z (2 проверки) |
+| C4 | Здоровье приложения | `src/app/api/health/route.ts` · `GET /api/health` | `npm run check` (skeleton) | GREEN · 08:56Z |
+| C5 | Пересборка демо-базы | `scripts/demo_reset.mjs` | `npm run demo:reset` → `"ok":true`, world_event 45 | GREEN · 08:56Z |
 | C3 | Чистый клон | `scripts/clean_clone_check.sh` | `bash scripts/clean_clone_check.sh <remote>` | PENDING · 08:45Z |
 | R1 | README: методика, алгоритм выбросов, запуск (ТЗ п. 10) | `README.md` §4, §7 | чтение | GREEN (v1) · 08:45Z |
 | R2 | Режим без ключей «Правила без LLM» | `AI_PROVIDER` auto → `rules` | `npm run check` без ключей | PENDING · 08:45Z |

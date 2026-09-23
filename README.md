@@ -2,7 +2,7 @@
 
 Кейс HackAlem AI (трек «Логистика», партнёр ТОО «Электрокомплект», ekt.kz). Ниже — только то, что подтверждается текущим репозиторием. Статус каждой возможности с временем проверки (UTC) — в [`docs/TASK_MAP.md`](docs/TASK_MAP.md); README не утверждает ничего сверх этой таблицы.
 
-> Состояние README: **v1.1**, основа `main` @ `3e964a0`, наблюдение 2026-09-23 08:55Z. Разделы, помеченные «ожидается», описывают контракт (`docs/CONTRACTS.md`), а не работающий код; они обновляются по мере слияния веток.
+> Состояние README: **v1.2**, основа `main` @ `2b29bd2`, наблюдение 2026-09-23 08:56Z. Разделы, помеченные «ожидается», описывают контракт (`docs/CONTRACTS.md`), а не работающий код; они обновляются по мере слияния веток.
 
 ## 1. Название
 
@@ -21,9 +21,11 @@
 
 ## 3. Что реализовано
 
-Наблюдение: 2026-09-23 08:55Z, `main` @ `3e964a0`. Подтверждено кодом в репозитории:
+Наблюдение: 2026-09-23 08:56Z, `main` @ `2b29bd2`. Подтверждено кодом в репозитории:
 
-- каркас приложения Next.js 16 (App Router, TypeScript); `npx next typegen && npx tsc --noEmit` проходит (проверено 08:43Z на `0d9406a`); стартовая страница пока стандартная;
+- каркас приложения Next.js 16 (App Router, TypeScript) с оболочкой интерфейса: навигация «Сегодня · Закупки · Проверка · Товары · Деньги · Связи · Помощник», метки режимов, шрифт Inter; корень `/` ведёт на `/today`, экран «Сегодня» пока пустой;
+- `npm run check` — сводная проверка (на 08:56Z две проверки: перезагрузка данных даёт одинаковые счётчики и сохраняет эталонные артикулы; `GET /api/health` сообщает о доступной базе);
+- `npm run demo:reset` — пересобирает базу из `fixtures/partner/` и печатает счётчики таблиц;
 - контракт данных и API v0 — [`docs/CONTRACTS.md`](docs/CONTRACTS.md); критерии готовности — [`docs/PRODUCT.md`](docs/PRODUCT.md);
 - схема SQLite (`src/db/schema.sql`, 26 таблиц) и клиент `src/db/client.ts` (`db()`, `withTx`, `migrate`, `bumpStateVersion`);
 - интерфейсы-заглушки модулей (`src/domain/*`, `src/server/*`, `src/ai/*`, `src/peers/*`, `src/voice/*`) — **без логики**; например, `computeNeed` сейчас возвращает «расчётный движок ещё не подключён»;
@@ -76,7 +78,7 @@
 - **Vercel AI SDK** (`ai`, `@ai-sdk/gateway`, `@ai-sdk/openai`) — типизированные решения и черновики.
 - **lucide-react** — иконки. **Vitest** — тесты. **ESLint**. **xlsx** (SheetJS, dev) — чтение выгрузок партнёра в `npm run etl`.
 - Провайдер типизированных решений: `AI_PROVIDER=jev (TypeSafe → Vercel AI Gateway) | openai | rules | offline`. Без ключей — `rules` («Правила без LLM»): весь расчёт детерминирован.
-- Шрифт Inter (SIL OFL) — заявлен в `DISCLOSURE.md` для `public/fonts`; на `0d9406a` файлов шрифта в репозитории ещё нет.
+- Шрифт Inter (SIL OFL) — `public/fonts/InterVariable.woff2`, лицензия `public/fonts/OFL.txt`.
 
 ## 6. Архитектура
 
@@ -109,7 +111,7 @@ npm run dev        # http://localhost:3000
 
 Без ключей приложение работает в режиме «Правила без LLM» — баннер/метка это показывает; все пять обязательных проверок ТЗ рассчитаны на этот режим. Ключи (если есть) добавляются только в `.env.local`, никогда в репозиторий.
 
-Команды, которые появятся по мере слияния (статус — `docs/TASK_MAP.md`): `npm run etl` (загрузка данных партнёра в SQLite), `npm run check` (все проверки), `node scripts/scenario.mjs` (пять проверок ТЗ), `bash scripts/clean_clone_check.sh` (проверка чистого клона).
+Команды: `npm run etl` — загрузка данных партнёра в SQLite; `npm run demo:reset` — пересборка демо-базы; `npm run check` — все проверки; `bash scripts/clean_clone_check.sh` — проверка чистого клона. Появится по мере слияния: `node scripts/scenario.mjs` — пять проверок ТЗ (статус — `docs/TASK_MAP.md`).
 
 ### 7.1 Зависимости
 
@@ -151,7 +153,8 @@ npm run dev        # http://localhost:3000
 
 1. `npm install && cp .env.example .env.local` — ожидается: установка без ошибок, ключи не нужны.
 2. `npm run etl` — строки `supplier: 2`, `sku: 3909`, `sales_line: 248915`, `sales_month: 99634`, `stock_month: 117282`, `in_transit: 313`, `season_index: 24`, `stockout months: 1596` (проверено 08:53Z). База — `data/partner.db` (не в git).
-3. `npm run check` — ожидается итоговая строка `check: passed=N failed=0 skipped=N externally-unverified=N`. *(ожидается)*
+3. `npm run check` — итоговая строка вида `check: passed=N failed=0 skipped=N externally-unverified=N`; на 08:56Z: `check: passed=2 failed=0 skipped=0 externally-unverified=0` (число проверок растёт по мере слияния).
+   `npm run demo:reset` — счётчики таблиц, `"ok":true`, `world_event` = 45.
 4. `node scripts/scenario.mjs` — ожидается пять строк `[PASS] M1 … M5` и сводка по деньгам. *(ожидается)*
 5. **M1, все источники:** `npm run dev` → «Запустить расчёт» по SE → открыть артикул `intransit` — IEK `010500006_` ВА47-29 16А (30 000 шт в пути) → изменить товар в пути на +100 (лента: «Товар в пути +N») → рекомендуемое количество уменьшается. *(ожидается)*
 6. **M2, сезонность:** карточка артикула `seasonal` — SE `130300027_` Сжим У 733M → прогноз по месяцам различается по сезонному индексу, а не плоское среднее. *(ожидается)*
