@@ -1,0 +1,10 @@
+# dependencies / build
+node_modules/
+.next/
+out/
+# local database and env
+data/
+.env*.local
+!.env.example
+# os / editor
+.DS_Store
