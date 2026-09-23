@@ -1,4 +1,4 @@
-done: scripts/check, health smoke/route, typed repositories; build and tsc green.
-undone: ETL reset, remaining routes, ledger, contracts v1, full gates.
-resumable: next wire reset to L9 ETL when it lands; main was merged at checkpoint.
+done: scripts/check, health, repositories, ETL-backed reset wrapper; build and tsc green.
+undone: ETL loader dependency, remaining routes, ledger, contracts v1, full gates.
+resumable: demo:reset exits 2 until scripts/etl/load.mjs lands; next implement API routes.
 sha: HEAD (this checkpoint commit).

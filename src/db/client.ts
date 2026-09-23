@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 let instance: DatabaseSync | null = null;
 
 export function dbPath(): string {
-  return process.env.DATABASE_PATH || join(process.cwd(), "data", "ainalym.db");
+  return process.env.DATABASE_PATH || join(process.cwd(), "data", "partner.db");
 }
 
 export function db(): DatabaseSync {
