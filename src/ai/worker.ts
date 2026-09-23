@@ -12,7 +12,7 @@ export interface TickResult { runs: string[]; processed: number }
 interface EventRow { id: string; org_id: string; seq: number | null; kind: string; code_1c: string | null; po_id: string | null; source_id: string; text: string | null; payload: string; at: string | null; state: string; run_id: string | null; claimed_at: string | null; attempt: number; processing_stage: string; affected_codes: string }
 const CLAIM_TIMEOUT_MS = 5 * 60_000;
 const processing = new Map<string, Promise<ProcessResult>>();
-let ticking: Promise<TickResult> | null = null;
+const ticking = new Map<string, Promise<TickResult>>();
 
 function eventPayload(row: EventRow): Record<string, unknown> {
   const parsed: unknown = JSON.parse(row.payload);
@@ -184,16 +184,16 @@ async function recomputeAffected(row: EventRow, codes: string[], runId: string):
   return calcId;
 }
 
-async function runEvent(id: string): Promise<ProcessResult> {
-  const row = db().prepare("SELECT * FROM world_event WHERE id=?").get(id) as EventRow | undefined;
+async function runEvent(id: string, orgId?: string): Promise<ProcessResult> {
+  const row = db().prepare("SELECT * FROM world_event WHERE id=? AND (? IS NULL OR org_id=?)").get(id, orgId ?? null, orgId ?? null) as EventRow | undefined;
   if (!row) return { run_id: null, actions: 0, escalations: 0, reason: "world_event_not_found" };
   if (row.state !== "pending") return { run_id: row.run_id, actions: 0, escalations: 0, reason: `already_${row.state}` };
   const staleBefore = new Date(Date.now() - CLAIM_TIMEOUT_MS).toISOString();
   if (row.run_id && row.claimed_at && row.claimed_at > staleBefore) return { run_id: row.run_id, actions: 0, escalations: 0, reason: "already_claimed" };
   const runId = await startRun({ org_id: row.org_id, trigger_type: "world_event", trigger_ref: row.id });
   const claimed = withTx(tx => {
-    const result = tx.prepare("UPDATE world_event SET run_id=?,claimed_at=?,attempt=attempt+1 WHERE id=? AND state='pending' AND (run_id IS NULL OR claimed_at IS NULL OR claimed_at<=?)")
-      .run(runId, new Date().toISOString(), id, staleBefore);
+    const result = tx.prepare("UPDATE world_event SET run_id=?,claimed_at=?,attempt=attempt+1 WHERE id=? AND org_id=? AND state='pending' AND (run_id IS NULL OR claimed_at IS NULL OR claimed_at<=?)")
+      .run(runId, new Date().toISOString(), id, row.org_id, staleBefore);
     if (result.changes) bumpStateVersion(tx);
     return result;
   });
@@ -239,11 +239,12 @@ async function runEvent(id: string): Promise<ProcessResult> {
   }
 }
 
-export function processEvent(world_event_id: string): Promise<ProcessResult> {
-  const existing = processing.get(world_event_id);
+export function processEvent(world_event_id: string, orgId?: string): Promise<ProcessResult> {
+  const key = `${orgId ?? "*"}:${world_event_id}`;
+  const existing = processing.get(key);
   if (existing) return existing;
-  const work = runEvent(world_event_id).finally(() => { processing.delete(world_event_id); });
-  processing.set(world_event_id, work);
+  const work = runEvent(world_event_id, orgId).finally(() => { processing.delete(key); });
+  processing.set(key, work);
   return work;
 }
 
@@ -268,22 +269,25 @@ export async function runScheduledChecks(now: Date = new Date()): Promise<string
   return runs;
 }
 
-export function tick(): Promise<TickResult> {
-  if (ticking) return ticking;
-  ticking = (async () => {
+export function tick(orgId?: string): Promise<TickResult> {
+  const key = orgId ?? "*";
+  const active = ticking.get(key);
+  if (active) return active;
+  const work = (async () => {
     const runs: string[] = [];
     let processed = 0;
     while (true) {
-      const event = db().prepare("SELECT id FROM world_event WHERE state='pending' AND (run_id IS NULL OR claimed_at IS NULL OR claimed_at<=?) ORDER BY seq,id LIMIT 1")
-        .get(new Date(Date.now() - CLAIM_TIMEOUT_MS).toISOString()) as { id: string } | undefined;
+      const event = db().prepare("SELECT id FROM world_event WHERE state='pending' AND (run_id IS NULL OR claimed_at IS NULL OR claimed_at<=?) AND (? IS NULL OR org_id=?) ORDER BY seq,id LIMIT 1")
+        .get(new Date(Date.now() - CLAIM_TIMEOUT_MS).toISOString(), orgId ?? null, orgId ?? null) as { id: string } | undefined;
       if (!event) break;
-      const result = await processEvent(event.id);
+      const result = await processEvent(event.id, orgId);
       if (result.run_id) runs.push(result.run_id);
       if (!result.reason) processed++;
       if (result.reason === "claimed_by_another_worker") break;
     }
-    runs.push(...await runScheduledChecks(new Date()));
+    if (!orgId) runs.push(...await runScheduledChecks(new Date()));
     return { runs, processed };
-  })().finally(() => { ticking = null; });
-  return ticking;
+  })().finally(() => { ticking.delete(key); });
+  ticking.set(key, work);
+  return work;
 }

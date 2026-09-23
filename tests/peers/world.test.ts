@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { db, resetInstance } from "../../src/db/client";
+import { db, resetInstance, stateVersion } from "../../src/db/client";
+import { processEvent, tick } from "../../src/ai/worker";
 import { composeEvent } from "../../src/world/compose";
 import { feed } from "../../src/world/feed";
 import { play } from "../../src/world/play";
@@ -11,9 +12,12 @@ vi.mock("../../src/ai/worker", () => ({
 }));
 
 beforeEach(() => {
+  vi.clearAllMocks();
   process.env.DATABASE_PATH = ":memory:";
   resetInstance();
   db().prepare("INSERT INTO organization (id, name) VALUES (?, ?)").run("ORG-TEST", "Test partner");
+  db().prepare("INSERT INTO supplier (id,name,lead_time_days) VALUES (?,?,?)").run("IEK", "IEK", 40);
+  db().prepare("INSERT INTO sku (code_1c,supplier_id,name) VALUES (?,?,?)").run("010500008_", "IEK", "ETL one-off SKU");
 });
 afterEach(() => resetInstance());
 
@@ -29,17 +33,24 @@ describe("world feed", () => {
     expect(result.emitted[0].emitted_at).toBeTruthy();
     expect(result.emitted[0].state).toBe("pending");
     expect(result.processed).toBe(0); // L3's current worker stub returns noop.
+    expect(tick).toHaveBeenCalledExactlyOnceWith("ORG-TEST");
+    expect(processEvent).not.toHaveBeenCalled();
     expect(feed({}).rows.map((row) => row.state)).toEqual(["pending", "scripted"]);
   });
 
   it("composes verbatim, deduplicates, and labels a synthetic event", async () => {
-    const input = { kind: "judge_message" as const, actor_id: "judge", code_1c: "030200874_", text: "Разовый заказ 500 шт" };
+    const input = { kind: "judge_message" as const, actor_id: "judge", code_1c: "010500008_", text: "Разовый заказ 500 шт" };
     const first = await composeEvent(input);
+    const version = stateVersion();
     const second = await composeEvent(input);
     expect(first.event.text).toBe(input.text);
     expect(first.event.label).toBe("Симулятор мира — синтетическое событие");
     expect(second.replayed).toBe(true);
     expect(second.event.id).toBe(first.event.id);
+    expect(processEvent).toHaveBeenCalledExactlyOnceWith(first.event.id);
+    expect(tick).not.toHaveBeenCalled();
+    expect(second.state_version).toBe(version);
+    expect(stateVersion()).toBe(version);
     expect(db().prepare("SELECT COUNT(*) AS n FROM world_event").get()).toMatchObject({ n: 1 });
   });
 

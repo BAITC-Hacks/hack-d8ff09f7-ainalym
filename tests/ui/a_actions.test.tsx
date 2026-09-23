@@ -11,6 +11,27 @@ const item: QueueItem = { id: "PR-test", version: 7, kind: "proposal", title: "�
 beforeEach(() => vi.stubGlobal("fetch", vi.fn()));
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 describe("a_real action boundaries", () => {
+  it("does not present a failed worker event as successful play", async () => {
+    vi.mocked(fetch).mockImplementation(async (_path, options) => json(options?.method === "POST" ? { processed: 1, emitted: [{ state: "failed" }] } : { rows: [] }));
+    render(<WorldFeed />); await screen.findByText(/Следующих событий нет/); fireEvent.click(screen.getByRole("button", { name: "Воспроизвести" }));
+    await screen.findByText(/обработка завершилась ошибкой/); expect(screen.queryByText(/✓ Обработано событий/)).toBeNull();
+  });
+  it("reads the landed world feed rows and sends the numeric in-transit change", async () => {
+    vi.mocked(fetch).mockImplementation(async (_path, options) => json(options?.method === "POST" ? { event: { id: "WE-test", external: "local_simulator" } } : { rows: [{ id: "WE-next", kind: "in_transit_update", text: "Обновление поставки", state: "scripted", at: "2026-09-23" }] }));
+    render(<WorldFeed />); await screen.findByText("Обновление поставки"); expect(screen.queryByText(/Следующих событий нет/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Сочинить событие" })); fireEvent.change(screen.getByLabelText("Код 1С"), { target: { value: "CODE-test" } }); fireEvent.click(screen.getByRole("button", { name: "В пути +100" })); fireEvent.click(screen.getByRole("button", { name: "Добавить событие" }));
+    await screen.findByText(/Событие сохранено/); const call = vi.mocked(fetch).mock.calls.find(call => call[0] === "/api/world/compose")!;
+    expect(JSON.parse(call[1]!.body as string)).toMatchObject({ kind: "in_transit_update", code_1c: "CODE-test", payload: { code_1c: "CODE-test", delta: "100" } });
+    expect(screen.queryByRole("option", { name: "Снимок остатков" })).toBeNull();
+  });
+  it("keeps the more-decisions disclosure focused when its final row disappears", async () => {
+    const first = { ...item, id: "PR-first", title: "Первое предложение" };
+    const view = render(<DecisionQueue data={{ items: [first, item] }} error={null} loading={false} reload={() => {}} />);
+    const summary = screen.getByText("Ещё решения (1)"); summary.focus();
+    view.rerender(<DecisionQueue data={{ items: [first] }} error={null} loading={false} reload={() => {}} />);
+    await screen.findByText("Есть обновлённые решения."); expect(document.activeElement).toBe(summary); expect(summary.isConnected).toBe(true);
+    await act(async () => { summary.blur(); }); await waitFor(() => expect(screen.queryByText("Ещё решения (1)")).toBeNull());
+  });
   it("retains a removed queue row while its action owns focus and blocks stale writes", async () => {
     const first = { ...item, id: "PR-first", title: "Первое предложение" };
     const view = render(<DecisionQueue data={{ items: [first, item] }} error={null} loading={false} reload={() => {}} />);
@@ -25,7 +46,7 @@ describe("a_real action boundaries", () => {
   });
   it("does not call a calculation complete merely because compose returns a run id", async () => {
     vi.mocked(fetch).mockImplementation(async (_path, options) => json(options?.method === "POST" ? { event: { id: "WE-test" }, run_id: "AR-running" } : { events: [] }));
-    render(<WorldFeed />); fireEvent.click(screen.getByRole("button", { name: "Сочинить событие" })); fireEvent.change(screen.getByLabelText("Что изменилось?"), { target: { value: "Проверить остатки" } }); fireEvent.click(screen.getByRole("button", { name: "Добавить событие" }));
+    render(<WorldFeed />); fireEvent.click(screen.getByRole("button", { name: "Сочинить событие" })); fireEvent.change(screen.getByLabelText("Код 1С"), { target: { value: "CODE-test" } }); fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "5000" } }); fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "5000" } }); fireEvent.change(screen.getByLabelText("Что изменилось?"), { target: { value: "Разовый заказ 5000 шт" } }); fireEvent.click(screen.getByRole("button", { name: "Добавить событие" }));
     await screen.findByText(/Событие сохранено\. Результат обработки появится/); expect(screen.queryByText(/расчёт выполнен/)).toBeNull(); expect(screen.getByText("Режим AI не указан")).toBeTruthy();
   });
 
@@ -59,9 +80,9 @@ describe("a_real action boundaries", () => {
   });
   it("composes through the API and retains typed input on rejection", async () => {
     vi.mocked(fetch).mockImplementation(async (_path, options) => options?.method === "POST" ? json({ ok: false, code: "invalid", message: "Укажите известный код товара" }, 422) : json({ events: [] }));
-    render(<WorldFeed />); fireEvent.click(screen.getByRole("button", { name: "Сочинить событие" })); fireEvent.change(screen.getByLabelText("Код 1С"), { target: { value: "CODE-test" } }); fireEvent.change(screen.getByLabelText("Что изменилось?"), { target: { value: "Разовый заказ 5000 шт" } }); fireEvent.click(screen.getByRole("button", { name: "Добавить событие" }));
+    render(<WorldFeed />); fireEvent.click(screen.getByRole("button", { name: "Сочинить событие" })); fireEvent.change(screen.getByLabelText("Код 1С"), { target: { value: "CODE-test" } }); fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "5000" } }); fireEvent.change(screen.getByLabelText("Что изменилось?"), { target: { value: "Разовый заказ 5000 шт" } }); fireEvent.click(screen.getByRole("button", { name: "Добавить событие" }));
     await screen.findByText("Укажите известный код товара"); expect((screen.getByLabelText("Что изменилось?") as HTMLTextAreaElement).value).toBe("Разовый заказ 5000 шт");
-    const call = vi.mocked(fetch).mock.calls.find(call => call[0] === "/api/world/compose")!; expect(JSON.parse(call[1]!.body as string)).toEqual({ kind: "judge_message", code_1c: "CODE-test", text: "Разовый заказ 5000 шт" });
+    const call = vi.mocked(fetch).mock.calls.find(call => call[0] === "/api/world/compose")!; expect(JSON.parse(call[1]!.body as string)).toEqual({ kind: "judge_message", code_1c: "CODE-test", text: "Разовый заказ 5000 шт", payload: { code_1c: "CODE-test", qty: "5000", doc_type: "Расходная накладная" } });
   });
   it("a missing service produces unavailable feedback, not success", async () => {
     vi.mocked(fetch).mockResolvedValue(new Response("not found", { status: 404 })); render(<CalculationComposer />); fireEvent.click(screen.getByRole("button", { name: "Запустить расчёт" }));

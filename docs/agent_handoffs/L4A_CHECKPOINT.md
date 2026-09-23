@@ -1,9 +1,8 @@
-# L4a checkpoint 6 — focus-safe decision refresh
-Done: tier 1 shell/Pulse/states and tier 2 money; independent review corrections retained.
-Done: a focused decision survives removal from the API queue until focus leaves or the user applies the update; stale writes blocked.
-Checks: UI passed=26 failed=0; scoped ESLint + TypeScript + production build pass.
-Evidence: docs/evidence/ui/today_verification.md, desktop/phone screenshots, L4A_REVIEW_RESOLUTION.md.
-Imports: labels/resultAxes, shell controls/API hooks remain additive; no backend or voice writes.
-Undone: real Play→ledger→queue and populated render; main still lacks today/queue/modes/state/world/ledger routes. Gate: RED (integration unrun).
-Resumable: merge L1/L6 main checkpoints, repair the documented reset prerequisite upstream, run the real rules-only feed flow.
-sha: prior fixes 5581740; focus checkpoint = commit owning this file; main merged at 99e3138.
+# L4a checkpoint 9 — always-visible result labels
+Done: tier 1 + tier 2 implementation, response-bound labels/approvals, focus-preserving decisions, real L6 compose/play/replay, L4b route links.
+Done: final Pulse 1440×900 + 390×844 captures, phone feed, money 1728×920, bounded independent review and all counterexample fixes.
+Checks: UI passed=30 failed=0; scoped lint + TypeScript + production build pass; browser no horizontal overflow at the three target widths.
+Evidence: docs/evidence/ui/today_verification.md and L4A_REVIEW_FOLLOWUP.md; source/path manifest and closeout follow.
+Undone: full Play→ledger→queue acceptance, timing/CLS/screen-reader measurements; L1 routes/persisted ledger unavailable. Gate: RED.
+Resumable: merge L1 and its corrected custom-path reset; run rules-only canonical event through Pulse and inspect persisted ledger/queue without reload.
+sha: verified code d54c83a; merged tip f53f5f5; main through a32279a; documentation closeout follows.

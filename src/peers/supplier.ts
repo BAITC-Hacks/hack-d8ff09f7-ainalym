@@ -5,9 +5,9 @@ import { bumpStateVersion, db, stateVersion, withTx } from "../db/client";
 
 export type SupplierChannelState = "draft" | "sent" | "confirmed";
 const LABELS: Record<SupplierChannelState, string> = {
-  draft: "Draft",
-  sent: "Sent (controlled demo channel)",
-  confirmed: "Confirmed",
+  draft: "Черновик заказа — не отправлен",
+  sent: "Отправлено (контролируемый демо-канал)",
+  confirmed: "Подтверждено (симулятор)",
 };
 
 interface PurchaseOrderRow { id: string; supplier_id: string; supplier_name: string; state: string; total_qty: number; eta: string | null; version: number }
@@ -26,7 +26,8 @@ export function supplierChannel(poId: string) {
   const payload = peer ? JSON.parse(peer.payload) as { reply_text?: string; event_id?: string } : {};
   return {
     order, lines,
-    channel: { state, label: LABELS[state], external: "local_simulator" as const, as_of: peer?.as_of ?? null, reply_text: payload.reply_text ?? null, event_id: payload.event_id ?? null },
+    provenance: "synthetic" as const, ai: "none" as const, external: "local_simulator" as const,
+    channel: { state, label: LABELS[state], provenance: "synthetic" as const, ai: "none" as const, external: "local_simulator" as const, as_of: peer?.as_of ?? null, reply_text: payload.reply_text ?? null, event_id: payload.event_id ?? null },
     state_version: stateVersion(),
   };
 }

@@ -18,7 +18,7 @@ export async function play(input: { steps?: number; until?: number; org_id?: str
     if (rows.length) bumpStateVersion(d);
     return rows.map((r) => r.id);
   });
-  const result = ids.length ? await tick() : { runs: [], processed: 0 };
+  const result = ids.length ? await tick(orgId) : { runs: [], processed: 0 };
   const emitted = ids.map((id) => getWorldEvent(id, orgId)).filter((row): row is WorldRow => row !== null);
   return { emitted, runs: result.runs, processed: result.processed, state_version: stateVersion() };
 }
