@@ -37,6 +37,7 @@ npm install --no-audit --no-fund >/tmp/ainalym-clean-install.log 2>&1 || { tail 
 echo "CLEAN-CLONE: npm install OK (node $(node -v))"
 
 set +e
+npm run etl 2>&1 | tail -3   # the partner checks fail closed without the ETL database (README: etl, then check)
 npm run check 2>&1 | tee /tmp/ainalym-clean-check.log
 CHECK_EXIT=${PIPESTATUS[0]}
 set -e
