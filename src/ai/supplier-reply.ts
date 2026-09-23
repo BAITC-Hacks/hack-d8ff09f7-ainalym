@@ -62,10 +62,13 @@ export async function proposeSupplierReply(row: {
   }
   const decision = await interpretSupplierReply({ text, at: row.at || new Date().toISOString(), po_id: poId,
     org_id: row.org_id, affected_lines: codes as string[] });
+  const routing = db().prepare("SELECT provider,model_version,task_class FROM decision_record WHERE id=?")
+    .get(decision.decision_record_id) as { provider: string; model_version: string; task_class: "reasoning" };
   if (decision.action === "unknown") {
     await recordAction(runId, { kind: "escalation", subject_ref: poId, po_id: poId, world_event_id: row.id,
       summary_ru: `Ответ поставщика по заказу ${poId} требует уточнения срока и количества`,
       sources: [row.id, decision.decision_record_id], autonomy: "escalated", result: "needs_owner",
+      provider: routing.provider, model_version: routing.model_version, task_class: routing.task_class,
       idempotency_key: `worker:${row.source_id}:supplier_reply:unknown` });
     return null;
   }
@@ -90,6 +93,7 @@ export async function proposeSupplierReply(row: {
   await recordAction(runId, { kind: "escalation", subject_ref: id, po_id: poId, world_event_id: row.id,
     summary_ru: decision.action === "split" ? `Подготовлено разделение заказа ${poId}; требуется ваше решение` : `Подготовлено ускорение заказа ${poId}; требуется ваше решение`,
     rationale_ru: rationale, sources: [row.id, decision.decision_record_id, id], autonomy: "escalated", result: "needs_owner",
+    provider: routing.provider, model_version: routing.model_version, task_class: routing.task_class,
     idempotency_key: `worker:${row.source_id}:supplier_reply:proposal` });
   return id;
 }

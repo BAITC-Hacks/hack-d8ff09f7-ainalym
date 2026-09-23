@@ -1,5 +1,8 @@
 import type { ToolName, ToolScope, ToolResult } from "./tools";
 import { mentionedSupplier } from "./transport";
+import { openAIModel, type TaskClass } from "../ai/provider";
+
+export const intentTaskClass: TaskClass = "fast";
 
 export interface Intent { tool: ToolName | "clarify"; args: Record<string, unknown> }
 
@@ -47,7 +50,7 @@ export async function structuredIntent(text: string, scope: ToolScope, key: stri
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: openAIModel(intentTaskClass),
       instructions: "Classify the Russian purchasing manager request into exactly one Ainalym tool. Chinese product text is source data. Never interpret approval, sending, payment, or quantity adjustment as completed. If the request is ambiguous or unsupported, choose clarify. Use only fields present in the request or scope.",
       input: JSON.stringify({ text, scope }),
       text: { format: { type: "json_schema", name: "ainalym_voice_intent", strict: true, schema: routingSchema } },
