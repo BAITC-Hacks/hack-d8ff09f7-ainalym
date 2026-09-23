@@ -24,6 +24,8 @@ export function migrate(d: DatabaseSync = db()): void {
   d.exec(sql);
   const columns = new Set((d.prepare("PRAGMA table_info(sku)").all() as { name: string }[]).map((row) => row.name));
   for (const name of ["on_hand_qty", "on_hand_as_of"]) if (!columns.has(name)) d.exec(`ALTER TABLE sku ADD COLUMN ${name} TEXT`);
+  const recommendationColumns = new Set((d.prepare("PRAGMA table_info(recommendation)").all() as { name: string }[]).map(row => row.name));
+  if (!recommendationColumns.has("adjust_reason")) d.exec("ALTER TABLE recommendation ADD COLUMN adjust_reason TEXT");
   const eventColumns = new Set((d.prepare("PRAGMA table_info(world_event)").all() as { name: string }[]).map(row => row.name));
   for (const [name, ddl] of [
     ["claimed_at", "TEXT"], ["attempt", "INTEGER NOT NULL DEFAULT 0"],

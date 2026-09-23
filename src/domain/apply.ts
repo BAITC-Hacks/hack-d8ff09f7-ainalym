@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
-import { db, bumpStateVersion, stateVersion } from "../db/client";
+import { db, bumpStateVersion, stateVersion, withTx } from "../db/client";
 import { startRun, recordAction, finishRun } from "../server/ledger";
 import { computeNeed, type EngineContext, type EngineParams, type NeedResult } from "./engine";
 import { paramsForSupplier } from "./params";
@@ -190,43 +190,48 @@ type OrderLine = { recommendation_id: string; code_1c: string; qty: number; unit
 
 /** A human adjustment changes the proposal version while retaining the engine's original quantity. */
 export async function adjustRecommendation(id: string, qty: number, reason: string, version: number, ctx: CalcContext = {}) {
-  if (!globalThis.Number.isSafeInteger(qty) || qty < 0 || !reason.trim()) throw new RangeError("quantity and reason are required");
+  if (!globalThis.Number.isSafeInteger(qty) || qty < 0 || !reason.trim() || reason.trim().length > 200 || !globalThis.Number.isSafeInteger(version))
+    throw new RangeError("invalid adjustment");
   const database = ctx.database ?? db();
-  const rec = database.prepare("SELECT id,run_id,code_1c,qty_recommended,qty_adjusted,proposal_id,version,state FROM recommendation WHERE id=?")
-    .get(id) as { id: string; run_id: string; code_1c: string; qty_recommended: number; qty_adjusted: number | null; proposal_id: string | null; version: number; state: string } | undefined;
-  if (!rec) throw new ProposalNotFoundError(`recommendation ${id} is missing`);
-  if (rec.version !== version || !["proposed", "adjusted"].includes(rec.state)) throw new ProposalConflictError(`recommendation ${id} is stale`);
-  if (!rec.proposal_id) throw new RangeError("recommendation has no review proposal");
-  const proposal = database.prepare("SELECT id,payload,version,state,rationale_ru,sources FROM proposal WHERE id=?")
-    .get(rec.proposal_id) as { id: string; payload: string; version: number; state: string; rationale_ru: string; sources: string } | undefined;
-  if (!proposal || proposal.state !== "needs_review") throw new ProposalConflictError("proposal is no longer adjustable");
-  const payload = JSON.parse(proposal.payload) as { lines: OrderLine[]; [key: string]: unknown };
-  const line = payload.lines.find((item) => item.recommendation_id === id);
-  if (!line) throw new RangeError("recommendation is absent from proposal");
-  line.qty = qty;
-  const priced = payload.lines.filter((item) => item.unit_cost !== null);
-  const moneyAtStake = priced.length ? priced.reduce((sum, item) => sum.add(Money.of(item.unit_cost!).mul(item.qty)), Money.of("0")).toJSON() : null;
-  const rationale = `${proposal.rationale_ru} Корректировка ${rec.code_1c}: ${rec.qty_adjusted ?? rec.qty_recommended} → ${qty} шт; причина: ${reason.trim()}.`;
-  const proposalVersion = inTx(database, () => {
-    const updated = database.prepare("UPDATE recommendation SET qty_adjusted=?,state='adjusted',version=version+1 WHERE id=? AND version=?")
-      .run(qty, id, version);
+  const write = () => {
+    const rec = database.prepare("SELECT id,run_id,code_1c,qty_recommended,qty_adjusted,proposal_id,version,state FROM recommendation WHERE id=?")
+      .get(id) as { id: string; run_id: string; code_1c: string; qty_recommended: number; qty_adjusted: number | null; proposal_id: string | null; version: number; state: string } | undefined;
+    if (!rec) throw new ProposalNotFoundError(`recommendation ${id} is missing`);
+    if (rec.version !== version || !["proposed", "adjusted"].includes(rec.state)) throw new ProposalConflictError(`recommendation ${id} is stale`);
+    if (!rec.proposal_id) throw new ProposalConflictError("recommendation has no review proposal");
+    const proposal = database.prepare("SELECT id,payload,version,state,rationale_ru FROM proposal WHERE id=?")
+      .get(rec.proposal_id) as { id: string; payload: string; version: number; state: string; rationale_ru: string | null } | undefined;
+    if (!proposal || proposal.state !== "needs_review") throw new ProposalConflictError("proposal is no longer adjustable");
+    const payload = JSON.parse(proposal.payload) as { lines: OrderLine[]; [key: string]: unknown };
+    const line = payload.lines.find((item) => item.recommendation_id === id);
+    if (!line) throw new ProposalConflictError("recommendation is absent from proposal");
+    line.qty = qty;
+    const priced = payload.lines.filter((item) => item.unit_cost !== null);
+    const moneyAtStake = priced.length ? priced.reduce((sum, item) => sum.add(Money.of(item.unit_cost!).mul(item.qty)), Money.of("0")).toJSON() : null;
+    payload.total_qty = payload.lines.reduce((sum, item) => sum + item.qty, 0);
+    payload.total_cost = moneyAtStake;
+    payload.cost_known_lines = priced.length;
+    const rationale = `${proposal.rationale_ru ?? ""} Корректировка ${rec.code_1c}: ${rec.qty_adjusted ?? rec.qty_recommended} → ${qty} шт; причина: ${reason.trim()}.`.trim();
+    const updated = database.prepare("UPDATE recommendation SET qty_adjusted=?,adjust_reason=?,state='adjusted',version=version+1 WHERE id=? AND version=?")
+      .run(qty, reason.trim(), id, version);
     if (updated.changes !== 1) throw new ProposalConflictError(`recommendation ${id} is stale`);
     const changed = database.prepare("UPDATE proposal SET payload=?,money_at_stake=?,rationale_ru=?,version=version+1 WHERE id=? AND version=? AND state='needs_review'")
       .run(JSON.stringify(payload), moneyAtStake ? JSON.stringify(moneyAtStake) : null, rationale, proposal.id, proposal.version);
     if (changed.changes !== 1) throw new ProposalConflictError("proposal changed during adjustment");
+    const run = database.prepare("SELECT agent_run_id FROM calc_run WHERE id=?").get(rec.run_id) as { agent_run_id: string | null } | undefined;
+    const orgId = ctx.org_id ?? (database.prepare("SELECT id FROM organization LIMIT 1").get() as { id: string } | undefined)?.id ?? "ORG-1";
+    const runId = run?.agent_run_id ?? startRun({ org_id: orgId, trigger_type: "goal", trigger_ref: id }, database, false);
+    recordAction(runId, { kind: "recommendation_adjusted", subject_ref: id, code_1c: rec.code_1c,
+      summary_ru: `Количество ${rec.code_1c} изменено на ${qty} шт`, rationale_ru: reason.trim(),
+      sources: [`recommendation:${id}`, `proposal:${proposal.id}`], autonomy: "escalated", result: "done",
+      idempotency_key: `recommendation:adjust:${id}:${version + 1}` }, database, false);
+    if (!run?.agent_run_id) finishRun(runId, "done", database, false);
     bumpStateVersion(database);
-    return proposal.version + 1;
-  });
-  const run = database.prepare("SELECT agent_run_id FROM calc_run WHERE id=?").get(rec.run_id) as { agent_run_id: string | null } | undefined;
-  const runId = run?.agent_run_id ?? await startRun({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id }, database);
-  await recordAction(runId, { kind: "decision", subject_ref: id, code_1c: rec.code_1c,
-    summary_ru: `Количество ${rec.code_1c} изменено на ${qty} шт`, rationale_ru: reason.trim(),
-    sources: [`recommendation:${id}`, `proposal:${proposal.id}`], autonomy: "escalated", result: "done",
-    idempotency_key: `recommendation:adjust:${id}:${version + 1}` }, database);
-  if (!run?.agent_run_id) await finishRun(runId, "done", database);
-  return { id, code_1c: rec.code_1c, qty_recommended: rec.qty_recommended, qty_adjusted: qty,
-    version: version + 1, proposal_id: proposal.id, proposal_version: proposalVersion,
-    affected: { recommendations: [id], proposals: [proposal.id] }, state_version: stateVersion(database) };
+    return { id, code_1c: rec.code_1c, qty_recommended: rec.qty_recommended, qty_adjusted: qty,
+      adjust_reason: reason.trim(), version: version + 1, proposal_id: proposal.id, proposal_version: proposal.version + 1,
+      affected: { recommendations: [id], proposals: [proposal.id] }, state_version: stateVersion(database) };
+  };
+  return ctx.database ? inTx(database, write) : withTx(write);
 }
 
 /** Approval binds the exact proposal version and creates a local PO, never a supplier send. */
