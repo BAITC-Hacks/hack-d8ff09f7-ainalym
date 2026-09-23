@@ -5,6 +5,10 @@ export class HttpError extends Error {
   constructor(readonly status: number, readonly code: string, message: string, readonly field?: string) { super(message); }
 }
 
+export class DataUnavailableError extends Error {
+  constructor(readonly missing: string[]) { super("Required calculation data is unavailable"); }
+}
+
 export function truthAxes(): { provenance: "partner_anonymised"; ai: "live" | "rules" | "replay" | "unavailable"; external: "export_only" } {
   const provider = process.env.AI_PROVIDER || (process.env.TYPESAFE_API_KEY || process.env.AI_GATEWAY_API_KEY || process.env.OPENAI_API_KEY ? "jev" : "rules");
   const configured = provider === "jev" ? !!(process.env.TYPESAFE_API_KEY || process.env.AI_GATEWAY_API_KEY) : provider === "openai" ? !!process.env.OPENAI_API_KEY : false;
@@ -23,6 +27,7 @@ export function ok(data: object = {}, status = 200): Response {
 }
 
 export function failure(error: unknown): Response {
+  if (error instanceof DataUnavailableError) return Response.json({ error: "data_unavailable", missing: error.missing }, { status: 503 });
   if (error instanceof ZodError) {
     const issue = error.issues[0];
     return Response.json({ ok: false, code: "invalid_request", message: issue?.message || "Invalid request", field: issue?.path.join(".") }, { status: 400 });
