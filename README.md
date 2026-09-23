@@ -90,6 +90,10 @@
 - Провайдер типизированных решений: `AI_PROVIDER=jev (TypeSafe → Vercel AI Gateway) | openai | rules | offline`. Без ключей — `rules` («Правила без LLM»): весь расчёт детерминирован.
 - Шрифт Inter (SIL OFL) — `public/fonts/InterVariable.woff2`, лицензия `public/fonts/OFL.txt`.
 
+### Модели
+
+Задачи распределяются по классам. Рассуждения — разбор событий и ответов поставщиков, черновики писем и сводок расчёта — идут в модель OpenAI для рассуждений (`OPENAI_REASONING_MODEL`); быстрые задачи — метки намерения, короткие подсказки — в быструю модель (`OPENAI_FAST_MODEL`); голосовой помощник — в OpenAI Realtime (`gpt-realtime-2.1`). Хостинг-демо работает с моделью рассуждений `gpt-5.5`, быстрой моделью `gpt-5.4-mini` и `gpt-realtime-2.1`. Если переменные не заданы, код берёт `gpt-5-mini` и `gpt-4o-mini`. Без ключей всё работает в локальном режиме правил («Локальный режим»). Расчёт потребности (M1–M5) от моделей не зависит.
+
 ## 6. Архитектура
 
 ```
@@ -152,8 +156,8 @@ npm run dev        # http://localhost:3000 → /today
 | `AI_GATEWAY_API_KEY` | ключ Vercel AI Gateway (`typesafe-ai/jev`), резерв после `TYPESAFE_API_KEY` | нет — Jev недоступен |
 | `OPENAI_API_KEY` | OpenAI: одного этого ключа достаточно для живых решений, черновиков и голоса | нет — голос «Голос недоступен» |
 | `OPENAI_MODEL` | прежняя общая настройка модели | новые маршруты используют настройки по классам |
-| `OPENAI_REASONING_MODEL` | модель для решений и черновиков | `gpt-5-mini` |
-| `OPENAI_FAST_MODEL` | модель для коротких задач | `gpt-4o-mini` |
+| `OPENAI_REASONING_MODEL` | модель OpenAI для рассуждений (разбор событий, ответы поставщиков, черновики) | `gpt-5-mini` |
+| `OPENAI_FAST_MODEL` | быстрая модель OpenAI (метки, короткие подсказки) | `gpt-4o-mini` |
 | `OPENAI_BASE_URL` | совместимый с OpenAI провайдер; в `.env.example` строка закомментирована | api.openai.com (пустое значение = не задано) |
 | `NVIDIA_API_KEY` | необязательно: тот же OpenAI-совместимый адаптер через базовый URL | не используется |
 | `DATABASE_PATH` | файл SQLite; один путь для `npm run etl`, `npm run demo:reset` и приложения | `./data/ainalym.db`; тесты — `:memory:` |
