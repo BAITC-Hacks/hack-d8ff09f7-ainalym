@@ -59,6 +59,16 @@ describe("demo access", () => {
     expect((await middleware(request())).status).toBe(429);
     expect(allowApiRequest("test-api-ip", Date.now() + 1000)).toBe(true);
   });
+
+  it("ignores caller-supplied IP headers without a configured trusted proxy", async () => {
+    process.env.DEMO_PROXY = "";
+    for (let i = 0; i < 60; i++) {
+      const request = new NextRequest("http://localhost:3000/api/decisions", { headers: { "x-forwarded-for": `spoof-${i}` } });
+      expect((await middleware(request)).status).toBe(401);
+    }
+    const request = new NextRequest("http://localhost:3000/api/decisions", { headers: { "x-forwarded-for": "another-spoof" } });
+    expect((await middleware(request)).status).toBe(429);
+  });
 });
 
 describe("persistent daily live budget", () => {
@@ -76,7 +86,7 @@ describe("persistent daily live budget", () => {
     reserveLiveCall();
     const cookie = issueAccessCookie("test");
     const response = await middleware(new NextRequest("http://localhost:3000/api/decisions", {
-      method: "POST", headers: { cookie: `ainalym_demo_access=${cookie}` },
+      method: "POST", headers: { cookie: `ainalym_demo_access=${cookie}`, "x-forwarded-for": "cap-test-ip" },
     }));
     expect(response.status).toBe(503);
     expect(await response.json()).toMatchObject({ error: "Provider unavailable", ai: "unavailable" });

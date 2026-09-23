@@ -14,7 +14,8 @@ import {
 
 function ipFor(request: NextRequest): string {
   if (process.env.DEMO_PROXY === "cloudflare") return request.headers.get("cf-connecting-ip") || "unknown";
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (process.env.DEMO_PROXY === "caddy") return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  return "unknown";
 }
 
 function safeNext(value: string | null): string {
