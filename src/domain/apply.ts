@@ -5,6 +5,7 @@ import { startRun, recordAction, finishRun } from "../server/ledger";
 import { computeNeed, type EngineContext, type EngineParams, type NeedResult } from "./engine";
 import { paramsForSupplier } from "./params";
 import { Money } from "./money";
+import { transitionTask } from "./tasks";
 
 export interface CalcScope { supplier?: string; category?: string; codes?: string[] }
 export interface CalcContext extends EngineContext { org_id?: string }
@@ -120,4 +121,83 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
     }
   }
   return { proposals, tasks, affected: recommendations.map((row) => row.code_1c) };
+}
+
+export class ProposalConflictError extends Error { readonly status = 409; }
+export class ProposalNotFoundError extends Error { readonly status = 404; }
+type Proposal = { id: string; kind: string; state: string; version: number; payload: string; subject_id: string | null; rationale_ru: string | null; sources: string };
+type OrderLine = { recommendation_id: string; code_1c: string; qty: number; unit_cost: string | null; rationale_ru: string };
+
+/** Approval binds the exact proposal version and creates a local PO, never a supplier send. */
+export async function decideProposal(id: string, proposalVersion: number, decision: "approve" | "reject",
+  adjustments: { code_1c: string; qty: number }[] = [], ctx: CalcContext & { by?: string } = {}) {
+  const database = ctx.database ?? db();
+  const proposal = database.prepare("SELECT id,kind,state,version,payload,subject_id,rationale_ru,sources FROM proposal WHERE id=?").get(id) as Proposal | undefined;
+  if (!proposal) throw new ProposalNotFoundError(`proposal ${id} is missing`);
+  if (proposal.version !== proposalVersion || proposal.state !== "needs_review") throw new ProposalConflictError(`proposal ${id} is stale`);
+  const payload = JSON.parse(proposal.payload) as { run_id?: string; supplier_id?: string; lines?: OrderLine[]; task_id?: string; task_version?: number };
+  const adjustmentMap = new Map(adjustments.map((row) => [row.code_1c, row.qty]));
+  if (adjustmentMap.size !== adjustments.length || adjustments.some((row) => !globalThis.Number.isSafeInteger(row.qty) || row.qty < 0))
+    throw new RangeError("invalid adjustments");
+  if (proposal.kind === "supplier_order" && adjustments.some((row) => !payload.lines?.some((line) => line.code_1c === row.code_1c)))
+    throw new RangeError("adjustment references a different order");
+  const at = new Date().toISOString();
+  const approvalId = `AP-${randomUUID()}`;
+  let poId: string | null = null;
+  let totalCost: ReturnType<Money["toJSON"]> | null = null;
+  const affected = (payload.lines ?? []).map((line) => line.code_1c);
+  const stateVersion = inTx(database, () => {
+    const updated = database.prepare("UPDATE proposal SET state=?,version=version+1 WHERE id=? AND version=? AND state='needs_review'")
+      .run(decision === "approve" ? "approved" : "rejected", id, proposalVersion);
+    if (updated.changes !== 1) throw new ProposalConflictError(`proposal ${id} is stale`);
+    database.prepare("INSERT INTO approval (id,proposal_id,proposal_version,decision,adjustments,by,at) VALUES (?,?,?,?,?,?,?)")
+      .run(approvalId, id, proposalVersion, decision, JSON.stringify(adjustments), ctx.by ?? "owner", at);
+    if (proposal.kind === "supplier_order") {
+      if (decision === "approve") {
+        const lines = (payload.lines ?? []).map((line) => ({ ...line, qty: adjustmentMap.get(line.code_1c) ?? line.qty })).filter((line) => line.qty > 0);
+        if (!lines.length) throw new RangeError("an approved order needs at least one line");
+        const supplier = database.prepare("SELECT lead_time_days,terms FROM supplier WHERE id=?").get(payload.supplier_id!) as { lead_time_days: number; terms: string } | undefined;
+        if (!supplier) throw new Error("supplier is missing");
+        poId = `PO-${randomUUID()}`;
+        const etaDate = new Date(at);
+        etaDate.setUTCDate(etaDate.getUTCDate() + supplier.lead_time_days);
+        const eta = etaDate.toISOString();
+        const priced = lines.filter((line) => line.unit_cost !== null);
+        const cost = priced.reduce((sum, line) => sum.add(Money.of(line.unit_cost!).mul(line.qty)), Money.of("0"));
+        totalCost = priced.length ? cost.toJSON() : null;
+        database.prepare("INSERT INTO purchase_order (id,supplier_id,run_id,state,total_qty,total_cost,cost_known_lines,eta) VALUES (?,?,?,?,?,?,?,?)")
+          .run(poId, payload.supplier_id!, payload.run_id ?? null, "approved", lines.reduce((sum, line) => sum + line.qty, 0), totalCost?.amount ?? null, priced.length, eta);
+        for (const line of lines) {
+          database.prepare("INSERT INTO purchase_order_line (po_id,code_1c,qty,unit_cost,rationale_ru) VALUES (?,?,?,?,?)")
+            .run(poId, line.code_1c, line.qty, line.unit_cost, line.rationale_ru);
+          database.prepare("UPDATE recommendation SET qty_adjusted=?,state='approved',version=version+1 WHERE id=?")
+            .run(adjustmentMap.has(line.code_1c) ? line.qty : null, line.recommendation_id);
+        }
+        if (priced.length) {
+          const terms = JSON.parse(supplier.terms || "{}") as { prepayment_share?: string };
+          const prepayment = cost.mul(terms.prepayment_share ?? "0.30");
+          const balance = cost.sub(prepayment);
+          database.prepare("INSERT INTO obligation (id,kind,po_id,supplier_id,amount,due_at,basis) VALUES (?,?,?,?,?,?,?)")
+            .run(`OB-${randomUUID()}`, "supplier_prepayment", poId, payload.supplier_id!, prepayment.amount, at, `Одобренный заказ ${poId}; ${priced.length}/${lines.length} цен известны`);
+          database.prepare("INSERT INTO obligation (id,kind,po_id,supplier_id,amount,due_at,basis) VALUES (?,?,?,?,?,?,?)")
+            .run(`OB-${randomUUID()}`, "supplier_balance", poId, payload.supplier_id!, balance.amount, eta, `Одобренный заказ ${poId}; ${priced.length}/${lines.length} цен известны`);
+        }
+      } else {
+        for (const line of payload.lines ?? []) database.prepare("UPDATE recommendation SET state='rejected',version=version+1 WHERE id=?")
+          .run(line.recommendation_id);
+      }
+    }
+    return bumpStateVersion(database);
+  });
+  const run = payload.run_id ? database.prepare("SELECT agent_run_id FROM calc_run WHERE id=?").get(payload.run_id) as { agent_run_id: string | null } | undefined : undefined;
+  const runId = run?.agent_run_id ?? await startRun({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id });
+  await recordAction(runId, { kind: "decision", subject_ref: id,
+    summary_ru: decision === "approve" ? `Одобрено предложение ${id}` : `Отклонено предложение ${id}`,
+    rationale_ru: proposal.rationale_ru ?? undefined, sources: JSON.parse(proposal.sources),
+    autonomy: "escalated", result: "done", idempotency_key: `decision:${id}:${proposalVersion}`,
+    po_id: poId ?? undefined });
+  if (!run?.agent_run_id) await finishRun(runId, "done");
+  const linkedTask = database.prepare("SELECT id,state,version FROM task WHERE proposal_id=?").get(id) as { id: string; state: string; version: number } | undefined;
+  if (linkedTask?.state === "needs_review") await transitionTask(linkedTask.id, decision === "approve" ? "ready_to_handover" : "preparing", linkedTask.version, { database, org_id: ctx.org_id });
+  return { id, decision, proposal_version: proposalVersion + 1, po_id: poId, total_cost: totalCost, state_version: stateVersion, affected };
 }

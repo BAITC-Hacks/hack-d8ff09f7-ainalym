@@ -24,6 +24,6 @@ it("keeps floating point coercion out of domain source", () => {
   const root = join(process.cwd(), "src", "domain");
   for (const name of readdirSync(root).filter((file) => file.endsWith(".ts"))) {
     const source = readFileSync(join(root, name), "utf8");
-    expect(source, name).not.toMatch(/parseFloat\s*\(|\bNumber\s*\(|\.toFixed\s*\(/);
+    expect(source, name).not.toMatch(/parseFloat|Number\(|toFixed/);
   }
 });

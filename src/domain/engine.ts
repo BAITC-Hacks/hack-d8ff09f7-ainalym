@@ -18,8 +18,9 @@ type Sale = { doc_no: string | null; at: string; qty: string; id: number };
 type Outlier = { doc_no: string | null; at: string | null; state: string };
 
 function dec(value: string | number | null | undefined): Decimal { return new Decimal(value ?? 0); }
+function numeric(value: Decimal): number { return +value.toString(); }
 function monthOf(day: string): string { return day.slice(0, 7); }
-function monthNumber(ym: string): number { return parseInt(ym.slice(5, 7), 10); }
+function monthIndex(ym: string): number { return parseInt(ym.slice(5, 7), 10); }
 function median(values: Decimal[]): Decimal {
   if (!values.length) return new Decimal(0);
   const sorted = [...values].sort((a, b) => a.comparedTo(b));
@@ -82,7 +83,7 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     seenLineMonths.add(doc.ym);
     const state = outlierState.get(`${doc.doc_no}|${doc.ym}`);
     if (state === "excluded" || (state !== "kept" && doc.qty.gt(threshold))) {
-      excluded.push({ doc_no: doc.doc_no, ym: doc.ym, qty: doc.qty.toNumber(), threshold: threshold.toNumber() });
+      excluded.push({ doc_no: doc.doc_no, ym: doc.ym, qty: numeric(doc.qty), threshold: numeric(threshold) });
       continue;
     }
     byMonth.set(doc.ym, (byMonth.get(doc.ym) ?? new Decimal(0)).plus(doc.qty));
@@ -107,7 +108,7 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
   const season = new Map<number, Decimal>(supplierSeason.map((row) => [row.month, dec(row.idx)]));
   if (ownSeason && baseRate.gt(0)) {
     for (let month = 1; month <= 12; month++) {
-      const peers = uncensored.filter((point) => monthNumber(point.ym) === month);
+      const peers = uncensored.filter((point) => monthIndex(point.ym) === month);
       if (peers.length) season.set(month, peers.reduce((sum, point) => sum.plus(point.qty), new Decimal(0)).div(peers.length).div(baseRate));
     }
   }
@@ -142,21 +143,21 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
   const safety = z.times(sigmaDaily).times(new Decimal(params.lead_time_days).sqrt());
   const onHand = dec(stock.opening_qty);
   const rawNeed = Decimal.max(0, forecastQty.plus(safety).minus(onHand).minus(transit));
-  const need = rawNeed.div(sku.moq).ceil().times(sku.moq).toNumber();
+  const need = numeric(rawNeed.div(sku.moq).ceil().times(sku.moq));
   const dailyRate = baseRate.times(growth).div(30);
   const coverDays = dailyRate.gt(0) ? onHand.plus(transit).div(dailyRate) : null;
   const urgency = need === 0 ? "none" : !coverDays || coverDays.lt(params.lead_time_days) ? "critical" : coverDays.lt(horizonDays) ? "soon" : "normal";
   const components = {
     source_months: series.length, sales_lines: sales.length, stock_month: stock.ym, transit_rows: transitRows.length,
-    base_rate: baseRate.toDecimalPlaces(3).toNumber(), season_source: ownSeason ? "sku" : "supplier",
-    season: Object.fromEntries([...season].map(([month, index]) => [month, index.toDecimalPlaces(3).toNumber()])),
-    growth: growth.toDecimalPlaces(3).toNumber(), horizon_days: horizonDays,
-    forecast_qty: forecastQty.toDecimalPlaces(3).toNumber(), monthly_forecast: Object.fromEntries([...monthlyForecast].map(([ym, qty]) => [ym, qty.toDecimalPlaces(3).toNumber()])),
-    stockout_months: stockoutMonths, stockout_uplift: stockoutUplift.toDecimalPlaces(3).toNumber(),
-    outliers_excluded: excluded, outlier_threshold: threshold.toNumber(),
-    safety: safety.toDecimalPlaces(3).toNumber(), on_hand: onHand.toNumber(), in_transit: transit.toNumber(),
-    in_transit_sources: transitRows, raw_need: rawNeed.toDecimalPlaces(3).toNumber(), moq: sku.moq, urgency,
-    days_of_cover: coverDays?.toDecimalPlaces(1).toNumber() ?? null,
+    base_rate: numeric(baseRate.toDecimalPlaces(3)), season_source: ownSeason ? "sku" : "supplier",
+    season: Object.fromEntries([...season].map(([month, index]) => [month, numeric(index.toDecimalPlaces(3))])),
+    growth: numeric(growth.toDecimalPlaces(3)), horizon_days: horizonDays,
+    forecast_qty: numeric(forecastQty.toDecimalPlaces(3)), monthly_forecast: Object.fromEntries([...monthlyForecast].map(([ym, qty]) => [ym, numeric(qty.toDecimalPlaces(3))])),
+    stockout_months: stockoutMonths, stockout_uplift: numeric(stockoutUplift.toDecimalPlaces(3)),
+    outliers_excluded: excluded, outlier_threshold: numeric(threshold),
+    safety: numeric(safety.toDecimalPlaces(3)), on_hand: numeric(onHand), in_transit: numeric(transit),
+    in_transit_sources: transitRows, raw_need: numeric(rawNeed.toDecimalPlaces(3)), moq: sku.moq, urgency,
+    days_of_cover: coverDays ? numeric(coverDays.toDecimalPlaces(1)) : null,
   };
   const rationale_ru = `Код 1С ${code_1c}: регулярный спрос ${components.base_rate} шт/мес; сезонность ${ownSeason ? "SKU" : "поставщика"}, рост ×${components.growth}; прогноз на ${horizonDays} дн ${components.forecast_qty} + запас ${components.safety} − остаток ${components.on_hand} − в пути ${components.in_transit} = потребность ${need} шт (кратность ${sku.moq}). Без продаж из-за отсутствия остатка: ${stockoutMonths.join(", ") || "нет"}; исключены разовые документы: ${excluded.map((doc) => doc.doc_no).join(", ") || "нет"}.`;
   return { forecast: { horizon_months: horizonDays / 30, base_rate: components.base_rate, season: components.season, growth: components.growth, stockout_uplift: components.stockout_uplift, safety: components.safety, method_ru: "Сезонный спрос × рост; цензурирование дефицита; исключение разовых документов" }, need, rationale_ru, components };
