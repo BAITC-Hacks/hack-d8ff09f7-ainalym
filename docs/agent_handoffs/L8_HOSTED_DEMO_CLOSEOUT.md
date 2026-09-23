@@ -9,7 +9,7 @@ AFTER: `scripts/deploy/hetzner.sh:4,47,94,102` builds standalone on the Mac with
 AFTER: `docs/DEMO_ACCESS.md:1` gives the form text, env handover, restart path, and README «Демо-доступ» copy. Tests: `tests/demo/build.test.ts`, `guard.test.ts`, `database-path.test.ts`.
 
 Runtime env names: `AINALYM_MODE=live`, `DATABASE_PATH`, `DEMO_ACCESS_CODE`, `DEMO_DAILY_LIVE_CALLS`, `OPENAI_API_KEY`, `AI_GATEWAY_API_KEY`; optional `TYPESAFE_API_KEY`, `AI_PROVIDER`, `OPENAI_MODEL`. Local deploy input names: `AINALYM_DEPLOY_ENV_FILE`, `AINALYM_HOST_SSH_KEY`, optional `AINALYM_DOMAIN`. No values belong in git or this file.
-Form fields for owner to paste: URL `<HTTPS DEMO URL>`; access code `<DEMO ACCESS CODE>`; local-live key `<OWNER-CREATED RESTRICTED PROJECT KEY, ≈ $20 LIMIT>`; description «Live AI on a synthetic company; server-held keys; offline mode also runs the full scenario locally per README».
+Form fields for owner to paste: URL `<HTTPS DEMO URL>`; access code `<DEMO ACCESS CODE>`; local-live key `<OWNER-CREATED RESTRICTED PROJECT KEY, ≈ $20 LIMIT>`; description «Live AI on anonymised partner data; server-held keys; offline mode also runs the full scenario locally per README». D-H46 supersedes the earlier synthetic-company wording.
 
 Evidence: `docs/evidence/demo/local-container.md`. Image `sha256:6ed5e9cb5f677bea6336f486d11208f20524b9ae7c332ffda99c0b0ed6f60960` built and ran with a fresh `/data` volume: Docker health `healthy`, health HTTP 200, 3,909 SKUs, 248,915 sales lines. `POST /api/demo/example` HTTP 200 gave 560 evaluated SKUs, 294 recommendations, one supplier-order proposal; `GET /api/today` HTTP 200 gave queue 2 and stockout-risk 141. Guard restart: health reported `demo_guard:on`, budget 500; RU/EN page 307→200, form 303, cookie reached app HTTP 200. Earlier 61-request check yielded one 429. `npm run check -- demo` passed=10 failed=0; `npm run build`, `npx tsc --noEmit`, `sh -n` GREEN.
 The merged L1 floor now honors the configured `/data/ainalym.db`, passes `--db` on reset, seeds the organization, and serves the health guard counters. The earlier isolated L1 snapshot with an empty app database and HTTP 500 today is superseded by the fresh successful container run.
@@ -18,4 +18,4 @@ Image audit found no `/app/.env*` files, provider-key env names, or external-acc
 
 Next route: root wires L3/L5 fetch budgeting, syncs the README demo wording, and performs the approved live HTTPS/mobile gate before handing form values to the owner. Hetzner script uploads a clean versioned release from the root's checked-out commit instead of cloning the repo on the host; this supports each floor deploy without host-side repository credentials.
 Gate: RED
-tip: d351b8e (previous checkpoint; current commit = git rev-parse HEAD)
+tip: 8e96090 (previous checkpoint; current commit = git rev-parse HEAD)

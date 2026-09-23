@@ -5,7 +5,7 @@
 - URL демо: `<HTTPS DEMO URL>`
 - Код доступа: `<DEMO ACCESS CODE>`
 - Ключ для локального live-запуска: `<OWNER-CREATED RESTRICTED PROJECT KEY, ≈ $20 LIMIT>`
-- Описание: «Live AI on a synthetic company; server-held keys; offline mode also runs the full scenario locally per README».
+- Описание: «Live AI on anonymised partner data; server-held keys; offline mode also runs the full scenario locally per README».
 
 Сервер использует только ключи, переданные через окружение при запуске. `OPENAI_API_KEY` — ключ события для демонстрации; `AI_GATEWAY_API_KEY` — ключ Jev владельца. Они остаются на сервере. Отдельный ограниченный ключ для локального live-запуска создаётся владельцем при подаче и вводится им в форму платформы. Не публиковать URL и код в репозитории. Владелец сообщает дату истечения промокредитов при активации.
 
