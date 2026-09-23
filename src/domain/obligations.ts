@@ -1,9 +1,10 @@
 import Decimal from "decimal.js";
 import { db, bumpStateVersion, withTx } from "../db/client";
 import type { DatabaseSync } from "node:sqlite";
+import { Money } from "./money";
 
 type Row = Record<string, unknown>;
-const money = (n: Decimal.Value) => new Decimal(n).toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toFixed(2);
+const money = (n: Decimal.Value) => Money.of(new Decimal(n).toDecimalPlaces(2, Decimal.ROUND_HALF_UP)).amount;
 
 /** Derive the two contractual payments from an approved PO's priced lines. */
 export function syncOrderObligations(poId: string, tx?: DatabaseSync): Row[] {
@@ -14,9 +15,9 @@ export function syncOrderObligations(poId: string, tx?: DatabaseSync): Row[] {
     const lines = d.prepare("SELECT qty,unit_cost FROM purchase_order_line WHERE po_id=?").all(poId) as Row[];
     if (!lines.length) throw new Error("order_has_no_lines");
     if (lines.some(l => l.unit_cost === null)) return [];
-    const total = lines.reduce((a, l) => a.plus(new Decimal(String(l.unit_cost)).times(Number(l.qty))), new Decimal(0));
+    const total = lines.reduce((a, l) => a.plus(new Decimal(String(l.unit_cost)).times(String(l.qty))), new Decimal(0));
     const terms = JSON.parse(String(po.terms || "{}")) as Record<string, unknown>;
-    const pct = new Decimal(String(terms.prepayment_pct ?? terms.prepayment_percent ?? 30));
+    const pct = new Decimal(String(terms.prepayment_pct ?? terms.prepay_pct ?? terms.prepayment_percent ?? 30));
     if (pct.lt(0) || pct.gt(100)) throw new Error("invalid_supplier_terms");
     const prepayment = new Decimal(money(total.times(pct).div(100)));
     const installments = [

@@ -20,6 +20,11 @@ describe('partner ETL reset', () => {
         for(const fixture of Object.values(expected.skus) as Array<{code_1c:string;supplier_id:string}>) {
           expect(d.prepare('SELECT supplier_id FROM sku WHERE code_1c=?').get(fixture.code_1c)).toEqual({supplier_id:fixture.supplier_id});
         }
+        expect(d.prepare("SELECT on_hand_qty,on_hand_as_of FROM sku WHERE code_1c='300200745_'").get())
+          .toEqual({on_hand_qty:'23',on_hand_as_of:'2026-09-22'});
+        expect(d.prepare("SELECT on_hand_qty,on_hand_as_of FROM sku WHERE code_1c='010500008_'").get())
+          .toEqual({on_hand_qty:'20434',on_hand_as_of:'2026-09-22'});
+        expect(d.prepare("SELECT unit_cost FROM sku WHERE code_1c='300200428_'").get()).toEqual({unit_cost:'1050.61'});
         return counts;
       } finally { d.close(); }
     };

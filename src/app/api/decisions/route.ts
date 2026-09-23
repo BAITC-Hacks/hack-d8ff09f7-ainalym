@@ -24,5 +24,9 @@ export async function GET(request: Request): Promise<Response> {
   const rows = subject
     ? db().prepare("SELECT * FROM decision_record WHERE subject_ref = ? ORDER BY at DESC LIMIT 100").all(subject)
     : db().prepare("SELECT * FROM decision_record ORDER BY at DESC LIMIT 100").all();
-  return Response.json({ ok: true, decisions: rows.map(row => ({ ...row, distribution: JSON.parse(String(row.distribution)), evidence_versions: row.evidence_versions ? JSON.parse(String(row.evidence_versions)) : {} })), state_version: stateVersion() });
+  return Response.json({ ok: true, decisions: rows.map(row => ({
+    ...row, distribution: JSON.parse(String(row.distribution)),
+    evidence_versions: row.evidence_versions ? JSON.parse(String(row.evidence_versions)) : {},
+    label: row.mode === "rules" ? "Правила без LLM" : row.mode === "replay" ? "Replay · recorded decision" : undefined,
+  })), state_version: stateVersion() });
 }

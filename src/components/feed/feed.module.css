@@ -1,0 +1,23 @@
+.panel { border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--panel); padding: var(--panel-pad); }
+.head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.head h2 { margin-bottom: 4px; }
+.meta { color: var(--muted); font: var(--t-meta); }
+.events { min-height: 132px; padding-block: 12px; }
+.events ol { list-style: none; padding: 0; margin: 0; }
+.events li { display: flex; align-items: flex-start; gap: 12px; padding-block: 12px; border-bottom: 1px solid var(--line); }
+.events li:last-child { border-bottom: 0; }
+.events li > svg { color: var(--muted); margin-top: 2px; }
+.events li > div { min-width: 0; flex: 1; }
+.events p { overflow-wrap: anywhere; }
+.eventMeta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; color: var(--muted); font: var(--t-meta); margin-top: 4px; }
+.next { display: flex; align-items: center; gap: 4px; font: var(--t-caption); color: var(--muted); padding-top: 2px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.compose { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 16px; display: grid; gap: 12px; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.compose label { display: grid; gap: 8px; font: var(--t-label); }
+.compose input,.compose select,.compose textarea { width: 100%; min-width: 0; min-height: var(--control-h); padding: 8px 12px; background: var(--panel); border: 1px solid var(--line); }
+.compose textarea { resize: vertical; }
+.compose > button { justify-self: start; }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.presets button { min-height: 32px; padding: 4px 8px; border: 1px solid var(--line); background: var(--wash); font: var(--t-meta); }
+@media (max-width:767px) { .head { gap: 12px; } .next { display: none; } .fields { grid-template-columns: 1fr; } .actions button { flex: 1; } .presets button { min-height: 44px; } }
