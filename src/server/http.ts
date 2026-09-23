@@ -1,5 +1,6 @@
 import { ZodError, type ZodType } from "zod";
 import { stateVersion } from "@/db/client";
+import { selectedProvider } from "@/ai/provider";
 
 export class HttpError extends Error {
   constructor(readonly status: number, readonly code: string, message: string, readonly field?: string) { super(message); }
@@ -10,7 +11,7 @@ export class DataUnavailableError extends Error {
 }
 
 export function truthAxes(): { provenance: "partner_anonymised"; ai: "live" | "rules" | "replay" | "unavailable"; external: "export_only" } {
-  const provider = process.env.AI_PROVIDER || (process.env.TYPESAFE_API_KEY || process.env.AI_GATEWAY_API_KEY || process.env.OPENAI_API_KEY ? "jev" : "rules");
+  const provider = selectedProvider();
   const configured = provider === "jev" ? !!(process.env.TYPESAFE_API_KEY || process.env.AI_GATEWAY_API_KEY) : provider === "openai" ? !!process.env.OPENAI_API_KEY : false;
   return { provenance: "partner_anonymised", ai: provider === "rules" ? "rules" : provider === "offline" ? "replay" : configured ? "live" : "unavailable", external: "export_only" };
 }
