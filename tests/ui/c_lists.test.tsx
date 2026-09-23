@@ -8,7 +8,7 @@ afterEach(async () => { for (const clean of cleanups.splice(0)) await clean(); v
 describe("c_lists — persisted purchase records", () => {
   it("preserves unknown cost/currency and the last successful order snapshot", async () => {
     let fails = false;
-    vi.stubGlobal("fetch", vi.fn(async () => fails ? json({ ok: false, message: "offline" }, 503) : json({ orders: [{ id: "PO-TEST", supplier_id: "IEK", state: "draft", total_qty: 100, total_cost: null, version: 2 }, { id: "PO-COST", supplier_id: "SE", state: "approved", total_qty: 1, total_cost: "10.25", version: 1 }], axes })));
+    vi.stubGlobal("fetch", vi.fn(async (path: string) => path === "/api/notifications" ? json({ total: 0, items: [] }) : fails ? json({ ok: false, message: "offline" }, 503) : json({ orders: [{ id: "PO-TEST", supplier_id: "IEK", state: "draft", total_qty: 100, total_cost: null, version: 2 }, { id: "PO-COST", supplier_id: "SE", state: "approved", total_qty: 1, total_cost: "10.25", version: 1 }], axes })));
     const { host, cleanup } = await mount(<OrderList />); cleanups.push(cleanup);
     expect(host.textContent).toContain("Себестоимость не задана");
     expect(host.textContent).toContain("10.25 · валюта не указана");
@@ -25,7 +25,7 @@ describe("c_lists — persisted purchase records", () => {
     expect(host.textContent).not.toContain("Заказов пока нет");
   });
   it("shows recorded file download links while separately disclosing a missing artifact list", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (path: string) => path === "/api/artifacts" ? json({ ok: false, message: "Unavailable" }, 404) : json({ rows: [{ id: "EX-TEST", external_identity: "PO-TEST", state: "exported", version: 1, as_of: "2026-09-23T08:00:00Z", external: "export_only" }] })));
+    vi.stubGlobal("fetch", vi.fn(async (path: string) => path === "/api/notifications" ? json({ total: 0, items: [] }) : path === "/api/artifacts" ? json({ ok: false, message: "Unavailable" }, 404) : json({ rows: [{ id: "EX-TEST", external_identity: "PO-TEST", state: "exported", version: 1, as_of: "2026-09-23T08:00:00Z", external: "export_only" }] })));
     const { host, cleanup } = await mount(<DocumentList />); cleanups.push(cleanup);
     expect(host.querySelectorAll('a[href^="/api/peers/onec-export/PO-TEST"]')).toHaveLength(2);
     expect(host.textContent).toContain("Список материалов пока недоступен");

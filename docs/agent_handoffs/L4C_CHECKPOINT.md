@@ -1,8 +1,8 @@
-# L4c checkpoint 4 — tier-2 purchase and document lists
-done: /sales purchase-order register; /documents recorded 1C exports + artifact-list boundary; no trading invoices or fabricated amounts.
-checks: npm run check -- ui, npx tsc --noEmit and npm run build passed; list states cover failed refresh and unavailable list routes.
-deps: no new dependencies.
-undone: notifications/search checkpoints; landing last; artifact collection route belongs to L3 and is absent.
-resumable: unknown order currency is disclosed; downloads use recorded export IDs; see L4C_INTEGRATION_NOTES.md for tier-1 integration gaps.
+# L4c checkpoint 5 — tier-2 notifications
+done: read-only /api/notifications over L1 repositories; bell on /sales and /documents; native dialog, focus return, confirmed attention count.
+checks: UI suite and build/type check passed after latest main merge; API test proves reads preserve proposal state and state_version.
+deps: none.
+undone: search checkpoint; landing last; global bell mount belongs to L4a (exported NotificationsBell seam).
+resumable: notifications report unresolved work, never claim a read/unread write; see L4C_INTEGRATION_NOTES.md.
 Gate: RED — integrated modes/source metadata and actual spoken-result gate remain incomplete.
 sha: this checkpoint commit (git log -1 --format=%H -- docs/agent_handoffs/L4C_CHECKPOINT.md).
