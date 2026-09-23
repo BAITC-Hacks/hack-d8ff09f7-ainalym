@@ -80,7 +80,9 @@ try {
     f = file(s,'Сезонность'); a=rows(f,s==='IEK'?'Сезонность':'Лист1'); const header=a.findIndex(r=>str(r[0])==='год'); if(header<0)throw new Error(`Bad seasonality header: ${f.name}`);
     for(const r of a.slice(header+1)){const year=Number(r[0]);if(year<2024||year>2026)continue;for(let m=1;m<=12;m++){if(str(r[m])==='')continue;seasonInsert.run(s,year,m,dec(r[m]));}}
   }
-  for (const [k,q] of lineMonths) { const [code,ym]=k.split('|'); d.prepare('INSERT INTO sales_month (code_1c,ym,qty_lines) VALUES (?,?,?) ON CONFLICT(code_1c,ym) DO UPDATE SET qty_lines=excluded.qty_lines').run(code,ym,String(q)); }
+  const lineMonthInsert=d.prepare('INSERT INTO sales_month (code_1c,ym,qty_lines) VALUES (?,?,?) ON CONFLICT(code_1c,ym) DO UPDATE SET qty_lines=excluded.qty_lines');
+  for (const [k,q] of lineMonths) { const [code,ym]=k.split('|'); lineMonthInsert.run(code,ym,String(q)); }
+  d.exec("UPDATE sales_month SET qty_lines='0' WHERE qty_lines IS NULL");
   const skuInsert=d.prepare('INSERT INTO sku (code_1c,supplier_id,article,name,unit,category,unit_cost,moq,weight) VALUES (?,?,?,?,?,?,?,?,?)');
   for(const x of catalog.values()) skuInsert.run(x.code_1c,x.supplier_id,x.article,x.name,x.unit,x.category,x.unit_cost,x.moq,x.weight);
   d.exec('COMMIT');
