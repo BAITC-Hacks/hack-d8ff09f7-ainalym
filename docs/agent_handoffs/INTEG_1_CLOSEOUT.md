@@ -10,5 +10,5 @@
 
 Check: `npm run etl && npm run check` GREEN — 85 passed, 0 failed, 0 skipped; `npm run build` passed.
 Protected: `README.md`, XLSX files, and `docs/CONTRACTS.md` were not edited; CONTRACTS still states the old outlier formula by the explicit STOP rule.
-Tip: `38c3e80` on `lane/integ`; no merge into `main` performed.
+Tip: `lane/integ` (last code fix `38c3e80`); no merge into `main` performed.
 Gate: GREEN for executable acceptance; CONTRACTS wording awaits the contract owner.
