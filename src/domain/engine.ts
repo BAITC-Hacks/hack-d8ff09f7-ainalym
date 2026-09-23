@@ -70,11 +70,19 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
   const transitRows = database.prepare("SELECT po_ref,qty,expected_at,source_file FROM in_transit WHERE code_1c=?").all(code_1c) as
     { po_ref: string; qty: string; expected_at: string | null; source_file: string | null }[];
   const transit = transitRows.reduce((sum, row) => sum.plus(row.qty), new Decimal(0));
+  const horizonDate = dateUTC(asOf);
+  horizonDate.setUTCDate(horizonDate.getUTCDate() + params.lead_time_days + params.review_days);
+  const approvedRows = database.prepare(`SELECT p.id po_id,p.eta,l.qty FROM purchase_order_line l
+    JOIN purchase_order p ON p.id=l.po_id WHERE l.code_1c=? AND p.state IN ('approved','exported')
+    AND p.eta IS NOT NULL AND substr(p.eta,1,10)>=? AND substr(p.eta,1,10)<=?`)
+    .all(code_1c, asOf, horizonDate.toISOString().slice(0, 10)) as { po_id: string; eta: string; qty: number }[];
+  const approvedSupply = approvedRows.reduce((sum, row) => sum.plus(row.qty), new Decimal(0));
   const onHand = dec(freshOnHand ? sku.on_hand_qty : stock?.opening_qty);
   if (noSalesHistory || (months.length > 0 && months.every((month) => dec(month.qty_file ?? month.qty_regular).isZero()) && sales.every((sale) => dec(sale.qty).isZero()))) {
     const flags = ["inactive"];
     const components = { flags, source_months: months.length, sales_lines: sales.length, stock_month: stockMonth, stock_stale: stockStale,
       on_hand: numeric(onHand), on_hand_as_of: freshOnHand ? sku.on_hand_as_of : `${stockMonth}-01`, in_transit: numeric(transit),
+      approved_order_qty: numeric(approvedSupply), approved_order_sources: approvedRows,
       transit_rows: transitRows.length, forecast_qty: 0, safety: 0, raw_need: 0, net_need: numeric(onHand.negated().minus(transit)),
       moq: sku.moq, urgency: "none", outliers_excluded: [], stockout_months: [] };
     return { forecast: { horizon_months: (params.lead_time_days + params.review_days) / 30, base_rate: 0, season: {}, growth: 1,
@@ -190,11 +198,11 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
   const sigmaDaily = variance.sqrt().div(new Decimal(30).sqrt());
   const z = params.service_level >= 0.99 ? new Decimal("2.33") : params.service_level >= 0.95 ? new Decimal("1.645") : new Decimal("1.28");
   const safety = z.times(sigmaDaily).times(new Decimal(params.lead_time_days).sqrt());
-  const netNeed = forecastQty.plus(safety).minus(onHand).minus(transit);
+  const netNeed = forecastQty.plus(safety).minus(onHand).minus(transit).minus(approvedSupply);
   const rawNeed = Decimal.max(0, netNeed);
   const need = numeric(rawNeed.div(sku.moq).ceil().times(sku.moq));
   const dailyRate = baseRate.times(growth).div(30);
-  const coverDays = dailyRate.gt(0) ? onHand.plus(transit).div(dailyRate) : null;
+  const coverDays = dailyRate.gt(0) ? onHand.plus(transit).plus(approvedSupply).div(dailyRate) : null;
   const urgency = need === 0 ? "none" : !coverDays || coverDays.lt(params.lead_time_days) ? "critical" : coverDays.lt(horizonDays) ? "soon" : "normal";
   const components = {
     source_months: series.length, sales_lines: sales.length, stock_month: stockMonth, stock_stale: stockStale, transit_rows: transitRows.length,
@@ -205,10 +213,11 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     stockout_months: stockoutMonths, stockout_uplift: numeric(stockoutUplift.toDecimalPlaces(3)),
     outliers_excluded: excluded, median_month_qty: numeric(medianMonth), p95_doc_qty: numeric(p95Doc), outlier_threshold: numeric(threshold),
     safety: numeric(safety.toDecimalPlaces(3)), on_hand: numeric(onHand), on_hand_as_of: freshOnHand ? sku.on_hand_as_of : `${stockMonth}-01`, in_transit: numeric(transit),
-    in_transit_sources: transitRows, net_need: numeric(netNeed.toDecimalPlaces(6)), raw_need: numeric(rawNeed.toDecimalPlaces(3)), moq: sku.moq, urgency,
+    in_transit_sources: transitRows, approved_order_qty: numeric(approvedSupply), approved_order_sources: approvedRows,
+    net_need: numeric(netNeed.toDecimalPlaces(6)), raw_need: numeric(rawNeed.toDecimalPlaces(3)), moq: sku.moq, urgency,
     raw_observed_forecast: baseRate.gt(0) ? numeric(forecastQty.times(rawObservedRate).div(baseRate).toDecimalPlaces(3)) : 0,
     days_of_cover: coverDays ? numeric(coverDays.toDecimalPlaces(1)) : null,
   };
-  const rationale_ru = `Код 1С ${code_1c}: регулярный спрос ${components.base_rate} шт/мес; сезонность ${ownSeason ? "SKU" : "поставщика"}, рост ×${components.growth}; прогноз на ${horizonDays} дн ${components.forecast_qty} + запас ${components.safety} − остаток ${components.on_hand} − в пути ${components.in_transit} = потребность ${need} шт (кратность ${sku.moq}). Без продаж из-за отсутствия остатка: ${stockoutMonths.join(", ") || "нет"}; исключены разовые документы: ${excluded.map((doc) => doc.doc_no).join(", ") || "нет"}.${stockStale ? ` Последний подтверждённый остаток ${stockMonth}; текущий остаток неизвестен, заказ требует уточнения.` : ""}`;
+  const rationale_ru = `Код 1С ${code_1c}: регулярный спрос ${components.base_rate} шт/мес; сезонность ${ownSeason ? "SKU" : "поставщика"}, рост ×${components.growth}; прогноз на ${horizonDays} дн ${components.forecast_qty} + запас ${components.safety} − остаток ${components.on_hand} − в пути ${components.in_transit} − утверждённый заказ ${components.approved_order_qty} шт = потребность ${need} шт (кратность ${sku.moq}). Без продаж из-за отсутствия остатка: ${stockoutMonths.join(", ") || "нет"}; исключены разовые документы: ${excluded.map((doc) => doc.doc_no).join(", ") || "нет"}.${stockStale ? ` Последний подтверждённый остаток ${stockMonth}; текущий остаток неизвестен, заказ требует уточнения.` : ""}`;
   return { forecast: { horizon_months: horizonDays / 30, base_rate: components.base_rate, season: components.season, growth: components.growth, stockout_uplift: components.stockout_uplift, safety: components.safety, method_ru: "Сезонный спрос × рост; цензурирование дефицита; исключение разовых документов" }, need, rationale_ru, components };
 }
