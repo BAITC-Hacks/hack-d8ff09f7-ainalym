@@ -1,5 +1,5 @@
-# L2a checkpoint — money
-Done: KZT two-decimal Money arithmetic and allocation; 4 tests pass; build and TypeScript pass.
-Undone: deterministic need engine, recommendation proposals, tasks, schedule, views, routes.
-Resumable: implement `engine.ts` against CONTRACTS §2, then `applyRecommendations`.
-SHA: this checkpoint commit (parent 0d9406a).
+# L2a checkpoint — engine and proposals
+Done: exact money; per-SKU forecast/need engine; run → grouped supplier proposals; stale and replay rules; 13 domain tests pass.
+Undone: task transitions, scheduled checks, approval routes, views, L9 partner-data validation.
+Resumable: implement `tasks.ts` and `schedule.ts`, then proposal approval and views.
+SHA: this checkpoint commit (parent fd43540).

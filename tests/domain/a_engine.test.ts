@@ -27,7 +27,7 @@ function fixture(options: { seasonal?: boolean; stockout?: boolean; oneoff?: boo
       .run(`DOC-${ym}`, `${ym}-15`, String(quantity));
   }
   if (options.oneoff) database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty,source) VALUES ('TEST','ONEOFF','2025-08-20','5000','judge')").run();
-  database.prepare("INSERT INTO stock_month (code_1c,ym,opening_qty) VALUES ('TEST','2025-12','20')").run();
+  database.prepare("INSERT INTO stock_month (code_1c,ym,opening_qty) VALUES ('TEST','2025-01','20')").run();
   if (options.inTransit) database.prepare("INSERT INTO in_transit (code_1c,po_ref,qty) VALUES ('TEST','PO-1',?)").run(String(options.inTransit));
   return database;
 }
@@ -37,8 +37,8 @@ const context = (database: DatabaseSync, as_of = "2025-09-23") => ({ database, a
 describe("deterministic replenishment need", () => {
   it("reduces need when in-transit supply rises", async () => {
     const base = await computeNeed("TEST", params, context(fixture()));
-    const supplied = await computeNeed("TEST", params, context(fixture({ inTransit: 10 })));
-    expect(base.need - supplied.need).toBe(10);
+    const supplied = await computeNeed("TEST", params, context(fixture({ inTransit: 2 })));
+    expect(base.need - supplied.need).toBe(2);
   });
 
   it("raises the forecast into the SKU's seasonal peak", async () => {
