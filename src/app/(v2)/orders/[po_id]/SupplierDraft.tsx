@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError, apiRequest, useApi, useApiSync } from "@/components/shell";
 import { Btn, Card, Empty, Kpis, PageHead, Pill, PO_STATE, Section, StaleBanner, Truth, fmtDate, fmtMoney, fmtNum, fmtQty, useRowKeys, type Tone } from "@/components/v2/ui";
 import { ExportButton } from "@/components/v2/ExportButton";
+import { EvidenceRail } from "@/components/documents/EvidenceRail";
 import styles from "./supplier.module.css";
 
 export type ChannelState = "draft" | "sent" | "confirmed";
@@ -110,6 +111,7 @@ export function SupplierDraft({ poId, initial }: { poId: string; initial: Suppli
             {merged.length === 0 && <Empty title="В заказе нет строк">Экспортировать нечего — добавьте позиции через «Закупки».</Empty>}
           </div>
         </Section>
+        <EvidenceRail poId={poId} supplierId={order.supplier_id} />
       </div>
       <aside className={styles.rail} aria-label="Канал ответа">
         <Card className={styles.channel}>
