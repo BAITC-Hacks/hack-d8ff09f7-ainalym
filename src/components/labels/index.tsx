@@ -10,7 +10,7 @@ export const LABELS = {
   urgency: { critical: "критично", soon: "скоро", normal: "планово", none: "не требуется" },
 } as const;
 export function Chip({ children, tone = "neutral", title }: { children: ReactNode; tone?: "neutral" | "warning" | "danger"; title?: string }) { return <span className={`${styles.chip} ${tone === "neutral" ? "" : styles[tone]}`} title={title}>{children}</span>; }
-export function ModeChip({ mode, ai }: { mode?: string; ai?: TruthAxes["ai"] }) { return <Chip title={mode === "offline" ? "Offline walkthrough" : ai}>{mode === "offline" ? "Офлайн-режим · записанные решения" : ai ? LABELS.ai[ai] : "Режим уточняется"}</Chip>; }
+export function ModeChip({ mode, ai }: { mode?: string; ai?: TruthAxes["ai"] }) { return <Chip title={mode === "offline" ? "Offline walkthrough" : ai}>{mode === "offline" ? "Офлайн-режим · записанные решения" : mode === "unavailable" ? "Режимы недоступны" : ai ? LABELS.ai[ai] : "Режим уточняется"}</Chip>; }
 export function TruthAxisLabels({ axes, provenance, ai, external }: TruthAxes & { axes?: TruthAxes }) {
   const value = axes ?? { provenance, ai, external };
   return <div className={styles.axes} aria-label="Источник, AI, внешнее действие">

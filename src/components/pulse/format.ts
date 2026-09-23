@@ -13,8 +13,10 @@ export function formatMoney(money?: Money | null): string {
 export function sumByCurrency(rows: Money[]): Money[] {
   const totals = new Map<string, Decimal>();
   for (const row of rows) {
-    if (!row.currency || !new Decimal(row.amount).isFinite()) continue;
-    totals.set(row.currency, (totals.get(row.currency) ?? new Decimal(0)).add(row.amount));
+    try {
+      if (!row.currency || !new Decimal(row.amount).isFinite()) continue;
+      totals.set(row.currency, (totals.get(row.currency) ?? new Decimal(0)).add(row.amount));
+    } catch { continue; }
   }
   return [...totals].map(([currency, amount]) => ({ currency, amount: amount.toFixed(2) }));
 }

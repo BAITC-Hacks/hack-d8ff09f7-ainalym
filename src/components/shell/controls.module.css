@@ -11,6 +11,6 @@
 .skeleton span { display: block; height: 20px; background: var(--wash); border-radius: 4px; }
 .skeleton span:last-child { width: 68%; }
 .empty { color: var(--muted); font: var(--t-label); padding-block: 16px; max-width: 65ch; }
-@media (hover: hover) { .secondary:hover,.quiet:hover { background: var(--wash); } .primary:hover { background: #293848; } }
+@media (hover: hover) { .secondary:hover,.quiet:hover { background: var(--wash); } .primary:hover { background: var(--primary-hover); } }
 .button:active { background: var(--pressed); color: var(--ink); }
 @media (max-width: 767px) { .button { min-width: 44px; } }

@@ -13,7 +13,7 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   if (body === null) throw new ApiError(502, "invalid_response", "Сервис вернул ответ без данных.");
   return body as T;
 }
-const SyncContext = createContext({ revision: 0, offline: false, syncError: "", refresh: () => {}, reportNetwork: (_failed: boolean) => {} });
+const SyncContext = createContext<{ revision: number; offline: boolean; syncError: string; refresh: () => void; reportNetwork: (failed: boolean) => void }>({ revision: 0, offline: false, syncError: "", refresh: () => {}, reportNetwork: () => {} });
 export function ApiProvider({ children }: { children: ReactNode }) {
   const [revision, setRevision] = useState(0);
   const [offline, setOffline] = useState(false);
