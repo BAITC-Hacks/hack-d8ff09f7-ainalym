@@ -127,6 +127,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       }
       if (controller.signal.aborted || sessionGeneration !== generation.current || !turn.current.isCurrent(callEpoch)) return;
       if (output.ok && typeof output.state_version === "number") {
+        window.dispatchEvent(new CustomEvent("ainalym:voice-tool-result", { detail: { request_id: call.call_id, tool: call.name, result: output } }));
         void fetch("/api/state", { cache: "no-store" }).then(async response => {
           if (!response.ok) return;
           const snapshot = await response.json();
@@ -135,7 +136,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
           router.refresh();
         }).catch(() => undefined);
       }
-      if (call.name === "recommend_for" && output.ok) setState("waiting_review");
+      if (call.name === "recommend_for" && output.ok && Array.isArray(output.proposal_ids) && output.proposal_ids.length > 0) setState("waiting_review");
       else setState("listening");
       send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: call.call_id, output: JSON.stringify(output) } });
     }
@@ -156,8 +157,10 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
           if (typeof snapshot.state_version === "number") latestStateVersion.current = snapshot.state_version;
         }
       } catch { /* voice can still answer if the state fingerprint is temporarily unavailable */ }
+      if (sessionGeneration !== generation.current) return;
       const sessionResponse = await fetch("/api/voice/session", { method: "POST", cache: "no-store" });
       const session = await sessionResponse.json() as SessionResponse;
+      if (sessionGeneration !== generation.current) return;
       if (!sessionResponse.ok || !session.client_secret || !session.expires_at || session.expires_at * 1000 <= Date.now()) throw new Error("Provider unavailable");
       if (!navigator.mediaDevices?.getUserMedia) throw new Error("Provider unavailable");
       const media = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -193,6 +196,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       dataChannel.onmessage = e => { try { void handleEvent(JSON.parse(e.data) as RealtimeEvent, sessionGeneration); } catch { /* malformed transport event */ } };
       const offer = await connection.createOffer();
       await connection.setLocalDescription(offer);
+      if (sessionGeneration !== generation.current) return;
       const answerResponse = await fetch("https://api.openai.com/v1/realtime/calls", {
         method: "POST", headers: { Authorization: `Bearer ${session.client_secret}`, "Content-Type": "application/sdp" }, body: offer.sdp,
       });
