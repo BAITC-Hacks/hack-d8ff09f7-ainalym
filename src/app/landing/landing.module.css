@@ -126,12 +126,12 @@
 .clipVideo { position: absolute; inset: 0; opacity: 0; transition: opacity 180ms; }
 .clipVideo[data-playing] { opacity: 1; }
 .clipCaption { padding: 24px 28px 28px; }
-.clipHeading { display: flex; align-items: center; gap: 12px; min-height: 36px; }
+.clipHeading { display: flex; align-items: center; gap: 12px; min-height: 44px; }
 .clipNumber { color: var(--dawn); font-size: 14px; font-variant-numeric: tabular-nums; }
 .clipTitle { color: var(--text); font-size: 22px; line-height: 1.25; font-weight: 600; letter-spacing: -0.015em; }
 .clipValue { margin-top: 10px; color: var(--text); font-size: 16px; line-height: 1.55; text-wrap: pretty; }
 .clipValue span { display: block; color: var(--text-2); }
-.clipControls { flex: none; display: flex; gap: 4px; margin-left: auto; }
+.clipControls { flex: none; min-width: 92px; min-height: 44px; display: flex; gap: 4px; margin-left: auto; }
 .clipControl { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border: 1px solid var(--hair); border-radius: 50%; color: var(--text-2); background: transparent; cursor: pointer; }
 .clipControl:hover { background: var(--dawn-soft); color: var(--text); }
 
