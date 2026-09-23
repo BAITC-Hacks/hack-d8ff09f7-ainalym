@@ -13,7 +13,8 @@ export interface CalcScope { supplier?: string; category?: string; codes?: strin
 export interface CalcContext extends EngineContext { org_id?: string; agent_run_id?: string; world_event_id?: string }
 export interface ApplyResult { proposals: Record<string, unknown>[]; tasks: Record<string, unknown>[]; affected: string[] }
 type Sku = { code_1c: string; supplier_id: string; name: string; unit: string | null; unit_cost: string | null; moq: number };
-type Rec = { id: string; code_1c: string; supplier_id: string; qty_recommended: number; qty_adjusted: number | null; rationale_ru: string; proposal_id: string | null; unit_cost: string | null; name: string; unit: string | null; components: string };
+type Rec = { id: string; code_1c: string; supplier_id: string; qty_recommended: number; qty_adjusted: number | null; adjust_reason: string | null; rationale_ru: string; proposal_id: string | null; unit_cost: string | null; name: string; unit: string | null; components: string };
+type PriorAdjustment = { id: string; qty_recommended: number; qty_adjusted: number | null; adjust_reason: string | null; version: number; state: string; proposal_state: string | null };
 type Run = { id: string; agent_run_id: string | null; scope: string; org_id: string | null };
 
 function inTx<T>(database: DatabaseSync, fn: () => T): T {
@@ -52,6 +53,15 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
       unresolved.push({ code_1c: sku.code_1c, supplier_id: sku.supplier_id, reason: `не рассчитано: ${reasonRu(error)}` });
     }
   }
+  const carriedAdjustments = new Map<string, PriorAdjustment>();
+  if (ctx.world_event_id) for (const { sku } of computed) {
+    const prior = database.prepare(`SELECT r.id,r.qty_recommended,r.qty_adjusted,r.adjust_reason,r.version,r.state,p.state proposal_state
+      FROM recommendation r JOIN calc_run c ON c.id=r.run_id LEFT JOIN proposal p ON p.id=r.proposal_id
+      WHERE r.code_1c=? AND (c.org_id=? OR c.org_id IS NULL)
+      ORDER BY c.started_at DESC,c.rowid DESC,r.rowid DESC LIMIT 1`).get(sku.code_1c, orgId) as PriorAdjustment | undefined;
+    if (prior?.state === "adjusted" && prior.proposal_state === "needs_review" && prior.qty_adjusted !== null)
+      carriedAdjustments.set(sku.code_1c, prior);
+  }
   const id = `RUN-${randomUUID()}`;
   const agentRunId = ctx.agent_run_id ?? await startRun({ org_id: orgId, trigger_type: "calc_request", trigger_ref: id }, database);
   const startedAt = new Date().toISOString();
@@ -64,8 +74,11 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
       const recommendationId = `REC-${randomUUID()}`;
       database.prepare("INSERT INTO forecast (id,run_id,code_1c,horizon_months,base_rate,season,growth,stockout_uplift,safety,method_ru) VALUES (?,?,?,?,?,?,?,?,?,?)")
         .run(forecastId, id, sku.code_1c, result.forecast.horizon_months as number, String(result.forecast.base_rate), JSON.stringify(result.forecast.season), String(result.forecast.growth), String(result.forecast.stockout_uplift), String(result.forecast.safety), result.forecast.method_ru as string);
-      database.prepare("INSERT INTO recommendation (id,run_id,code_1c,supplier_id,qty_recommended,on_hand,in_transit,forecast_id,urgency,rationale_ru,components) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
-        .run(recommendationId, id, sku.code_1c, sku.supplier_id, result.need, String(result.components.on_hand), String(result.components.in_transit), forecastId, String(result.components.urgency), result.rationale_ru, JSON.stringify(result.components));
+      const carried = carriedAdjustments.get(sku.code_1c);
+      database.prepare("INSERT INTO recommendation (id,run_id,code_1c,supplier_id,qty_recommended,qty_adjusted,adjust_reason,on_hand,in_transit,forecast_id,urgency,rationale_ru,components,state,version) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+        .run(recommendationId, id, sku.code_1c, sku.supplier_id, result.need, carried?.qty_adjusted ?? null, carried?.adjust_reason ?? null,
+          String(result.components.on_hand), String(result.components.in_transit), forecastId, String(result.components.urgency), result.rationale_ru,
+          JSON.stringify(result.components), carried ? "adjusted" : "proposed", carried ? carried.version + 1 : 1);
     }
     bumpStateVersion(database);
   });
@@ -74,6 +87,12 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
       summary_ru: `Пересчитана потребность ${sku.code_1c}: ${result.need} ${sku.unit?.trim() || "шт"}`, rationale_ru: result.rationale_ru,
       sources: [`sku:${sku.code_1c}`, "sales_month", "sales_line", "stock_month", "in_transit"], autonomy: "auto",
       idempotency_key: ctx.world_event_id ? `worker:${ctx.world_event_id}:recompute:${sku.code_1c}` : `recompute:${id}:${sku.code_1c}` }, database);
+    const carried = carriedAdjustments.get(sku.code_1c);
+    if (carried) await recordAction(agentRunId, { kind: "recommendation_adjustment_carried", subject_ref: sku.code_1c,
+      code_1c: sku.code_1c, world_event_id: ctx.world_event_id,
+      summary_ru: `Корректировка ${carried.qty_adjusted} ${sku.unit?.trim() || "шт"} сохранена; после события расчёт изменил рекомендацию ${carried.qty_recommended} → ${result.need} — проверьте`,
+      rationale_ru: carried.adjust_reason ?? undefined, sources: [`recommendation:${carried.id}`, `run:${id}`],
+      autonomy: "escalated", result: "needs_owner", idempotency_key: `worker:${ctx.world_event_id}:adjustment:${sku.code_1c}` }, database);
     if ((result.components.outliers_excluded as unknown[]).length) await recordAction(agentRunId, {
       kind: "outlier_flagged", subject_ref: sku.code_1c, code_1c: sku.code_1c,
       summary_ru: `Исключены разовые документы по ${sku.code_1c}`, rationale_ru: result.rationale_ru,
@@ -102,7 +121,7 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
   if (!run) throw new Error(`calculation run ${run_id} is missing`);
   const scope = JSON.parse(run.scope) as CalcScope;
   const scopedCodes = new Set(scope.codes ?? []);
-  const recommendations = database.prepare(`SELECT r.id,r.code_1c,r.supplier_id,r.qty_recommended,r.qty_adjusted,r.rationale_ru,r.proposal_id,r.components,s.name,s.unit,s.unit_cost
+  const recommendations = database.prepare(`SELECT r.id,r.code_1c,r.supplier_id,r.qty_recommended,r.qty_adjusted,r.adjust_reason,r.rationale_ru,r.proposal_id,r.components,s.name,s.unit,s.unit_cost
     FROM recommendation r JOIN sku s ON s.code_1c=r.code_1c WHERE r.run_id=? ORDER BY r.supplier_id,r.code_1c`).all(run_id) as Rec[];
   const groups = new Map<string, Rec[]>();
   const staleStock = recommendations.filter((rec) => (JSON.parse(rec.components) as { stock_stale?: boolean }).stock_stale);
@@ -131,6 +150,7 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
     const taskId = `TK-${randomUUID()}`;
     const currentLines = rows.map((rec) => ({ recommendation_id: rec.id, code_1c: rec.code_1c, name: rec.name, unit: rec.unit?.trim() || "шт",
       qty: rec.qty_adjusted ?? rec.qty_recommended, unit_cost: rec.unit_cost, rationale_ru: rec.rationale_ru,
+      adjust_reason: rec.adjust_reason, needs_review: rec.qty_adjusted !== null && rec.qty_adjusted > rec.qty_recommended,
       components: JSON.parse(rec.components) as Record<string, unknown> }));
     const carried = old && scopedCodes.size ? ((JSON.parse(old.payload) as { lines: typeof currentLines }).lines ?? [])
       .filter((line) => !scopedCodes.has(line.code_1c)) : [];
@@ -199,7 +219,7 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
 export class ProposalConflictError extends Error { readonly status = 409; }
 export class ProposalNotFoundError extends Error { readonly status = 404; }
 type Proposal = { id: string; kind: string; state: string; version: number; payload: string; subject_id: string | null; subject_version: number | null; rationale_ru: string | null; sources: string };
-type OrderLine = { recommendation_id: string; code_1c: string; qty: number; unit?: string; unit_cost: string | null; rationale_ru: string };
+type OrderLine = { recommendation_id: string; code_1c: string; qty: number; unit?: string; unit_cost: string | null; rationale_ru: string; adjust_reason?: string; needs_review?: boolean };
 
 /** A human adjustment changes the proposal version while retaining the engine's original quantity. */
 export async function adjustRecommendation(id: string, qty: number, reason: string, version: number, ctx: CalcContext = {}) {
@@ -219,6 +239,8 @@ export async function adjustRecommendation(id: string, qty: number, reason: stri
     const line = payload.lines.find((item) => item.recommendation_id === id);
     if (!line) throw new ProposalConflictError("recommendation is absent from proposal");
     line.qty = qty;
+    line.adjust_reason = reason.trim();
+    line.needs_review = qty > rec.qty_recommended;
     const priced = payload.lines.filter((item) => item.unit_cost !== null);
     const moneyAtStake = priced.length ? priced.reduce((sum, item) => sum.add(Money.of(item.unit_cost!).mul(item.qty)), Money.of("0")).toJSON() : null;
     payload.total_qty = payload.lines.reduce((sum, item) => sum + item.qty, 0);

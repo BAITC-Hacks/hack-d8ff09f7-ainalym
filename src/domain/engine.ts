@@ -169,13 +169,15 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
   }
   const uncensored = series.filter((point) => !point.stockout);
   if (!uncensored.length) throw new Error(`uncensored sales source missing for ${code_1c}`);
-  const baseRate = uncensored.reduce((sum, point) => sum.plus(point.qty), new Decimal(0)).div(uncensored.length);
+  const uncensoredRate = uncensored.reduce((sum, point) => sum.plus(point.qty), new Decimal(0)).div(uncensored.length);
   const stockoutMonths = series.filter((point) => point.stockout).map((point) => point.ym);
   const observedStockoutMonths = series.filter((point) => point.stockout_kind === "observed").map((point) => point.ym);
   const inferredStockoutMonths = series.filter((point) => point.stockout_kind === "inferred").map((point) => point.ym);
   const stockoutUplift = series.filter((point) => point.stockout)
-    .reduce((sum, point) => sum.plus(Decimal.max(0, baseRate.minus(point.qty))), new Decimal(0));
+    .reduce((sum, point) => sum.plus(Decimal.max(0, uncensoredRate.minus(point.qty))), new Decimal(0));
   const rawObservedRate = series.reduce((sum, point) => sum.plus(point.qty), new Decimal(0)).div(series.length);
+  // Both displayed rates use the same eligible months. Only stockout shortfalls add demand.
+  const baseRate = rawObservedRate.plus(stockoutUplift.div(series.length));
 
   const supplierSeason = database.prepare("SELECT month,idx FROM season_index WHERE supplier_id=?").all(sku.supplier_id) as { month: number; idx: string }[];
   const ownSeason = uncensored.filter((point) => point.qty.gt(0)).length >= 12;
@@ -213,7 +215,7 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
   }
   // Daily thirds can leave a sub-unit Decimal residue that incorrectly rounds need up.
   forecastQty = forecastQty.toDecimalPlaces(9);
-  const variance = uncensored.reduce((sum, point) => sum.plus(point.qty.minus(baseRate).pow(2)), new Decimal(0)).div(uncensored.length);
+  const variance = uncensored.reduce((sum, point) => sum.plus(point.qty.minus(uncensoredRate).pow(2)), new Decimal(0)).div(uncensored.length);
   const sigmaDaily = variance.sqrt().div(new Decimal(30).sqrt());
   const z = params.service_level >= 0.99 ? new Decimal("2.33") : params.service_level >= 0.95 ? new Decimal("1.645") : new Decimal("1.28");
   const safety = z.times(sigmaDaily).times(new Decimal(params.lead_time_days).sqrt());

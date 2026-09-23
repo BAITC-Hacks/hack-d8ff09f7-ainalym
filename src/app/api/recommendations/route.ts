@@ -58,6 +58,7 @@ export async function GET(request: Request): Promise<Response> {
       const product = snapshot.products[ektMap[String(row.code_1c)]?.id];
       group.rows.push({ id: row.id, code_1c: row.code_1c, name: row.name, image_url: skuImageUrl(row) ?? product?.image_url ?? null,
         version: row.version, state: row.state, proposal_id: row.proposal_id, adjust_reason: row.adjust_reason,
+        needs_review: row.qty_adjusted !== null && Number(row.qty_adjusted) > Number(row.qty_recommended),
         on_hand: row.on_hand, in_transit: row.in_transit,
         forecast_qty: components.forecast_qty == null ? row.base_rate : String(components.forecast_qty), qty_recommended: row.qty_recommended,
         qty_adjusted: row.qty_adjusted, moq: row.moq, unit: row.unit, urgency: row.urgency, rationale_ru: row.rationale_ru, components,
