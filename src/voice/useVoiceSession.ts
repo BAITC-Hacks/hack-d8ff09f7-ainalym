@@ -108,10 +108,10 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       try {
         const reservation = await fetch("/api/voice/turn", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turn_id: id }) });
         if (sessionGeneration !== generation.current || inputTurnId.current !== id) return;
-        if (!reservation.ok) { setReason("Сегодня ответы закончились"); setState("unavailable"); return; }
+        if (!reservation.ok) { release(); setReason("Сегодня ответы закончились"); setState("unavailable"); return; }
         send({ type: "response.create" });
       } catch {
-        if (sessionGeneration === generation.current && inputTurnId.current === id) { setReason("Не удалось начать ответ"); setState("unavailable"); }
+        if (sessionGeneration === generation.current && inputTurnId.current === id) { release(); setReason("Не удалось начать ответ"); setState("unavailable"); }
       }
       return;
     }
@@ -182,7 +182,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: call.call_id, output: JSON.stringify(output) } });
       if (automatic.current.followUp()) send({ type: "response.create", response: { tool_choice: "none" } });
     }
-  }, [router, send]);
+  }, [release, router, send]);
 
   const start = useCallback(async () => {
     if (starting.current || peer.current || !scopeRef.current.org_id) return;
@@ -191,7 +191,6 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
     const speaker = document.createElement("audio");
     speaker.autoplay = true;
     speaker.setAttribute("playsinline", "");
-    speaker.srcObject = new MediaStream();
     audio.current = speaker;
     setAudioBlocked(false);
     void speaker.play().catch(() => { if (sessionGeneration === generation.current && audio.current === speaker) setAudioBlocked(true); });
@@ -217,7 +216,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       const connection = new RTCPeerConnection();
       peer.current = connection;
       connection.ontrack = e => {
-        speaker.srcObject = e.streams[0];
+        if (sessionGeneration === generation.current && audio.current === speaker) speaker.srcObject = e.streams[0];
       };
       connection.onconnectionstatechange = () => {
         if (sessionGeneration !== generation.current) return;
