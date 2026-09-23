@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { db, stateVersion } from "@/db/client";
-import { extractDeterministic, type ExtractedDocument } from "@/domain/documents";
+import { extractDeterministic, packageForRoute, type ExtractedDocument } from "@/domain/documents";
 import { extractWithModel, replayExtraction } from "@/ai/extract";
 import { documentsForOrder, inferOrder, insertDocument } from "@/server/documents";
 
@@ -11,15 +11,16 @@ const limit = 10 * 1024 * 1024;
 const mimes = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv", "application/csv", "text/plain"]);
 const extensionMime: Record<string,string> = { xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", csv: "text/csv", txt: "text/plain", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", pdf: "application/pdf" };
 const kinds = new Set(["invoice", "delivery_note", "transport", "receipt", "customs", "other"]);
+const packageKeys = new Set((["domestic", "eaeu", "import"] as const).flatMap(route => packageForRoute(route).map(item => item.key)));
 const bad = (message: string, status = 400) => Response.json({ ok: false, code: "invalid_document", message }, { status });
 
 export async function POST(request: Request): Promise<Response> {
   const length = Number(request.headers.get("content-length"));
   if (length > limit + 100_000) return bad("Файл превышает 10 МБ");
-  let buffer: Buffer, name: string, mime: string, po_id: string | null = null, kind = "invoice", source: "fixture" | "upload";
+  let buffer: Buffer, name: string, mime: string, po_id: string | null = null, kind = "invoice", package_key: string | null = null, source: "fixture" | "upload";
   try {
     if (request.headers.get("content-type")?.includes("application/json")) {
-      const body = await request.json() as { fixture?: unknown; po_id?: unknown; kind?: unknown };
+      const body = await request.json() as { fixture?: unknown; po_id?: unknown; kind?: unknown; package_key?: unknown };
       if (typeof body.fixture !== "string" || basename(body.fixture) !== body.fixture || body.fixture.startsWith(".")) return bad("Неизвестный демонстрационный документ");
       name = body.fixture;
       mime = extensionMime[name.split(".").pop()?.toLowerCase() || ""] || "";
@@ -28,6 +29,7 @@ export async function POST(request: Request): Promise<Response> {
       catch { return bad("Демонстрационный документ не найден", 404); }
       po_id = typeof body.po_id === "string" ? body.po_id : null;
       kind = typeof body.kind === "string" ? body.kind : "invoice";
+      package_key = typeof body.package_key === "string" ? body.package_key : null;
       source = "fixture";
     } else {
       const form = await request.formData();
@@ -39,12 +41,14 @@ export async function POST(request: Request): Promise<Response> {
       buffer = Buffer.from(await file.arrayBuffer());
       po_id = typeof form.get("po_id") === "string" ? String(form.get("po_id")) : null;
       kind = typeof form.get("kind") === "string" ? String(form.get("kind")) : "invoice";
+      package_key = typeof form.get("package_key") === "string" ? String(form.get("package_key")) : null;
       source = "upload";
     }
   } catch { return bad("Не удалось прочитать документ"); }
   if (buffer.length > limit) return bad("Файл превышает 10 МБ");
   if (!mimes.has(mime)) return bad("Формат документа не поддерживается");
   if (!kinds.has(kind)) return bad("Тип документа не поддерживается");
+  if (package_key && !packageKeys.has(package_key)) return bad("Пункт пакета документов не поддерживается");
   const po = po_id ? db().prepare("SELECT supplier_id FROM purchase_order WHERE id=?").get(po_id) as { supplier_id: string } | undefined : undefined;
   if (po_id && !po) return bad("Заказ не найден", 404);
   const sha256 = createHash("sha256").update(buffer).digest("hex");
@@ -66,7 +70,7 @@ export async function POST(request: Request): Promise<Response> {
   const stored_path = join(process.cwd(), relative);
   try {
     writeFileSync(stored_path, buffer, { flag: "wx", mode: 0o600 });
-    const document = insertDocument({ po_id, supplier_id, kind, source, file_name: name, mime, sha256, stored_path: relative, extracted, extraction_mode });
+    const document = insertDocument({ po_id, supplier_id, kind, source, file_name: name, mime, sha256, stored_path: relative, extracted, extraction_mode, package_key });
     return Response.json({ ok: true, document, state_version: stateVersion() }, { status: 201 });
   } catch {
     try { unlinkSync(stored_path); } catch { /* no file to clean */ }

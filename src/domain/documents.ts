@@ -103,16 +103,22 @@ export function extractDeterministic(buffer: Buffer, mime: string): ExtractedDoc
 export type MatchedLine = { code_1c: string | null; article: string | null; name: string; qty_doc: string; qty_po: string | null; qty_received: string | null; price_doc: string | null; unit_cost_po: string | null; status: "ok" | "qty_diff" | "price_diff" | "missing_in_po" | "missing_in_doc" };
 export function matchDocumentToOrder(doc: ExtractedDocument, poLines: OrderLine[], receipt?: ReceiptLine[]): { lines: MatchedLine[]; summary: { matched: number; discrepancies: number; total_doc: string; total_po: string }; three_way: boolean } {
   const used = new Set<number>();
-  const find = (line: { code_1c?: string | null; article?: string | null; name?: string }, rows: OrderLine[] | ReceiptLine[]) => rows.findIndex((candidate, index) => !used.has(index) &&
-    ((line.code_1c && candidate.code_1c && canon(line.code_1c.replace(/_+$/, "")) === canon(candidate.code_1c.replace(/_+$/, ""))) ||
-     (line.article && candidate.article && canon(line.article) === canon(candidate.article)) ||
-     (line.name && candidate.name && canon(line.name) === canon(candidate.name))));
+  const find = (line: { code_1c?: string | null; article?: string | null; name?: string }, rows: OrderLine[] | ReceiptLine[], exclude = used) => {
+    for (const key of ["code_1c", "article", "name"] as const) {
+      const value = line[key];
+      if (!value) continue;
+      const index = rows.findIndex((candidate, index) => !exclude.has(index) && candidate[key] && canon(candidate[key]) === canon(value));
+      if (index >= 0) return index;
+    }
+    return -1;
+  };
   const lines: MatchedLine[] = doc.lines.map(line => {
     const index = find(line, poLines);
     if (index < 0) return { code_1c: line.code_1c, article: line.article, name: line.name, qty_doc: line.qty, qty_po: null, qty_received: null, price_doc: line.price, unit_cost_po: null, status: "missing_in_po" };
     used.add(index);
     const po = poLines[index];
-    const received = receipt?.find(r => (r.code_1c && canon(r.code_1c.replace(/_+$/, "")) === canon(po.code_1c.replace(/_+$/, ""))) || (r.article && po.article && canon(r.article) === canon(po.article)) || (r.name && canon(r.name) === canon(po.name)));
+    const receivedIndex = receipt ? find(po, receipt, new Set()) : -1;
+    const received = receivedIndex >= 0 ? receipt?.[receivedIndex] : undefined;
     const qtyReceived = received ? quantity(received.qty) : null;
     const status = !new Decimal(line.qty).eq(po.qty) || (receipt !== undefined && (qtyReceived === null || !new Decimal(line.qty).eq(qtyReceived))) ? "qty_diff"
       : line.price && po.unit_cost && !new Decimal(line.price).eq(po.unit_cost) ? "price_diff" : "ok";
@@ -126,6 +132,12 @@ export function matchDocumentToOrder(doc: ExtractedDocument, poLines: OrderLine[
 }
 
 export type DraftOrder = { id: string; supplier_name: string; buyer_name?: string | null; contract?: string | null; currency?: string | null; country_origin?: string | null; lines: OrderLine[] };
+function suggestHeading(name: string): string | null {
+  // Four-digit headings are preliminary, never declaration-ready ten-digit codes.
+  if (/(?:узо|автоматическ\S*\s+выключател\S*)/i.test(name)) return "8536";
+  if (/кабел[ьи]/i.test(name)) return "8544";
+  return null;
+}
 export function draftsForPackage(route: SupplyRoute, po: DraftOrder, invoice?: ExtractedDocument | null): Record<string, unknown> {
   const label = "Черновик подготовлен агентом — не отправлен";
   if (route === "eaeu") {
@@ -138,6 +150,8 @@ export function draftsForPackage(route: SupplyRoute, po: DraftOrder, invoice?: E
   if (route === "import") return { dt_draft: { label, declarant: po.buyer_name || null, sender: invoice?.supplier || po.supplier_name,
     invoice_number: invoice?.number || null, currency: invoice?.currency || po.currency || null,
     lines: (invoice?.lines.length ? invoice.lines : po.lines.map(x => ({ name: x.name, qty: quantity(x.qty), amount: x.unit_cost ? formatAmount(new Decimal(x.unit_cost).times(x.qty)) : null })))
-      .map(x => ({ name: x.name, qty: x.qty, tn_ved_eaeu_suggestion: null, needs_review: true, invoice_value: x.amount, country_origin: po.country_origin || null })) } };
+      .map(x => ({ name: x.name, qty: x.qty, tn_ved_eaeu_suggestion: suggestHeading(x.name),
+        suggestion_level: "товарная позиция (4 знака); для ДТ нужен полный код", needs_review: true,
+        invoice_value: x.amount, country_origin: po.country_origin || null })) } };
   return {};
 }

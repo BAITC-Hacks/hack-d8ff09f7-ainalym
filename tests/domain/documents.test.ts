@@ -6,6 +6,7 @@ import { packageForRoute, extractDeterministic, matchDocumentToOrder, draftsForP
 import { POST as accept } from "../../src/app/api/documents/[id]/accept/route";
 import { POST as ingest } from "../../src/app/api/documents/route";
 import { GET as getPackage } from "../../src/app/api/orders/[id]/package/route";
+import { GET as getDocument } from "../../src/app/api/documents/[id]/route";
 
 const mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const fixture = () => extractDeterministic(readFileSync(join(process.cwd(), "fixtures/documents/iek_invoice_demo.xlsx")), mime);
@@ -45,10 +46,27 @@ describe("document intake", () => {
     expect(form.lines[0].vat_12_percent).toBe("7200.00");
   });
 
+  it("marks import heading suggestions as incomplete and requiring declarant review", () => {
+    const draft = draftsForPackage("import", { id: "PO-2", supplier_name: "IEK", lines: [] }, fixture()).dt_draft as
+      { lines: { tn_ved_eaeu_suggestion: string | null; suggestion_level: string; needs_review: boolean }[] };
+    expect(draft.lines[0].tn_ved_eaeu_suggestion).toBe("8536");
+    expect(draft.lines[0].suggestion_level).toContain("4 знака");
+    expect(draft.lines.every(x => x.needs_review)).toBe(true);
+  });
+
   it("parses a semicolon CSV with Russian column names", () => {
     const csv = "Счёт на оплату № CSV-1\nКод 1с;Артикул;Наименование;Кол-во;Ед;Цена;Сумма\n123_;A-1;Автомат;2;шт;125,50;251,00";
     const parsed = extractDeterministic(Buffer.from(csv), "text/csv");
     expect(parsed.lines).toEqual([{ code_1c: "123_", article: "A-1", name: "Автомат", unit: "шт", qty: "2", price: "125.50", amount: "251.00" }]);
+  });
+
+  it("prefers exact catalog code over a duplicate product name", () => {
+    const doc = { number: null, date: null, supplier: null, buyer: null, currency: null,
+      lines: [{ code_1c: "B", article: null, name: "Одинаковый товар", unit: "шт", qty: "2", price: "10.00", amount: "20.00" }] };
+    const result = matchDocumentToOrder(doc, [{ code_1c: "A_", name: "Одинаковый товар", qty: 1, unit_cost: "10.00" },
+      { code_1c: "B_", name: "Одинаковый товар", qty: 2, unit_cost: "10.00" }]);
+    expect(result.lines[0].code_1c).toBe("B_");
+    expect(result.lines[0].status).toBe("ok");
   });
 
   it("ingests the fixture, infers its order, and reports the discrepancy in the route package", async () => {
@@ -66,6 +84,7 @@ describe("document intake", () => {
       body: JSON.stringify({ fixture: "iek_invoice_demo.xlsx" }) }));
     expect(response.status).toBe(201);
     const body = await response.json();
+    let receiptPath: string | null = null, contractPath: string | null = null, photoPath: string | null = null;
     try {
       expect(body.document.po_id).toBe("PO-DOC");
       expect(body.document.match.summary.discrepancies).toBe(2);
@@ -76,7 +95,40 @@ describe("document intake", () => {
       expect(packageBody.route).toBe("eaeu");
       expect(packageBody.items.find((x: { key: string }) => x.key === "invoice").status).toBe("discrepancy");
       expect(packageBody.items.find((x: { key: string }) => x.key === "form_328_00").status).toBe("draft");
-    } finally { unlinkSync(join(process.cwd(), body.document.stored_path)); }
+      const replayed = await ingest(new Request("http://localhost/api/documents", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ fixture: "iek_invoice_demo_photo.png" }) }));
+      expect(replayed.status).toBe(201);
+      const photo = (await replayed.json()).document;
+      photoPath = photo.stored_path;
+      expect(photo.extraction_mode).toBe("replay");
+      expect(photo.match.summary.discrepancies).toBe(2);
+      const csv = ["Код 1с;Наименование;Кол-во", ...invoice.lines.map((line, index) =>
+        `${line.code_1c};${line.name};${index === 2 ? 19 : line.qty}`)].join("\n");
+      const form = new FormData();
+      form.set("file", new File([csv], "receipt.csv", { type: "text/csv" }));
+      form.set("po_id", "PO-DOC"); form.set("kind", "receipt");
+      const received = await ingest(new Request("http://localhost/api/documents", { method: "POST", body: form }));
+      expect(received.status).toBe(201);
+      receiptPath = (await received.json()).document.stored_path;
+      const updated = await getDocument(new Request(`http://localhost/api/documents/${body.document.id}`), { params: Promise.resolve({ id: body.document.id }) });
+      const rematched = (await updated.json()).document.match;
+      expect(rematched.three_way).toBe(true);
+      expect(rematched.summary.discrepancies).toBe(3);
+      expect(rematched.lines[2].qty_received).toBe("19");
+      const contract = new FormData();
+      contract.set("file", new File(["Демонстрационный договор"], "contract.txt", { type: "text/plain" }));
+      contract.set("po_id", "PO-DOC"); contract.set("kind", "other"); contract.set("package_key", "contract");
+      const uploaded = await ingest(new Request("http://localhost/api/documents", { method: "POST", body: contract }));
+      expect(uploaded.status).toBe(201);
+      contractPath = (await uploaded.json()).document.stored_path;
+      const updatedPackage = await getPackage(new Request("http://localhost/api/orders/PO-DOC/package"), { params: Promise.resolve({ id: "PO-DOC" }) });
+      expect((await updatedPackage.json()).items.find((x: { key: string }) => x.key === "contract").status).toBe("present");
+    } finally {
+      unlinkSync(join(process.cwd(), body.document.stored_path));
+      if (receiptPath) unlinkSync(join(process.cwd(), receiptPath));
+      if (contractPath) unlinkSync(join(process.cwd(), contractPath));
+      if (photoPath) unlinkSync(join(process.cwd(), photoPath));
+    }
   });
 
   it("rejects acceptance with a stale document version", async () => {
