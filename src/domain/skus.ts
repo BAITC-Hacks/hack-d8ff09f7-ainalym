@@ -1,6 +1,10 @@
 import { db } from "../db/client";
 
 type Row = Record<string, unknown>;
+const parsed = (value: unknown) => {
+  try { return typeof value === "string" ? JSON.parse(value) : value; }
+  catch { return value; }
+};
 
 export interface SkuFilters { q?: string; supplier?: string; category?: string; limit?: number; offset?: number }
 function skuWhere(filters: SkuFilters) {
@@ -33,11 +37,11 @@ export async function skuView(code_1c: string): Promise<Record<string, unknown> 
   const stock = d.prepare("SELECT * FROM stock_month WHERE code_1c=? ORDER BY ym").all(code_1c) as Row[];
   const outliers = d.prepare("SELECT id,doc_no,at,qty,rule,decision,state FROM outlier_doc WHERE code_1c=? ORDER BY at,id").all(code_1c) as Row[];
   const months = new Map<string, Row>();
-  for (const row of sales) months.set(String(row.ym), { ym: row.ym, qty_file: row.qty_file, qty_lines: row.qty_lines, qty_regular: row.qty_regular, stockout: row.stockout });
-  for (const row of stock) months.set(String(row.ym), { ...months.get(String(row.ym)), ym: row.ym, stock: row.known ? row.opening_qty : null, stock_known: Boolean(row.known) });
+  for (const row of sales) months.set(String(row.ym), { ym: row.ym, qty_file: row.qty_file, qty_lines: row.qty_lines, qty_regular: row.qty_regular, stockout: row.stockout, outliers: [] });
+  for (const row of stock) months.set(String(row.ym), { outliers: [], ...months.get(String(row.ym)), ym: row.ym, stock: row.known ? row.opening_qty : null, stock_known: Boolean(row.known) });
   for (const row of outliers) {
     const ym = String(row.at || "").slice(0, 7);
-    const item = months.get(ym) || { ym };
+    const item = months.get(ym) || { ym, outliers: [] };
     item.outliers = [...(item.outliers as Row[] || []), row];
     months.set(ym, item);
   }
@@ -45,5 +49,11 @@ export async function skuView(code_1c: string): Promise<Record<string, unknown> 
   const recommendation = d.prepare("SELECT * FROM recommendation WHERE code_1c=? ORDER BY rowid DESC LIMIT 1").get(code_1c) as Row | undefined;
   const in_transit = d.prepare("SELECT * FROM in_transit WHERE code_1c=? ORDER BY expected_at,id").all(code_1c) as Row[];
   const timeline = d.prepare("SELECT id,kind,summary_ru,rationale_ru,autonomy,result,at,run_id FROM agent_action WHERE code_1c=? ORDER BY at DESC LIMIT 50").all(code_1c) as Row[];
-  return { sku, series: [...months.values()].sort((a, b) => String(a.ym).localeCompare(String(b.ym))), forecast: forecast || null, recommendation: recommendation || null, in_transit, timeline };
+  return {
+    sku,
+    series: [...months.values()].sort((a, b) => String(a.ym).localeCompare(String(b.ym))),
+    forecast: forecast ? { ...forecast, season: parsed(forecast.season) } : null,
+    recommendation: recommendation ? { ...recommendation, components: parsed(recommendation.components) } : null,
+    in_transit, timeline,
+  };
 }

@@ -190,6 +190,7 @@ describe("world events and SKU drilldown", () => {
     q("INSERT INTO stock_month(code_1c,ym,opening_qty,known) VALUES ('SE-1','2026-09','5',1)");
     const view = await skuView("SE-1");
     expect(view).toMatchObject({ sku: { code_1c: "SE-1" }, series: expect.any(Array), in_transit: expect.any(Array), timeline: expect.any(Array) });
+    expect((view?.series as Record<string, unknown>[])[0].outliers).toEqual([]);
   });
   it("recomputes exactly the requested codes", async () => {
     q("INSERT INTO sales_month(code_1c,ym,qty_file) VALUES ('SE-1','2026-08','10')");
