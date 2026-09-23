@@ -24,6 +24,7 @@ describe("controlled supplier channel", () => {
     const second = await supplierReply("PO-1", { action: "confirm", text: "Получено. Подтверждаем 20 шт." });
     expect(first.channel.state).toBe("confirmed");
     expect(first.event?.text).toBe("Получено. Подтверждаем 20 шт.");
+    expect(first.event?.payload).toMatchObject({ po_id: "PO-1", confirmation: true });
     expect(second.replayed).toBe(true);
     expect(db().prepare("SELECT COUNT(*) AS n FROM world_event").get()).toMatchObject({ n: 1 });
   });

@@ -48,7 +48,7 @@ export async function supplierReply(poId: string, input: { action: "send_demo" |
   if (current.channel.state === "draft") throw new WorldError("channel_not_sent", 409);
   const text = input.text ?? `Подтверждаем получение заказа ${poId}.`;
   if (current.channel.state === "confirmed" && current.channel.reply_text !== text) throw new WorldError("already_confirmed", 409);
-  const result = await composeEvent({ kind: "supplier_reply", actor_id: current.order.supplier_id, po_id: poId, text, payload: { confirmation: true } });
+  const result = await composeEvent({ kind: "supplier_reply", actor_id: current.order.supplier_id, po_id: poId, text, payload: { po_id: poId, confirmation: true } });
   if (current.channel.state !== "confirmed") {
     withTx((d) => {
       d.prepare("UPDATE ledger_peer_record SET state = 'confirmed', payload = ?, version = version + 1, as_of = ? WHERE peer = 'supplier_channel' AND external_identity = ? AND state = 'sent'")

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { WorldLabel } from "@/components/labels";
 import styles from "../../peerPages.module.css";
 
 type Kind = "judge_message" | "in_transit_update" | "price_update";
@@ -26,7 +27,13 @@ export default function JudgeCompose({ code }: { code: string }) {
   async function submit(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setError(""); setResult(null);
     const qty = Number(number);
-    const payload = kind === "judge_message" ? { doc_no: `JUDGE-${code}`, qty, one_off: true } : kind === "in_transit_update" ? { delta_qty: qty } : { unit_cost: number, currency: "KZT" };
+    const now = new Date();
+    const priorMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 22, 12)).toISOString();
+    const payload = kind === "judge_message"
+      ? { action: "inject_sales_line", document_qty: qty, line: { code_1c: code, qty: number, doc_type: "Расходная накладная", at: priorMonth } }
+      : kind === "in_transit_update"
+        ? { action: "adjust_in_transit", code_1c: code, delta_qty: qty }
+        : { action: "update_unit_cost", code_1c: code, to: number, currency: "KZT" };
     try {
       const response = await fetch("/api/world/compose", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, actor_id: "judge", code_1c: code, text, payload }) });
       const body = await response.json();
@@ -44,6 +51,6 @@ export default function JudgeCompose({ code }: { code: string }) {
       {error && <p className={styles.error} role="alert">{error}</p>}
       {result && <p role="status">{result.replayed ? "Событие уже было добавлено" : "Событие добавлено"}: {result.id} · {result.state}</p>}
     </form>
-    <p className={styles.truth}>Симулятор мира — синтетическое событие. external: local_simulator.</p>
+    <p className={styles.truth}><WorldLabel /> Событие останется в локальном симуляторе.</p>
   </>;
 }
