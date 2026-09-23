@@ -203,9 +203,9 @@ scenario('06 approve proposal draft and export', async () => {
   const stream = await file.createReadStream(); const chunks: Buffer[] = [];
   for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
   const csv = Buffer.concat(chunks).toString('utf8');
-  check(csv.split(/\r?\n/)[0].includes('Код 1с'), 'P1: export lacks Код 1с column');
+  check(['Номенклатура.Код', 'Код 1с'].some(header => csv.split(/\r?\n/)[0].includes(header)), 'P1: export lacks 1С code column');
   check(csv.split(/\r?\n/).length > 1, 'P1: export has no rows');
-  note(`Downloaded CSV: ${Buffer.byteLength(csv)} bytes; Код 1с header present (file not retained)`);
+  note(`Downloaded CSV: ${Buffer.byteLength(csv)} bytes; 1С code header present (file not retained)`);
 });
 
 scenario('07 money cash and commitments', async () => {

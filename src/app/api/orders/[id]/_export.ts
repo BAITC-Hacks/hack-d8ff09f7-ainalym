@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { db } from "@/db/client";
 import { deliverOrder } from "@/peers/deliver";
+import { exportDownloadDisposition } from "@/peers/onec_export";
 
 export async function exportResponse(id: string, format: "csv" | "xlsx"): Promise<Response> {
   const result = await deliverOrder(id);
@@ -21,7 +22,7 @@ export async function exportResponse(id: string, format: "csv" | "xlsx"): Promis
     return new Response(new Uint8Array(data), {
       headers: {
         "content-type": format === "csv" ? "text/csv; charset=utf-8" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "content-disposition": `attachment; filename="${encodeURIComponent(id)}.${format}"`,
+        "content-disposition": exportDownloadDisposition(id, format),
         "cache-control": "no-store",
       },
     });
