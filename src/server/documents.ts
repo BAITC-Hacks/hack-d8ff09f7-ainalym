@@ -66,6 +66,7 @@ export function routeForSupplier(supplier_id: string): { route: SupplyRoute; rou
   const supplier = db().prepare("SELECT route FROM supplier WHERE id=?").get(supplier_id) as { route: string | null } | undefined;
   if (!supplier) return null;
   if (["domestic", "eaeu", "import"].includes(supplier.route || "")) return { route: supplier.route as SupplyRoute, route_note_ru: null };
+  if (supplier_id !== "IEK" && supplier_id !== "SE") return null;
   return { route: "eaeu", route_note_ru: "маршрут задан по умолчанию, уточните у менеджера" };
 }
 export function packageForOrder(po_id: string) {
@@ -73,7 +74,8 @@ export function packageForOrder(po_id: string) {
     FROM purchase_order p JOIN supplier s ON s.id=p.supplier_id LEFT JOIN organization o ON o.id=(SELECT id FROM organization LIMIT 1) WHERE p.id=?`).get(po_id) as
     { id: string; supplier_id: string; supplier_name: string; buyer_name: string | null } | undefined;
   if (!po) return null;
-  const routeInfo = routeForSupplier(po.supplier_id)!;
+  const routeInfo = routeForSupplier(po.supplier_id);
+  if (!routeInfo) throw new Error("supplier_route_required");
   const docs = documentsForOrder(po_id);
   const invoice = docs.find(doc => doc.kind === "invoice" && doc.extraction_mode !== "unavailable");
   const drafts = draftsForPackage(routeInfo.route, { ...po, lines: orderLines(po_id) }, invoice?.extracted as ExtractedDocument | undefined);

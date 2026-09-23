@@ -134,6 +134,7 @@ export function matchDocumentToOrder(doc: ExtractedDocument, poLines: OrderLine[
 export type DraftOrder = { id: string; supplier_name: string; buyer_name?: string | null; contract?: string | null; currency?: string | null; country_origin?: string | null; lines: OrderLine[] };
 function suggestHeading(name: string): string | null {
   // Four-digit headings are preliminary, never declaration-ready ten-digit codes.
+  // Source: EEC TN VED EAEU chapter 85, https://eec.eaeunion.org/comission/department/catr/ett/ru.2022/ru.85_2022_08.03.2026.pdf
   if (/(?:узо|автоматическ\S*\s+выключател\S*)/i.test(name)) return "8536";
   if (/кабел[ьи]/i.test(name)) return "8544";
   return null;

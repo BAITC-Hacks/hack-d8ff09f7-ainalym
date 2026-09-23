@@ -151,4 +151,13 @@ describe("document intake", () => {
     expect(response.status).toBe(409);
     expect((await response.json()).current_version).toBe(2);
   });
+
+  it("requires an explicit route for suppliers outside the two demo defaults", async () => {
+    resetInstance(); process.env.DATABASE_PATH = ":memory:";
+    db().prepare("INSERT INTO supplier(id,name,lead_time_days) VALUES ('OTHER','Другой поставщик',30)").run();
+    db().prepare("INSERT INTO purchase_order(id,supplier_id) VALUES ('PO-OTHER','OTHER')").run();
+    const response = await getPackage(new Request("http://localhost/api/orders/PO-OTHER/package"), { params: Promise.resolve({ id: "PO-OTHER" }) });
+    expect(response.status).toBe(422);
+    expect((await response.json()).code).toBe("supplier_route_required");
+  });
 });
