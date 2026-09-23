@@ -30,6 +30,9 @@ describe("worker with replenishment domains", () => {
     expect((db().prepare("SELECT COUNT(*) AS n FROM world_event WHERE state='processed'").get() as { n: number }).n).toBe(2);
     expect((db().prepare("SELECT COUNT(*) AS n FROM calc_run").get() as { n: number }).n).toBe(2);
     expect((db().prepare("SELECT COUNT(*) AS n FROM proposal WHERE kind='supplier_order'").get() as { n: number }).n).toBe(2);
+    expect((db().prepare("SELECT COUNT(*) AS n FROM agent_run WHERE trigger_type='world_event' AND state='done'").get() as { n: number }).n).toBe(2);
+    expect((db().prepare("SELECT COUNT(*) AS n FROM agent_action WHERE kind='recompute' AND world_event_id IS NOT NULL").get() as { n: number }).n).toBeGreaterThanOrEqual(2);
+    expect((db().prepare("SELECT COUNT(*) AS n FROM agent_action WHERE world_event_id IS NOT NULL").get() as { n: number }).n).toBeGreaterThan(2);
     expect((await tick()).processed).toBe(0);
     expect((db().prepare("SELECT COUNT(*) AS n FROM calc_run").get() as { n: number }).n).toBe(2);
   });
