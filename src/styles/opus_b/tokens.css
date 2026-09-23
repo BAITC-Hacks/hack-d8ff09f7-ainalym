@@ -1,0 +1,37 @@
+/* Opus B — warm, Ramp-like quiet density. Scoped to [data-ob]; global tokens untouched. */
+[data-ob] {
+  --ob-canvas: #ecebe5;
+  --ob-rail: #e1dfd7;
+  --ob-surface: #f5f4ef;
+  --ob-surface-2: #e5e3dc;
+  --ob-ink: #121210;
+  --ob-ink-2: #3b3a35;
+  --ob-muted: #6e6c65;
+  --ob-faint: #99968d;
+  --ob-line: #d7d4cb;
+  --ob-line-strong: #bdb9ae;
+  --ob-accent: #dfee2c;
+  --ob-accent-hover: #d3e21d;
+  --ob-accent-ink: #121210;
+  --ob-badge: #e3ef5b;
+  --ob-ok-bg: #dce8d4; --ob-ok: #2e6733;
+  --ob-warn-bg: #efe1c3; --ob-warn: #83540c;
+  --ob-bad-bg: #f0d6cc; --ob-bad: #a2351b;
+  --ob-alert-bg: #ecdccc; --ob-alert: #9a3d17;
+  --ob-plum: #6d5883; --ob-plum-fill: #dcd3e2;
+  --ob-sage: #6a876c; --ob-sage-fill: #d2dbcd;
+  --ob-bar: #8d9dcc; --ob-bar-soft: #cdd2e1; --ob-bar-hi: #5b72b5;
+  --ob-focus: #121210;
+  --ob-font: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ob-radius: 10px;
+  --ob-ease: cubic-bezier(.2, .8, .2, 1);
+  --ob-fast: 110ms;
+  font-family: var(--ob-font);
+  color: var(--ob-ink);
+  background: var(--ob-canvas);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+[data-ob] *:focus-visible { outline: 2px solid var(--ob-focus); outline-offset: 2px; border-radius: 6px; }
+[data-ob] ::selection { background: var(--ob-accent); color: var(--ob-ink); }
+@media (prefers-reduced-motion: reduce) { [data-ob] { --ob-fast: 0ms; } }

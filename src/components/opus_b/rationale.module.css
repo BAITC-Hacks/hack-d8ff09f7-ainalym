@@ -1,0 +1,52 @@
+.tape { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0; border: 1px solid var(--ob-line); border-radius: var(--ob-radius); background: var(--ob-surface); overflow: hidden; }
+.cell { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; min-width: 104px; flex: 1 1 104px; padding: 12px 14px 12px 26px; border-right: 1px solid var(--ob-line); }
+.cell:first-child { padding-left: 14px; }
+.cell:last-child { border-right: 0; }
+.op { position: absolute; left: 8px; top: 11px; font: 500 15px/1 var(--ob-font); color: var(--ob-faint); }
+.label { font-size: 12px; line-height: 1.25; color: var(--ob-muted); }
+.value { font: 600 19px/1.1 var(--ob-font); letter-spacing: -.02em; color: var(--ob-ink); }
+.unit { font-size: 12px; font-weight: 500; color: var(--ob-muted); margin-left: 3px; letter-spacing: 0; }
+.meta { font-size: 11.5px; color: var(--ob-faint); line-height: 1.25; }
+.negative .value { color: var(--ob-bad); }
+.final { background: var(--ob-ink); color: #f3f2ec; }
+.final .label, .final .meta, .final .op, .final .unit { color: #bfbdb4; }
+.final .value { color: var(--ob-accent); font-size: 22px; }
+
+/* receipt: the same arithmetic as a vertical list for narrow rails */
+.receipt { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--ob-line); }
+.rline { display: grid; grid-template-columns: 18px 1fr auto; align-items: baseline; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--ob-line); font-size: 13.5px; }
+.rline .op { position: static; font-size: 14px; }
+.rline .rlabel { color: var(--ob-ink-2); }
+.rline .rlabel small { display: block; font-size: 11.5px; color: var(--ob-faint); margin-top: 1px; }
+.rline .rvalue { font-weight: 600; letter-spacing: -.01em; }
+.rtotal { border-bottom: 0; padding-top: 12px; }
+.rtotal .rvalue { font-size: 20px; background: var(--ob-accent); padding: 2px 8px; border-radius: 4px; }
+.rneg .rvalue { color: var(--ob-bad); }
+
+.panels { display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 12px; }
+.panel { border: 1px solid var(--ob-line); border-radius: var(--ob-radius); padding: 12px 14px; background: color-mix(in srgb, var(--ob-surface) 60%, transparent); min-width: 0; }
+.panelTitle { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; font-size: 12.5px; font-weight: 600; color: var(--ob-ink-2); }
+.panelTitle span { font-weight: 500; color: var(--ob-muted); }
+.season { display: grid; grid-template-columns: repeat(12, 1fr); align-items: end; gap: 3px; height: 44px; }
+.sbar { border-radius: 2px 2px 0 0; background: var(--ob-bar-soft); min-height: 2px; }
+.sbarOn { background: var(--ob-plum); }
+.sletters { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; margin-top: 4px; font-size: 10.5px; color: var(--ob-faint); text-align: center; }
+.sletters .on { color: var(--ob-plum); font-weight: 600; }
+.docs { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.doc { display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; font-size: 13px; padding: 6px 8px; border-radius: 6px; background: var(--ob-alert-bg); color: var(--ob-alert); }
+.doc small { grid-column: 1 / -1; font-size: 11.5px; opacity: .85; }
+.docQty { font-weight: 600; text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.months { display: flex; flex-wrap: wrap; gap: 6px; }
+.month { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 6px; background: var(--ob-warn-bg); color: var(--ob-warn); font-size: 12.5px; font-weight: 500; }
+.none { font-size: 13px; color: var(--ob-muted); line-height: 1.4; margin: 0; }
+.note { margin: 8px 0 0; font-size: 12px; color: var(--ob-muted); line-height: 1.35; }
+.sources { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; color: var(--ob-muted); }
+.sources li { display: inline-flex; align-items: center; gap: 6px; }
+.sources b { color: var(--ob-ink-2); font-weight: 500; }
+.staleSrc { color: var(--ob-warn); }
+@media (max-width: 1100px) { .panels { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 760px) {
+  .panels { grid-template-columns: 1fr; }
+  .cell { flex: 1 1 45%; min-width: 0; border-bottom: 1px solid var(--ob-line); }
+  .final { flex-basis: 100%; }
+}

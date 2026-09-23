@@ -1,0 +1,16 @@
+today desktop: console errors 0
+today Tab order: a «Айналым» → a «Сегодня4» → a «Пополнение636» → a «Товар» → input[role=combobox] «» → button «Пересчитать» → a «Под риском дефицита636SKUзапаса меньше, чем срок поставки пл» → a «Ждёт вашего решения67,8 млн ₸SE 294 поз. · IEK 965 поз. · 1 » → button «Подготовить заказ»
+today ⌘K focus: input[role=combobox] «»
+today search ↓ Enter → /opus_b/skus/010300002_
+today phone: console errors 0
+today stale: real server 409 on approve(version 999) → «Данные обновились — обновите» shown, nothing approved
+today unavailable: shown (queue route intercepted)
+today empty: shown (queue route intercepted)
+today loading: skeleton captured while /api/today is delayed 4 s
+replenishment desktop: console errors 0
+replenishment keys: focus tr «Вентилятор с фильтром ВФИ 700 м3/час IP55 IEK270300293_0,4-2» → ↓ tr «Выключатель-разъединитель трехпозиционный ВРТ-63 2P 63А IEK2» → Enter opens rationale → Esc closes (tape cells left: 0), focus tr «Выключатель-разъединитель трехпозиционный ВРТ-63 2P 63А IEK2»
+replenishment phone: console errors 0
+replenishment adjust: real server 404 (route not on main) → «Правка на сервере пока недоступна — количество не изменено»
+sku desktop: console errors 0
+sku chart keys: «сен 2026: продано 157 шт, остаток на начало 18 шт.» → ← ← → «июл 2026: продано 228 шт, остаток на начало 226 шт.»
+sku phone: console errors 0
