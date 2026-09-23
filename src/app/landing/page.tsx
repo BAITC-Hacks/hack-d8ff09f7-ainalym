@@ -57,8 +57,8 @@ export default function LandingPage() {
             <div className={styles.reveal}>
               <p className={styles.eyebrow}>Операционная система импорта и закупок</p>
               <h1 id="hero-title" className={styles.heroTitle}>
-                Агенты ведут закупки и импорт.
-                <span className={styles.heroTitleSoft}>Вы принимаете решения.</span>
+                Автоматизация закупок
+                <span className={styles.heroTitleSoft}>и белого импорта</span>
               </h1>
               <p className={styles.heroLead}>
                 Ainalym считает потребность по продажам, остаткам и товару в пути. Вы видите причины каждой рекомендации и решаете, что закупать.

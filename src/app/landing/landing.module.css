@@ -271,3 +271,12 @@
   .page *, .page *::before, .page *::after { animation: none !important; transition: none !important; }
 }
 @media (max-width: 767px) { .shade { background: linear-gradient(180deg, rgba(7, 12, 20, 0.5) 0, rgba(7, 12, 20, 0) 112px), linear-gradient(0deg, rgba(7, 12, 20, 0.9) 0, rgba(7, 12, 20, 0.78) 50%, rgba(7, 12, 20, 0.3) 66%, rgba(7, 12, 20, 0) 78%); } }
+
+/* Header over the hero as in the owner reference prototype: transparent, white text, no hairline; compact white button */
+.nav { background: transparent; border-bottom: 0; color: #fff; }
+.navBrand { color: #fff; }
+.navLinks { gap: 28px; }
+.navLink { color: rgba(255, 255, 255, 0.86); font-weight: 500; font-size: 14px; line-height: 20px; padding: 8px 0; border-radius: 0; }
+.navLink:hover { color: #fff; background: transparent; }
+.navCta { background: #fff; color: var(--text); border: 0; border-radius: 6px; padding: 10px 16px; font-size: 14px; line-height: 20px; font-weight: 500; text-decoration: none; }
+.navCta:hover { background: #f1f1ee; color: var(--text); }
