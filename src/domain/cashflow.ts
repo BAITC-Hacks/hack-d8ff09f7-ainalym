@@ -1,9 +1,10 @@
 import Decimal from "decimal.js";
 import { db } from "../db/client";
+import { Money } from "./money";
 
 type Row = Record<string, unknown>;
 type MoneyRow = { amount: string; currency: string };
-const amount = (n: Decimal.Value) => new Decimal(n).toDecimalPlaces(2).toFixed(2);
+const amount = (n: Decimal.Value) => Money.of(new Decimal(n).toDecimalPlaces(2)).amount;
 
 export interface MoneyView {
   cash: MoneyRow[];
@@ -39,7 +40,7 @@ export async function moneyView(orgId: string, asOf = new Date()): Promise<Money
     const item = bySupplier.get(key) || { supplier_id, amount: new Decimal(0), currency, lines: 0, cost_known_lines: 0 };
     item.lines++;
     if (row.unit_cost !== null) {
-      item.amount = item.amount.plus(new Decimal(String(row.unit_cost)).times(Number(row.qty)));
+      item.amount = item.amount.plus(new Decimal(String(row.unit_cost)).times(String(row.qty)));
       item.cost_known_lines++;
     }
     bySupplier.set(key, item);

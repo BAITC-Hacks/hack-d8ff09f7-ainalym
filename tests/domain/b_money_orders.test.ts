@@ -153,6 +153,7 @@ describe("world events and SKU drilldown", () => {
   it("applies the judge one-off document payload", async () => {
     await applyWorldEvent(event("WE-J1", "judge_message", "SE-1", { action: "inject_sales_line", line: { code_1c: "SE-1", qty: "5000", at: "2026-08-22", doc_no: "JUDGE-DOC" } }));
     expect(one("SELECT doc_no,source FROM sales_line WHERE code_1c='SE-1'")).toMatchObject({ doc_no: "JUDGE-DOC", source: "judge" });
+    expect(one("SELECT state,rule FROM outlier_doc WHERE doc_no='JUDGE-DOC'")).toMatchObject({ state: "excluded", rule: "explicit_judge_oneoff" });
   });
   it("applies the judge in-transit increase as a delta", async () => {
     q("INSERT INTO in_transit(code_1c,po_ref,qty) VALUES ('SE-1','BASE','20')");
@@ -173,6 +174,8 @@ describe("world events and SKU drilldown", () => {
     expect(view).toMatchObject({ sku: { code_1c: "SE-1" }, series: expect.any(Array), in_transit: expect.any(Array), timeline: expect.any(Array) });
   });
   it("recomputes exactly the requested codes", async () => {
+    q("INSERT INTO sales_month(code_1c,ym,qty_file) VALUES ('SE-1','2026-08','10')");
+    q("INSERT INTO stock_month(code_1c,ym,opening_qty,known) VALUES ('SE-1','2026-08','5',1)");
     const r = await recomputeAffected(["SE-1"]);
     expect(r.affected_codes).toEqual(["SE-1"]);
     expect(r.affected_codes).not.toContain("IEK-1");

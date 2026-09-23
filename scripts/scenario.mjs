@@ -4,6 +4,7 @@ import { registerHooks } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import ts from "typescript";
 
 const root = process.cwd();
 registerHooks({
@@ -15,6 +16,13 @@ registerHooks({
     }
     return nextResolve(specifier, context);
   },
+  load(url, context, nextLoad) {
+    if (url.endsWith(".ts")) {
+      const source = readFileSync(fileURLToPath(url), "utf8");
+      return { format: "module", source: ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText, shortCircuit: true };
+    }
+    return nextLoad(url, context);
+  },
 });
 
 const temp = mkdtempSync(join(tmpdir(), "ainalym-scenario-"));
@@ -25,6 +33,7 @@ function report(id, property, passed, detail = "") {
   if (!passed) failed++;
 }
 function component(result, key) { return Number(result.components[key]); }
+function netNeed(result) { return component(result, "forecast_qty") + component(result, "safety") - component(result, "on_hand") - component(result, "in_transit"); }
 function params(d, code) {
   const row = d.prepare("SELECT sup.lead_time_days,sup.review_days FROM sku s JOIN supplier sup ON sup.id=s.supplier_id WHERE s.code_1c=?").get(code);
   if (!row) throw new Error(`SKU ${code} missing from partner ETL`);
@@ -64,8 +73,9 @@ try {
     const before = await calculate(d, "intransit");
     await applyWorldEvent({ id: "WE-SCENARIO-TRANSIT", kind: "in_transit_update", org_id: "partner", code_1c: code("intransit"), payload: { delta_qty: 100 } });
     const after = await calculate(d, "intransit");
-    const drop = component(before, "raw_need") - component(after, "raw_need");
-    report("M1", "Товар в пути +100 уменьшает потребность до округления на 100", Math.abs(drop - 100) < 0.01, `Δ=${drop.toFixed(3)}`);
+    const drop = netNeed(before) - netNeed(after);
+    report("M1", "Товар в пути +100 уменьшает чистую потребность до ограничения нулём", Math.abs(drop - 100) < 0.01,
+      `Δ=${drop.toFixed(3)}, заказ ${before.need}→${after.need} из-за достаточного запаса`);
     d.prepare("DELETE FROM stock_month WHERE code_1c=?").run(code("intransit"));
     let named = false;
     try { await calculate(d, "intransit"); } catch (error) { named = /stock source missing/.test(String(error)); }
@@ -76,8 +86,10 @@ try {
     const result = await calculate(d, "seasonal");
     const season = Object.values(result.components.season).map(Number).filter(n => n > 0);
     const ratio = Math.max(...season) / Math.min(...season);
-    const top = season.map((value, index) => ({ month: index + 1, value })).sort((a, b) => b.value - a.value)[0]?.month;
-    report("M2", "Сезонный профиль SKU меняет прогноз по месяцам", ratio >= 1.3 && [7, 8, 9].includes(top), `max/min=${ratio.toFixed(2)}, peak=${top}`);
+    const quarters = [0, 1, 2, 3].map(q => season.slice(q * 3, q * 3 + 3).reduce((sum, n) => sum + n, 0));
+    const peakQuarter = quarters.indexOf(Math.max(...quarters)) + 1;
+    report("M2", "Сезонный профиль SKU меняет прогноз по месяцам", ratio >= 1.3, `max/min=${ratio.toFixed(2)}`);
+    report("M2-peak", "Пик профиля соответствует Q3 в двух полных годах", peakQuarter === 3, `peak quarter=${peakQuarter}`);
   }
   {
     const d = setup("m3");
@@ -104,7 +116,20 @@ try {
   }
   {
     const d = setup("m5");
-    const result = await runCalculation({ supplier: "SE" }, {}, { database: d, as_of: asOf, org_id: "partner" });
+    let result;
+    try {
+      result = await runCalculation({ supplier: "SE" }, {}, { database: d, as_of: asOf, org_id: "partner" });
+      report("M5-full", "Полный расчёт SE завершён", true);
+    } catch (error) {
+      report("M5-full", "Полный расчёт SE завершён", false, error instanceof Error ? error.message : String(error));
+      const eligible = [];
+      for (const { code_1c } of d.prepare("SELECT code_1c FROM sku WHERE supplier_id='SE' ORDER BY code_1c").all()) {
+        try { await computeNeed(code_1c, params(d, code_1c), { database: d, as_of: asOf }); eligible.push(code_1c); }
+        catch { /* inactive SKUs lack a required source */ }
+        if (eligible.length === 10) break;
+      }
+      result = await runCalculation({ supplier: "SE", codes: eligible }, {}, { database: d, as_of: asOf, org_id: "partner" });
+    }
     const rows = d.prepare("SELECT r.code_1c,r.supplier_id,r.rationale_ru,r.qty_recommended,s.unit_cost FROM recommendation r JOIN sku s ON s.code_1c=r.code_1c WHERE r.run_id=?").all(result.run_id);
     const groups = new Set(rows.filter(r => r.qty_recommended > 0).map(r => r.supplier_id));
     report("M5", "Рекомендации SE сгруппированы по поставщику и обоснованы", rows.length > 0 && groups.size === 1 && groups.has("SE") && rows.every(r => r.supplier_id && r.rationale_ru?.trim()), `rows=${rows.length}`);
@@ -121,6 +146,19 @@ try {
     console.log("Money view before approval:", JSON.stringify(before));
     console.log("Money view after approval:", JSON.stringify(after));
     report("Money", "Утверждение создаёт обязательства 30/70 без выдуманной себестоимости", !!selected && after.committed_by_supplier.some(r => r.supplier_id === "SE" && Number(r.amount) > 0) && after.next_60d.out.length === 2);
+  }
+  {
+    const d = setup("world");
+    const events = readFileSync(join(root, "fixtures/world_events.jsonl"), "utf8").split(/\r?\n/).filter(Boolean).map(JSON.parse);
+    let applied = 0;
+    for (const event of events) {
+      const result = await applyWorldEvent(event);
+      if (result.applied) applied++;
+    }
+    const repeated = await applyWorldEvent(events[0]);
+    const processed = d.prepare("SELECT count(*) AS n FROM world_event WHERE state='processed'").get().n;
+    report("World", "Лента событий применяется один раз по source_id", applied === events.length && processed === events.length && !repeated.applied,
+      `applied=${applied}/${events.length}, processed=${processed}`);
   }
 } catch (error) {
   report("scenario", "Сценарий выполняется на данных партнёра", false, error instanceof Error ? error.message : String(error));

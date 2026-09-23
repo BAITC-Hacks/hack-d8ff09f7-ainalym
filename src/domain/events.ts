@@ -2,6 +2,7 @@ import Decimal from "decimal.js";
 import { db, bumpStateVersion, withTx } from "../db/client";
 import { startRun, recordAction, finishRun, type ActionInput } from "../server/ledger";
 import type { DatabaseSync } from "node:sqlite";
+import { Money } from "./money";
 
 export interface WorldEventRow { id: string; kind: string; org_id?: string; source_id?: string; code_1c?: string | null; payload: string | Record<string, unknown>; text?: string | null; at?: string | null; run_id?: string | null }
 export interface ApplyEventResult { applied: boolean; affected_codes: string[]; actions: ActionInput[]; escalations: ActionInput[]; reason?: string }
@@ -69,6 +70,11 @@ export async function applyWorldEvent(event: WorldEventRow): Promise<ApplyEventR
             const source = event.kind === "judge_message" ? "judge" : "world";
             tx.prepare("INSERT INTO sales_line(code_1c,doc_no,doc_type,at,warehouse,qty,source) VALUES (?,?,?,?,?,?,?)")
               .run(code, String(item.doc_no || event.id), String(item.doc_type || event.kind), at, item.warehouse ? String(item.warehouse) : null, asSignedQty(qty), source);
+            if (source === "judge" && (payload.action === "inject_sales_line" || /разов/i.test(event.text || ""))) {
+              tx.prepare("INSERT INTO outlier_doc(code_1c,doc_no,at,qty,rule,stat,decision,state) VALUES (?,?,?,?,?,?,?,?)")
+                .run(code, String(item.doc_no || event.id), at, asSignedQty(qty), "explicit_judge_oneoff",
+                  JSON.stringify({ world_event_id: event.id, source_id }), "owner", "excluded");
+            }
             const current = tx.prepare("SELECT qty_lines FROM sales_month WHERE code_1c=? AND ym=?").get(code, month(at)) as { qty_lines: string | null } | undefined;
             const next = new Decimal(current?.qty_lines || 0).plus(asSignedQty(qty)).toString();
             tx.prepare(`INSERT INTO sales_month(code_1c,ym,qty_lines) VALUES (?,?,?)
@@ -114,7 +120,7 @@ export async function applyWorldEvent(event: WorldEventRow): Promise<ApplyEventR
             requireSku(tx, code);
             const cost = new Decimal(String(item.unit_cost ?? item.price ?? item.to));
             if (!cost.isFinite() || cost.isNegative()) throw new Error("invalid_unit_cost");
-            tx.prepare("UPDATE sku SET unit_cost=?,version=version+1 WHERE code_1c=?").run(cost.toDecimalPlaces(2).toFixed(2), code);
+            tx.prepare("UPDATE sku SET unit_cost=?,version=version+1 WHERE code_1c=?").run(Money.of(cost.toDecimalPlaces(2)).amount, code);
             add("recompute", code, "Изменена себестоимость SKU");
           }
           break;
