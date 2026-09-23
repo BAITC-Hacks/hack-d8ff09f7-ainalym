@@ -12,6 +12,11 @@ if (!dbPath) throw new Error('--db requires a path');
 process.env.DATABASE_PATH = dbPath;
 mkdirSync(dirname(dbPath), { recursive: true });
 const d = new DatabaseSync(dbPath);
+for (const table of ['calc_run', 'proposal']) {
+  if (d.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table) &&
+      !d.prepare(`PRAGMA table_info(${table})`).all().some(row => row.name === 'org_id'))
+    d.exec(`ALTER TABLE ${table} ADD COLUMN org_id TEXT`);
+}
 d.exec(readFileSync(join(root, 'src/db/schema.sql'), 'utf8'));
 const skuColumns = new Set(d.prepare('PRAGMA table_info(sku)').all().map(row => row.name));
 for (const name of ['on_hand_qty','on_hand_as_of']) if (!skuColumns.has(name)) d.exec(`ALTER TABLE sku ADD COLUMN ${name} TEXT`);

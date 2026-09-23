@@ -6,22 +6,30 @@ import { moneyView } from "./cashflow";
 export { moneyView } from "./cashflow";
 export { skuView } from "./skus";
 
-type ProposalRow = { id: string; kind: string; subject_id: string | null; rationale_ru: string | null; sources: string; money_at_stake: string | null; created_at: string; payload: string };
+type ProposalRow = { id: string; kind: string; subject_id: string | null; rationale_ru: string | null; money_at_stake: string | null; created_at: string; lines_count: number; state: string; version: number };
 type TaskRow = { id: string; title: string; next_event_at: string | null; proposal_id: string | null; updated_at: string };
-export interface QueueItem { id: string; kind: "proposal" | "task"; title: string; why: string; sources: unknown[]; money_at_stake: unknown; options: { key: string; label: string; effect: string }[]; href: string; since: string }
+export interface QueueItem { id: string; kind: "proposal" | "task"; title: string; why: string; sources: unknown[]; money_at_stake: unknown; options: { key: string; label: string; effect: string }[]; href: string; since: string; supplier?: string | null; lines_count?: number; total?: unknown; state?: string; version?: number }
 
-export async function queueView(_orgId: string, database: DatabaseSync = db()): Promise<{ items: QueueItem[]; empty_reason?: string }> {
-  const proposals = database.prepare("SELECT id,kind,subject_id,rationale_ru,sources,money_at_stake,created_at,payload FROM proposal WHERE state='needs_review' ORDER BY created_at,id")
-    .all() as ProposalRow[];
+export async function queueView(orgId: string, database: DatabaseSync = db()): Promise<{ items: QueueItem[]; empty_reason?: string }> {
+  const proposals = database.prepare(`WITH ranked AS (
+    SELECT id,kind,subject_id,rationale_ru,money_at_stake,created_at,state,version,
+      CASE WHEN kind='supplier_order' THEN json_array_length(payload,'$.lines') ELSE 0 END AS lines_count,
+      ROW_NUMBER() OVER (PARTITION BY CASE WHEN kind='supplier_order' THEN subject_id ELSE id END ORDER BY created_at DESC,rowid DESC) AS rank
+    FROM proposal WHERE state='needs_review' AND (org_id=? OR org_id IS NULL))
+    SELECT id,kind,subject_id,rationale_ru,money_at_stake,created_at,state,version,lines_count
+    FROM ranked WHERE rank=1 ORDER BY created_at DESC LIMIT 100`).all(orgId) as ProposalRow[];
   const proposalIds = new Set(proposals.map((row) => row.id));
-  const tasks = database.prepare("SELECT id,title,next_event_at,proposal_id,updated_at FROM task WHERE state='needs_review' ORDER BY updated_at,id")
-    .all() as TaskRow[];
+  const tasks = database.prepare(`SELECT t.id,t.title,t.next_event_at,t.proposal_id,t.updated_at FROM task t
+    LEFT JOIN proposal p ON p.id=t.proposal_id
+    WHERE t.state='needs_review' AND (t.proposal_id IS NULL OR p.state='needs_review')
+    ORDER BY t.updated_at DESC,t.id DESC LIMIT 100`).all() as TaskRow[];
   const items: QueueItem[] = proposals.map((row) => {
-    const payload = JSON.parse(row.payload) as { lines?: unknown[] };
-    const title = row.kind === "supplier_order" ? `Заказ поставщику ${row.subject_id}: ${payload.lines?.length ?? 0} позиций` :
+    const title = row.kind === "supplier_order" ? `Заказ поставщику ${row.subject_id}: ${row.lines_count} позиций` :
       row.kind === "clarification" ? `Уточнить ожидание по задаче ${row.subject_id}` : `Проверить ${row.kind}`;
+    const total = row.money_at_stake ? JSON.parse(row.money_at_stake) : null;
     return { id: row.id, kind: "proposal", title, why: row.rationale_ru ?? "Требуется ваше решение",
-      sources: JSON.parse(row.sources), money_at_stake: row.money_at_stake ? JSON.parse(row.money_at_stake) : null,
+      sources: [`proposal:${row.id}`], money_at_stake: total, supplier: row.subject_id, lines_count: row.lines_count,
+      total, state: row.state, version: row.version,
       options: row.kind === "clarification" ? [
         { key: "approve", label: "Подготовить уточнение", effect: "Создаст одобренное внутреннее действие; отправка отдельно" },
         { key: "reject", label: "Перенести срок", effect: "Закроет предложение без отправки" },
@@ -30,15 +38,24 @@ export async function queueView(_orgId: string, database: DatabaseSync = db()): 
         { key: "reject", label: "Отклонить", effect: "Закроет предложение без заказа" },
       ], href: `/proposals/${row.id}`, since: row.created_at };
   });
-  for (const task of tasks) {
+  const seenGaps = new Set<string>();
+  const visibleTasks = tasks.filter(task => {
+    if (!task.title.startsWith("Проверить отсутствующие источники ")) return true;
+    const key = task.title.split(":", 1)[0];
+    if (seenGaps.has(key)) return false;
+    seenGaps.add(key);
+    return true;
+  });
+  const taskIds = visibleTasks.map(task => task.id);
+  const actionRows = taskIds.length ? database.prepare(`SELECT subject_ref,rationale_ru FROM agent_action
+    WHERE kind='escalation' AND subject_ref IN (${taskIds.map(() => "?").join(",")}) ORDER BY at DESC,rowid DESC`).all(...taskIds) as { subject_ref: string; rationale_ru: string | null }[] : [];
+  const actions = new Map<string, string | null>();
+  for (const action of actionRows) if (!actions.has(action.subject_ref)) actions.set(action.subject_ref, action.rationale_ru);
+  for (const task of visibleTasks) {
     if (task.proposal_id && proposalIds.has(task.proposal_id)) continue;
-    const linked = task.proposal_id ? database.prepare("SELECT state FROM proposal WHERE id=?").get(task.proposal_id) as { state: string } | undefined : undefined;
-    if (linked && linked.state !== "needs_review") continue;
-    const action = database.prepare("SELECT rationale_ru,sources FROM agent_action WHERE subject_ref=? AND kind='escalation' ORDER BY at DESC LIMIT 1")
-      .get(task.id) as { rationale_ru: string | null; sources: string } | undefined;
     items.push({ id: task.id, kind: "task", title: task.title,
-      why: action?.rationale_ru ?? (task.next_event_at ? `Следующее событие: ${task.next_event_at}` : task.title),
-      sources: action ? JSON.parse(action.sources) : [`task:${task.id}`], money_at_stake: null, options: [
+      why: actions.get(task.id) ?? (task.next_event_at ? `Следующее событие: ${task.next_event_at}` : task.title),
+      sources: [`task:${task.id}`], money_at_stake: null, options: [
         { key: "ready_to_handover", label: "Готово к передаче", effect: "Переведёт задачу в состояние готовности" },
         { key: "preparing", label: "Вернуть в работу", effect: "Вернёт задачу к подготовке" },
       ], href: `/tasks/${task.id}`, since: task.updated_at });
@@ -60,16 +77,22 @@ export async function todayView(orgId: string, database: DatabaseSync = db()): P
     if (!(error instanceof Error) || error.message !== "organization_not_found") throw error;
     money = { cash: [], committed_by_supplier: [], next_60d: { out: [] }, stock_value: null, risks: [], empty_reason: "organization_not_found" };
   }
-  const risks = database.prepare(`SELECT r.code_1c,s.name,r.urgency,r.components,sup.lead_time_days
-    FROM recommendation r JOIN sku s ON s.code_1c=r.code_1c JOIN supplier sup ON sup.id=s.supplier_id
-    WHERE r.id=(SELECT r2.id FROM recommendation r2 JOIN calc_run c2 ON c2.id=r2.run_id WHERE r2.code_1c=r.code_1c ORDER BY c2.finished_at DESC,r2.id DESC LIMIT 1)
-    AND r.urgency IN ('critical','soon') ORDER BY CASE r.urgency WHEN 'critical' THEN 0 ELSE 1 END,r.code_1c`) .all() as
-    { code_1c: string; name: string; urgency: string; components: string; lead_time_days: number }[];
-  const top = risks.slice(0, 5).map((row) => ({ code_1c: row.code_1c, name: row.name,
+  const risks = database.prepare(`WITH latest AS (
+      SELECT r.supplier_id,MAX(r.rowid) AS last_row FROM recommendation r
+      JOIN calc_run c ON c.id=r.run_id WHERE c.org_id=? OR c.org_id IS NULL GROUP BY r.supplier_id),
+    latest_run AS (SELECT r.supplier_id,r.run_id FROM latest l JOIN recommendation r ON r.rowid=l.last_row)
+    SELECT r.code_1c,s.name,r.urgency,r.components,sup.lead_time_days,COUNT(*) OVER () AS risk_count
+    FROM latest_run lr JOIN recommendation r ON r.run_id=lr.run_id AND r.supplier_id=lr.supplier_id
+    JOIN sku s ON s.code_1c=r.code_1c JOIN supplier sup ON sup.id=r.supplier_id
+    WHERE r.urgency IN ('critical','soon') AND r.qty_recommended>0
+    ORDER BY CASE r.urgency WHEN 'critical' THEN 0 ELSE 1 END,r.code_1c LIMIT 5`).all(orgId) as
+    { code_1c: string; name: string; urgency: string; components: string; lead_time_days: number; risk_count: number }[];
+  const riskCount = risks[0]?.risk_count ?? 0;
+  const top = risks.map((row) => ({ code_1c: row.code_1c, name: row.name,
     days_of_cover: (JSON.parse(row.components) as { days_of_cover?: number }).days_of_cover ?? null,
     lead_time_days: row.lead_time_days, urgency: row.urgency }));
-  const stats = database.prepare("SELECT SUM(CASE WHEN autonomy='auto' THEN 1 ELSE 0 END) AS auto,SUM(CASE WHEN autonomy='escalated' THEN 1 ELSE 0 END) AS needs_you FROM agent_action")
-    .get() as { auto: number | null; needs_you: number | null };
+  const stats = database.prepare("SELECT SUM(CASE WHEN autonomy='auto' THEN 1 ELSE 0 END) AS auto,SUM(CASE WHEN autonomy='escalated' THEN 1 ELSE 0 END) AS needs_you FROM agent_action WHERE org_id=?")
+    .get(orgId) as { auto: number | null; needs_you: number | null };
   const auto = stats.auto ?? 0;
   const needsYou = stats.needs_you ?? 0;
   const orders = database.prepare("SELECT id,supplier_id,state,total_cost,eta FROM purchase_order ORDER BY eta LIMIT 8")
@@ -79,9 +102,9 @@ export async function todayView(orgId: string, database: DatabaseSync = db()): P
   const background = database.prepare("SELECT id,summary_ru,at FROM agent_action WHERE autonomy='auto' ORDER BY at DESC LIMIT 5").all();
   const feedNext = database.prepare("SELECT id,kind,code_1c,at FROM world_event WHERE state='scripted' ORDER BY seq LIMIT 3").all();
   const decision = queue.items[0] ?? null;
-  const lead = decision ? `Нужно решение: ${decision.title}.` : risks.length ? `Под наблюдением ${risks.length} позиций с риском дефицита.` : "Новых решений нет; расчёт пополнения готов к запуску.";
+  const lead = decision ? `Нужно решение: ${decision.title}.` : riskCount ? `Под наблюдением ${riskCount} позиций с риском дефицита.` : "Новых решений нет; расчёт пополнения готов к запуску.";
   return { lead, decision, queue_count: queue.items.length,
-    pulse: { money, stockout_risk: { count: risks.length, top }, decisions: queue.items.length,
+    pulse: { money, stockout_risk: { count: riskCount, top }, decisions: queue.items.length,
       cash_committed: (money as { committed_by_supplier?: unknown }).committed_by_supplier ?? [],
       agents: { auto, needs_you: needsYou, ratio: auto + needsYou ? auto / (auto + needsYou) : 0 } },
     commitments: [
@@ -89,7 +112,7 @@ export async function todayView(orgId: string, database: DatabaseSync = db()): P
         amount: order.total_cost ? { amount: order.total_cost, currency: "KZT" } : null, owner: "Закупки", state: order.state })),
       ...runs.map((run) => ({ id: run.id, kind: "run", title: `Расчёт: ${run.recommended} рекомендаций`, next_event: run.finished_at,
         amount: null, owner: "Агент", state: "done" })),
-    ], background, feed_next: feedNext, ...(decision || risks.length || orders.length || runs.length ? {} : { empty_reason: "Нет расчётов и новых событий" }) };
+    ], background, feed_next: feedNext, ...(decision || riskCount || orders.length || runs.length ? {} : { empty_reason: "Нет расчётов и новых событий" }) };
 }
 
 export async function ordersView(_orgId: string, database: DatabaseSync = db()): Promise<{ orders: Record<string, unknown>[]; empty_reason?: string }> {
