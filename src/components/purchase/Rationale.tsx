@@ -2,7 +2,7 @@ import { number, type Components, type Recommendation } from "./types";
 import styles from "./workspace.module.css";
 
 export function NeedFormula({ components, qty }: { components: Components; qty: Recommendation["qty_recommended"] }) {
-  return <div className={styles.formula} aria-label="Расчёт потребности"><span>Прогноз <b>{number(components.forecast_qty)}</b></span><span>+ страховой запас <b>{number(components.safety)}</b></span><span>− остаток <b>{number(components.on_hand)}</b></span><span>− в пути <b>{number(components.in_transit)}</b></span><span>= <strong>{number(qty)} шт.</strong></span></div>;
+  return <div className={styles.formula} aria-label="Расчёт потребности"><span>Прогноз <b>{number(components.forecast_qty)}</b></span><span>+ страховой запас <b>{number(components.safety)}</b></span><span>− остаток <b>{number(components.on_hand)}</b></span><span>− в пути <b>{number(components.in_transit)}</b></span><span>− утверждённый заказ <b>{number(components.approved_order_qty ?? 0)}</b></span><span>= <strong>{number(qty)} шт.</strong></span></div>;
 }
 export function Rationale({ row }: { row: Recommendation }) {
   const c = row.components ?? {};
