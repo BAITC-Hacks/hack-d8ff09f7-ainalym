@@ -160,6 +160,15 @@ try {
       approveOrder("PO-SCENARIO", 1);
     }
     const after = await moneyView("partner", new Date(`${asOf}T00:00:00Z`));
+    if (selected) {
+      const po = d.prepare("SELECT total_qty,total_cost FROM purchase_order WHERE id='PO-SCENARIO'").get();
+      const installments = d.prepare("SELECT kind,amount FROM obligation WHERE po_id='PO-SCENARIO'").all();
+      const installment = (kind) => installments.find(row => row.kind === kind)?.amount ?? "not determined";
+      console.log("Economics (approved SE order, KZT):");
+      console.log("| Qty | Unit cost | Committed | Prepayment 30% | Balance 70% |");
+      console.log("|---:|---:|---:|---:|---:|");
+      console.log(`| ${po.total_qty} | ${selected.unit_cost} | ${po.total_cost ?? "not determined"} | ${installment("supplier_prepayment")} | ${installment("supplier_balance")} |`);
+    }
     console.log("Money view before approval:", JSON.stringify(before));
     console.log("Money view after approval:", JSON.stringify(after));
     report("Money", "Утверждение создаёт обязательства 30/70 без выдуманной себестоимости", !!selected && after.committed_by_supplier.some(r => r.supplier_id === "SE" && Number(r.amount) > 0) && after.next_60d.out.length === 2);
