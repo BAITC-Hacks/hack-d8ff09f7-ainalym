@@ -60,9 +60,9 @@ function versionsFor(subject_ref: string, context: Record<string, unknown>): Rec
   return versions;
 }
 
-function cacheKey(question_id: string, subject_ref: string, versions: Record<string, number>, rubric: string, model: string): string {
+function cacheKey(question_id: string, subject_ref: string, versions: Record<string, number>, evidence: unknown, rubric: string, model: string): string {
   const sorted = Object.fromEntries(Object.entries(versions).sort(([a], [b]) => a.localeCompare(b)));
-  return createHash("sha256").update(JSON.stringify({ question_id, subject_ref, versions: sorted, rubric, model })).digest("hex");
+  return createHash("sha256").update(JSON.stringify({ question_id, subject_ref, versions: sorted, evidence, rubric, model })).digest("hex");
 }
 
 function modelHint(provider: string): string | null {
@@ -96,7 +96,7 @@ export async function decide(question_id: string, subject_ref: string, context: 
   const hint = modelHint(selectedProvider());
   const missingRequired = question && (question.required_input_context ?? []).some(key => input[key] === undefined || input[key] === null || input[key] === "");
   if (hint && question && !missingRequired) {
-    const key = cacheKey(question_id, subject_ref, versions, rubric, hint);
+    const key = cacheKey(question_id, subject_ref, versions, input, rubric, hint);
     const row = db().prepare("SELECT * FROM decision_record WHERE cache_key = ? AND result_state = 'decided' ORDER BY at DESC LIMIT 1").get(key) as Record<string, unknown> | undefined;
     if (row) return fromRow(row);
   }
@@ -113,7 +113,7 @@ export async function decide(question_id: string, subject_ref: string, context: 
   if (JSON.stringify(current) !== JSON.stringify(versions) || stateVersion() !== startState) {
     result = { answer: null, distribution: {}, provider: result.provider, model_version: result.model_version, result_state: "insufficient", label: result.label };
   }
-  const key = cacheKey(question_id, subject_ref, versions, rubric, result.model_version);
+  const key = cacheKey(question_id, subject_ref, versions, input, rubric, result.model_version);
   const record: DecisionRecord = {
     ...result, id: `DR-${randomUUID()}`, question_id, subject_ref, evidence_versions: versions,
     rubric_version: rubric, mode, cache_key: key, at: new Date().toISOString(),

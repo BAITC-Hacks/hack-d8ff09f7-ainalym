@@ -9,7 +9,7 @@ import { transitionTask } from "./tasks";
 import { createTask } from "./tasks";
 
 export interface CalcScope { supplier?: string; category?: string; codes?: string[] }
-export interface CalcContext extends EngineContext { org_id?: string }
+export interface CalcContext extends EngineContext { org_id?: string; agent_run_id?: string; world_event_id?: string }
 export interface ApplyResult { proposals: Record<string, unknown>[]; tasks: Record<string, unknown>[]; affected: string[] }
 type Sku = { code_1c: string; supplier_id: string; name: string; unit_cost: string | null; moq: number };
 type Rec = { id: string; code_1c: string; supplier_id: string; qty_recommended: number; qty_adjusted: number | null; rationale_ru: string; proposal_id: string | null; unit_cost: string | null; name: string; components: string };
@@ -45,7 +45,7 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
     }
   }
   const id = `RUN-${randomUUID()}`;
-  const agentRunId = await startRun({ org_id: orgId, trigger_type: "calc_request", trigger_ref: id });
+  const agentRunId = ctx.agent_run_id ?? await startRun({ org_id: orgId, trigger_type: "calc_request", trigger_ref: id }, database);
   const startedAt = new Date().toISOString();
   const finishedAt = ctx.as_of && ctx.as_of > startedAt ? ctx.as_of : startedAt;
   inTx(database, () => {
@@ -62,13 +62,14 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
     bumpStateVersion(database);
   });
   for (const { sku, result } of computed) {
-    await recordAction(agentRunId, { kind: "recompute", subject_ref: sku.code_1c, code_1c: sku.code_1c,
+    await recordAction(agentRunId, { kind: "recompute", subject_ref: sku.code_1c, code_1c: sku.code_1c, world_event_id: ctx.world_event_id,
       summary_ru: `Пересчитана потребность ${sku.code_1c}: ${result.need} шт`, rationale_ru: result.rationale_ru,
-      sources: [`sku:${sku.code_1c}`, "sales_month", "sales_line", "stock_month", "in_transit"], autonomy: "auto", idempotency_key: `recompute:${id}:${sku.code_1c}` });
+      sources: [`sku:${sku.code_1c}`, "sales_month", "sales_line", "stock_month", "in_transit"], autonomy: "auto",
+      idempotency_key: ctx.world_event_id ? `worker:${ctx.world_event_id}:recompute:${sku.code_1c}` : `recompute:${id}:${sku.code_1c}` }, database);
     if ((result.components.outliers_excluded as unknown[]).length) await recordAction(agentRunId, {
       kind: "outlier_flagged", subject_ref: sku.code_1c, code_1c: sku.code_1c,
       summary_ru: `Исключены разовые документы по ${sku.code_1c}`, rationale_ru: result.rationale_ru,
-      sources: result.components.outliers_excluded as unknown[], autonomy: "auto", idempotency_key: `outlier:${id}:${sku.code_1c}` });
+      sources: result.components.outliers_excluded as unknown[], autonomy: "auto", idempotency_key: `outlier:${id}:${sku.code_1c}` }, database);
   }
   const applied = await applyRecommendations(id, { database, org_id: orgId });
   for (const supplierId of [...new Set(unresolved.map((row) => row.supplier_id))]) {
@@ -79,9 +80,9 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
     await recordAction(agentRunId, { kind: "escalation", subject_ref: task.id,
       summary_ru: `Требуются данные для ${gaps.length} SKU ${supplierId}`,
       rationale_ru: `${gaps.slice(0, 5).map((row) => `${row.code_1c}: ${row.reason}`).join("; ")}${gaps.length > 5 ? `; и ещё ${gaps.length - 5} SKU` : ""}`,
-      sources: gaps.map((row) => row.code_1c), autonomy: "escalated", result: "needs_owner", idempotency_key: `source-gap:${id}:${supplierId}` });
+      sources: gaps.map((row) => row.code_1c), autonomy: "escalated", result: "needs_owner", idempotency_key: `source-gap:${id}:${supplierId}` }, database);
   }
-  await finishRun(agentRunId, "done");
+  if (!ctx.agent_run_id) await finishRun(agentRunId, "done", database);
   return { run_id: id, skus: skus.length, recommended: computed.filter(({ result }) => result.need > 0).length, unresolved, ...applied };
 }
 
@@ -115,8 +116,8 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
       if (existing) proposals.push(existing);
       continue;
     }
-    const old = database.prepare("SELECT id,payload,sources FROM proposal WHERE kind='supplier_order' AND subject_id=? AND state='needs_review' ORDER BY created_at DESC LIMIT 1")
-      .get(supplierId) as { id: string; payload: string; sources: string } | undefined;
+    const old = database.prepare("SELECT id,payload,sources,version FROM proposal WHERE kind='supplier_order' AND subject_id=? AND state='needs_review' ORDER BY created_at DESC,rowid DESC LIMIT 1")
+      .get(supplierId) as { id: string; payload: string; sources: string; version: number } | undefined;
     const id = `PR-${randomUUID()}`;
     const taskId = `TK-${randomUUID()}`;
     const currentLines = rows.map((rec) => ({ recommendation_id: rec.id, code_1c: rec.code_1c, name: rec.name,
@@ -131,7 +132,7 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
         bumpStateVersion(database);
         if (run.agent_run_id) await recordAction(run.agent_run_id, { kind: "status_change", subject_ref: old.id,
           summary_ru: `Предложение ${old.id} устарело: потребность исчезла`, sources: [`proposal:${old.id}`, `run:${run_id}`],
-          autonomy: "auto", idempotency_key: `proposal:stale:${old.id}:${run_id}` });
+          autonomy: "auto", idempotency_key: `proposal:stale:${old.id}:${run_id}` }, database);
       }
       continue;
     }
@@ -140,11 +141,11 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
     const moneyAtStake = priced.length ? total.toJSON() : null;
     const rationale = `Заказ ${supplierId}: ${lines.length} позиций, ${lines.reduce((sum, line) => sum + line.qty, 0)} шт. ${priced.length === lines.length ? `Стоимость ${total.amount} KZT.` : `Стоимость известна для ${priced.length} из ${lines.length} позиций; неизвестные цены требуют проверки.`} Подтвердите точный состав и количество перед передачей.`;
     const sources = [...new Set([...rows.map((row) => `recommendation:${row.id}`), ...carried.map((line) => `recommendation:${line.recommendation_id}`)])];
-    const proposal = { id, kind: "supplier_order", subject_type: "supplier", subject_id: supplierId, subject_version: 1,
+    const proposal = { id, kind: "supplier_order", subject_type: "supplier", subject_id: supplierId, subject_version: old ? old.version + 1 : 1,
       payload: JSON.stringify({ run_id, supplier_id: supplierId, lines, cost_known_lines: priced.length }),
-      affects: JSON.stringify(rows.map((row) => row.code_1c)), supersedes_id: old?.id ?? null, state: "needs_review",
+      affects: JSON.stringify(lines.map(line => line.code_1c)), supersedes_id: old?.id ?? null, state: "needs_review",
       rationale_ru: rationale, sources: JSON.stringify(sources), money_at_stake: moneyAtStake ? JSON.stringify(moneyAtStake) : null,
-      version: 1, created_at: new Date().toISOString() };
+      version: old ? old.version + 1 : 1, created_at: new Date().toISOString() };
     inTx(database, () => {
       if (old) database.prepare("UPDATE proposal SET state='stale',version=version+1 WHERE id=? AND state='needs_review'").run(old.id);
       database.prepare(`INSERT INTO proposal (id,kind,subject_type,subject_id,subject_version,payload,affects,supersedes_id,state,rationale_ru,sources,money_at_stake,version,created_at)
@@ -160,13 +161,13 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
     if (run.agent_run_id) {
       if (old) await recordAction(run.agent_run_id, { kind: "status_change", subject_ref: old.id,
         summary_ru: `Предложение ${old.id} заменено новой версией ${id}`, sources: [`proposal:${old.id}`, `proposal:${id}`],
-        autonomy: "auto", idempotency_key: `proposal:stale:${old.id}:${run_id}` });
+        autonomy: "auto", idempotency_key: `proposal:stale:${old.id}:${run_id}` }, database);
       await recordAction(run.agent_run_id, { kind: "recommendation_prepared", subject_ref: supplierId,
         summary_ru: `Подготовлены рекомендации ${supplierId}: ${lines.length} позиций`, rationale_ru: rationale,
-        sources, autonomy: "auto", idempotency_key: `recommendation:${run_id}:${supplierId}` });
+        sources, autonomy: "auto", idempotency_key: `recommendation:${run_id}:${supplierId}` }, database);
       await recordAction(run.agent_run_id, { kind: "escalation", subject_ref: id,
         summary_ru: `Нужно решение по заказу ${supplierId}`, rationale_ru: rationale,
-        sources, autonomy: "escalated", result: "needs_owner", idempotency_key: `escalation:${id}` });
+        sources, autonomy: "escalated", result: "needs_owner", idempotency_key: `escalation:${id}` }, database);
     }
   }
   for (const rec of staleStock) {

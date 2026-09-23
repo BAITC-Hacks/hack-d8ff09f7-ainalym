@@ -2,13 +2,16 @@ import { randomUUID } from "node:crypto";
 import { db, bumpStateVersion, withTx } from "../db/client";
 import { applyWorldEvent } from "../domain/events";
 import { recomputeAffected as domainRecompute } from "../domain/recompute";
+import { computeNeed } from "../domain/engine";
+import { paramsForSupplier } from "../domain/params";
 import { startRun, recordAction, finishRun } from "../server/ledger";
 import { decide } from "./decisions";
 import { judgeOutlier, summarizeChanges } from "./interpret";
 
 export interface ProcessResult { run_id: string | null; actions: number; escalations: number; reason?: string }
 export interface TickResult { runs: string[]; processed: number }
-interface EventRow { id: string; org_id: string; seq: number | null; kind: string; code_1c: string | null; po_id: string | null; source_id: string; text: string | null; payload: string; at: string | null; state: string; run_id: string | null }
+interface EventRow { id: string; org_id: string; seq: number | null; kind: string; code_1c: string | null; po_id: string | null; source_id: string; text: string | null; payload: string; at: string | null; state: string; run_id: string | null; claimed_at: string | null; attempt: number; processing_stage: string; affected_codes: string }
+const CLAIM_TIMEOUT_MS = 5 * 60_000;
 const processing = new Map<string, Promise<ProcessResult>>();
 const ticking = new Map<string, Promise<TickResult>>();
 
@@ -43,7 +46,7 @@ async function recordDecision(runId: string, eventId: string, question: string, 
     summary_ru: `Решение ${question}: ${result.answer ?? result.result_state}`,
     rationale_ru: `provider=${result.provider}; model=${result.model_version}; state=${result.result_state}`,
     sources: [result.id, ...Object.keys(result.evidence_versions)], provider: result.provider, model_version: result.model_version,
-    autonomy: "auto", idempotency_key: `${eventId}:decision:${question}:${subject}`,
+    autonomy: "auto", idempotency_key: `worker:${eventId}:decision:${question}:${subject}`,
   });
   if (result.result_state === "provider_error") throw new Error(`provider_error:${question}`);
 }
@@ -55,7 +58,7 @@ async function proposeOutlierReview(row: EventRow, runId: string, subject: strin
       kind: "escalation", subject_ref: subject, world_event_id: row.id,
       summary_ru: `Пограничный документ ${subject} требует ручной проверки исходных данных`,
       sources: [row.id, decisionId], autonomy: "escalated", result: "needs_owner",
-      idempotency_key: `${row.id}:outlier_missing_inputs:${subject}`,
+      idempotency_key: `worker:${row.id}:outlier_missing_inputs:${subject}`,
     });
     return;
   }
@@ -78,7 +81,7 @@ async function proposeOutlierReview(row: EventRow, runId: string, subject: strin
     kind: "escalation", subject_ref: proposalId, world_event_id: row.id, code_1c: row.code_1c || undefined,
     summary_ru: `Требуется решение по разовому документу ${subject}`,
     sources: [row.id, decisionId, proposalId], autonomy: "escalated", result: "needs_owner",
-    idempotency_key: `${row.id}:outlier_review:${subject}`,
+    idempotency_key: `worker:${row.id}:outlier_review:${subject}`,
   });
 }
 
@@ -91,24 +94,31 @@ async function maybeSemanticDecisions(row: EventRow, payload: Record<string, unk
     await recordDecision(runId, row.id, "supplier_terms_hint", row.po_id || row.source_id, { text, org_id: row.org_id });
   }
   if (row.kind === "judge_message") {
-    const qty = Number(payload.document_qty ?? payload.qty);
-    const threshold = Number(payload.threshold);
-    if (Number.isFinite(qty) && Number.isFinite(threshold) && threshold > 0) {
+    const line = payload.line && typeof payload.line === "object" ? payload.line as Record<string, unknown> : {};
+    const qty = Number(line.qty ?? payload.document_qty ?? payload.qty);
+    if (line.qty !== undefined && payload.document_qty !== undefined && Number(line.qty) !== Number(payload.document_qty))
+      throw new Error("document_quantity_mismatch");
+    if (row.code_1c && Number.isFinite(qty) && qty > 0) {
+      const supplier = db().prepare("SELECT supplier_id FROM sku WHERE code_1c=?").get(row.code_1c) as { supplier_id: string } | undefined;
+      if (!supplier) throw new Error("outlier_sku_missing");
+      const stats = (await computeNeed(row.code_1c, paramsForSupplier(supplier.supplier_id))).components;
+      const threshold = Number(stats?.outlier_threshold);
+      if (!Number.isFinite(threshold) || threshold <= 0) throw new Error("outlier_statistics_unavailable");
       const judgment = await judgeOutlier({
-        qty, doc_no: payload.doc_no || row.source_id, code_1c: row.code_1c, text, org_id: row.org_id,
-      }, { threshold });
+        qty, doc_no: line.doc_no || payload.doc_no || row.source_id, code_1c: row.code_1c, text, org_id: row.org_id,
+      }, { threshold, median_month_qty: stats?.median_month_qty, p95_doc_qty: stats?.p95_doc_qty });
       await recordAction(runId, {
-        kind: "decision", subject_ref: String(payload.doc_no || row.source_id), world_event_id: row.id,
+        kind: "decision", subject_ref: String(line.doc_no || payload.doc_no || row.source_id), world_event_id: row.id,
         summary_ru: `Проверка разового заказа: ${judgment.answer ?? judgment.result_state}`,
         rationale_ru: `provider=${judgment.provider}; model=${judgment.model_version || "none"}`,
         sources: judgment.decision_record_id ? [judgment.decision_record_id] : [row.id],
         provider: judgment.provider, model_version: judgment.model_version,
-        idempotency_key: `${row.id}:decision:one_off_order`,
+        idempotency_key: `worker:${row.id}:decision:one_off_order`,
       });
       if (judgment.result_state === "provider_error") throw new Error("provider_error:one_off_order");
       if (judgment.decision_record_id) review = {
-        subject: String(payload.doc_no || row.source_id), answer: judgment.answer,
-        decisionId: judgment.decision_record_id, at: String(payload.at || row.at || ""),
+        subject: String(line.doc_no || payload.doc_no || row.source_id), answer: judgment.answer,
+        decisionId: judgment.decision_record_id, at: String(line.at || payload.at || row.at || ""),
       };
     }
   }
@@ -122,7 +132,7 @@ async function recomputeAffected(row: EventRow, codes: string[], runId: string):
   const unique = [...new Set(codes.filter(Boolean))];
   if (!unique.length) return null;
   const d = db();
-  const recomputed = await domainRecompute(unique);
+  const recomputed = await domainRecompute(unique, runId, row.id);
   if (recomputed.affected_codes.length !== unique.length) throw new Error("affected_sku_missing");
   const computed: { code: string; result: typeof recomputed.results[string] }[] = [];
   for (const code of recomputed.affected_codes) {
@@ -131,13 +141,7 @@ async function recomputeAffected(row: EventRow, codes: string[], runId: string):
     computed.push({ code, result });
   }
   const calcId = recomputed.run_id!;
-  for (const { code, result } of computed) {
-    await recordAction(runId, {
-      kind: "recompute", subject_ref: code, code_1c: code, world_event_id: row.id,
-      summary_ru: `Пересчитана потребность ${code}: ${result.need} шт`, rationale_ru: result.rationale_ru,
-      sources: [row.id, `sku:${code}`, "sales_month", "stock_month", "in_transit"],
-      idempotency_key: `${row.id}:recompute:${code}`,
-    });
+  for (const { code } of computed) {
     const sku = d.prepare("SELECT supplier_id,name,category FROM sku WHERE code_1c=?").get(code) as { supplier_id: string; name: string; category: string | null } | undefined;
     if (sku?.supplier_id === "IEK" && !sku.category) {
       await recordDecision(runId, row.id, "category_hint", code, { name: sku.name, org_id: row.org_id });
@@ -147,12 +151,12 @@ async function recomputeAffected(row: EventRow, codes: string[], runId: string):
     kind: "status_change", subject_ref: calcId, world_event_id: row.id,
     summary_ru: `Созданы предложения поставщикам: ${recomputed.proposal_ids.length}`,
     sources: recomputed.proposal_ids,
-    idempotency_key: `${row.id}:proposals`,
+    idempotency_key: `worker:${row.id}:proposals`,
   });
   const summary = await summarizeChanges(calcId);
   await recordAction(runId, {
     kind: "status_change", subject_ref: calcId, world_event_id: row.id, summary_ru: summary,
-    sources: [calcId], idempotency_key: `${row.id}:change_summary`,
+    sources: [calcId], idempotency_key: `worker:${row.id}:change_summary`,
   });
   return calcId;
 }
@@ -160,10 +164,13 @@ async function recomputeAffected(row: EventRow, codes: string[], runId: string):
 async function runEvent(id: string, orgId?: string): Promise<ProcessResult> {
   const row = db().prepare("SELECT * FROM world_event WHERE id=? AND (? IS NULL OR org_id=?)").get(id, orgId ?? null, orgId ?? null) as EventRow | undefined;
   if (!row) return { run_id: null, actions: 0, escalations: 0, reason: "world_event_not_found" };
-  if (row.state !== "pending" || row.run_id) return { run_id: row.run_id, actions: 0, escalations: 0, reason: `already_${row.state}` };
+  if (row.state !== "pending") return { run_id: row.run_id, actions: 0, escalations: 0, reason: `already_${row.state}` };
+  const staleBefore = new Date(Date.now() - CLAIM_TIMEOUT_MS).toISOString();
+  if (row.run_id && row.claimed_at && row.claimed_at > staleBefore) return { run_id: row.run_id, actions: 0, escalations: 0, reason: "already_claimed" };
   const runId = await startRun({ org_id: row.org_id, trigger_type: "world_event", trigger_ref: row.id });
   const claimed = withTx(tx => {
-    const result = tx.prepare("UPDATE world_event SET run_id=? WHERE id=? AND org_id=? AND state='pending' AND run_id IS NULL").run(runId, id, row.org_id);
+    const result = tx.prepare("UPDATE world_event SET run_id=?,claimed_at=?,attempt=attempt+1 WHERE id=? AND org_id=? AND state='pending' AND (run_id IS NULL OR claimed_at IS NULL OR claimed_at<=?)")
+      .run(runId, new Date().toISOString(), id, row.org_id, staleBefore);
     if (result.changes) bumpStateVersion(tx);
     return result;
   });
@@ -171,20 +178,22 @@ async function runEvent(id: string, orgId?: string): Promise<ProcessResult> {
     await finishRun(runId, "failed");
     return { run_id: null, actions: 0, escalations: 0, reason: "claimed_by_another_worker" };
   }
+  if (row.run_id && row.run_id !== runId) await finishRun(row.run_id, "failed");
   try {
     const payload = eventPayload(row);
     const review = await maybeSemanticDecisions(row, payload, runId);
-    const sourceRow = domainEvent(row, payload, runId);
-    const applied = await applyWorldEvent(sourceRow);
-    if (!applied.applied && applied.reason !== "replayed") throw new Error(applied.reason || "event_not_applied");
+    const applied = row.processing_stage === "applied"
+      ? { applied: true, affected_codes: JSON.parse(row.affected_codes) as string[] }
+      : await applyWorldEvent(domainEvent(row, payload, runId));
+    if (!applied.applied) throw new Error("reason" in applied ? applied.reason || "event_not_applied" : "event_not_applied");
     await recordAction(runId, {
       kind: "status_change", subject_ref: row.id, world_event_id: row.id,
-      summary_ru: `Событие ${row.kind} применено`, sources: [row.source_id], idempotency_key: `${row.id}:applied`,
+      summary_ru: `Событие ${row.kind} применено`, sources: [row.source_id], idempotency_key: `worker:${row.id}:applied`,
     });
     if (review) await proposeOutlierReview(row, runId, review.subject, review.answer, review.decisionId, review.at);
     await recomputeAffected(row, applied.affected_codes, runId);
     withTx(tx => {
-      tx.prepare("UPDATE world_event SET state='processed',run_id=?,processed_at=? WHERE id=?").run(runId, new Date().toISOString(), id);
+      tx.prepare("UPDATE world_event SET state='processed',processing_stage='finished',run_id=?,processed_at=? WHERE id=?").run(runId, new Date().toISOString(), id);
       bumpStateVersion(tx);
     });
     await finishRun(runId, "done");
@@ -195,10 +204,10 @@ async function runEvent(id: string, orgId?: string): Promise<ProcessResult> {
     await recordAction(runId, {
       kind: "escalation", subject_ref: row.id, world_event_id: row.id,
       summary_ru: `Событие требует проверки: ${reason}`, rationale_ru: reason,
-      sources: [row.source_id], autonomy: "escalated", result: "failed", idempotency_key: `${row.id}:failed`,
+      sources: [row.source_id], autonomy: "escalated", result: "failed", idempotency_key: `worker:${row.id}:failed`,
     });
     withTx(tx => {
-      tx.prepare("UPDATE world_event SET state='failed',run_id=?,processed_at=? WHERE id=?").run(runId, new Date().toISOString(), id);
+      tx.prepare("UPDATE world_event SET state='failed',processing_stage='finished',run_id=?,processed_at=? WHERE id=?").run(runId, new Date().toISOString(), id);
       bumpStateVersion(tx);
     });
     await finishRun(runId, "failed");
@@ -225,7 +234,7 @@ export async function runScheduledChecks(now: Date = new Date()): Promise<string
     const runId = await startRun({ org_id: org, trigger_type: "scheduled_check", trigger_ref: task.id });
     await recordAction(runId, {
       kind: "escalation", subject_ref: task.id, summary_ru: `Срок проверки: ${task.title}`,
-      sources: [task.id], autonomy: "escalated", result: "needs_owner", idempotency_key: `scheduled:${task.id}:${task.next_event_at}`,
+      sources: [task.id], autonomy: "escalated", result: "needs_owner", idempotency_key: `worker:scheduled:${task.id}:${task.next_event_at}`,
     });
     withTx(tx => {
       tx.prepare("UPDATE task SET next_event_at=NULL,updated_at=? WHERE id=?").run(now.toISOString(), task.id);
@@ -245,8 +254,8 @@ export function tick(orgId?: string): Promise<TickResult> {
     const runs: string[] = [];
     let processed = 0;
     while (true) {
-      const event = db().prepare("SELECT id FROM world_event WHERE state='pending' AND run_id IS NULL AND (? IS NULL OR org_id=?) ORDER BY seq,id LIMIT 1")
-        .get(orgId ?? null, orgId ?? null) as { id: string } | undefined;
+      const event = db().prepare("SELECT id FROM world_event WHERE state='pending' AND (run_id IS NULL OR claimed_at IS NULL OR claimed_at<=?) AND (? IS NULL OR org_id=?) ORDER BY seq,id LIMIT 1")
+        .get(new Date(Date.now() - CLAIM_TIMEOUT_MS).toISOString(), orgId ?? null, orgId ?? null) as { id: string } | undefined;
       if (!event) break;
       const result = await processEvent(event.id, orgId);
       if (result.run_id) runs.push(result.run_id);

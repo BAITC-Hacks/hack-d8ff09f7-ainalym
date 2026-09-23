@@ -184,6 +184,17 @@ describe("provider and decision guardrails", () => {
     expect(changedText.answer).toBe("cables");
   });
 
+  it("invalidates a decision when document quantity crosses the same threshold", async () => {
+    process.env.AI_PROVIDER = "rules";
+    const first = await decide("one_off_order", "DOC-CACHE", { document_qty: 80, threshold: 100, subject_versions: { "sales:DOC-CACHE": 1 } });
+    const changed = await decide("one_off_order", "DOC-CACHE", { document_qty: 120, threshold: 100, subject_versions: { "sales:DOC-CACHE": 1 } });
+    expect(first.answer).toBe("regular");
+    expect(changed.answer).toBe("one_off");
+    expect(changed.id).not.toBe(first.id);
+    expect(changed.cache_key).not.toBe(first.cache_key);
+    expect((await decide("one_off_order", "DOC-CACHE", { document_qty: 120, threshold: 100, subject_versions: { "sales:DOC-CACHE": 1 } })).id).toBe(changed.id);
+  });
+
   it("OpenAI preserves unknown and errors separately", async () => {
     process.env.OPENAI_API_KEY = "test-only-key";
     generated.mockResolvedValueOnce({ object: { answer: "unknown", distribution: { one_off: 0.1, regular: 0.1, unknown: 0.8 } }, response: { modelId: "test-model" } });

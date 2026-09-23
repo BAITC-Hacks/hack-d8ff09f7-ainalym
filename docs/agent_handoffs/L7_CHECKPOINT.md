@@ -1,6 +1,5 @@
-# L7 checkpoint — 08:56Z (main @ ad19258 merged)
-- done: README v1.3 (methodology + outlier algorithm rewritten from src/domain/engine.ts; §3 claims = TASK_MAP) · TASK_MAP @T+26 · clean_clone_check.sh (local clone of main: install OK, no paths/caches, check 41/2 → RED) · SUBMISSION_RU v1.
-- queue: 010, 020 in cofounder_queue/; 030–060 auto-release 09:15/09:30/09:45/09:58Z.
-- RED on main (for root): check failed=2 — cashflow.ts float-coercion guard; events recompute test "sales source missing for SE-1".
-- undone: routes calc/recommendations/export/queue/world, UI, voice → README/TASK_MAP; scenario.mjs; SUBMISSION refresh ≈T+190; remote clean clone ≈12:10Z; README final ≈12:40Z.
-- sha: `git log -1 lane/docs`
+# L7 checkpoint — 09:48Z (main @ 9bd8972 merged)
+- VERIFIED on a keyless clean clone of 9bd8972: README §7 steps (with DATABASE_PATH=./data/partner.db) → etl, check 203/0/3/0, scenario 10×PASS, dev; §8 API steps: calc SE → 300200745_ 126 → compose +100 → 24; approve SE proposal → PO → approve → export.xlsx 294 rows, 7 cols; supplier page «Черновик заказа — не отправлен»; money SE 67 449 839,07.
+- done: README v1.7 · TASK_MAP @09:48Z (27 rows) · clean_clone_check.sh (local PASS @ 9bd8972) · SUBMISSION_RU v1.
+- findings for root: export «Срочность» prints key "none" (not RU label) incl. a 57-unit line; after order approve GET /api/money next_60d.out = [] ; order total_cost null while money shows 67.4M; .env.example DATABASE_PATH mismatch (L1-FIX-1).
+- queue: done 001–060+; queued 070/080; drafts 100–140 drip every 20 min.

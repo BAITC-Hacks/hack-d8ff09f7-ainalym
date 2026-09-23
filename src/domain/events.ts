@@ -131,11 +131,18 @@ export async function applyWorldEvent(event: WorldEventRow): Promise<ApplyEventR
         default:
           throw new Error(`unsupported_world_event:${event.kind}`);
       }
-      tx.prepare("UPDATE world_event SET state='processed',run_id=?,processed_at=? WHERE id=?").run(run_id, new Date().toISOString(), prior?.id || event.id);
+      tx.prepare("UPDATE world_event SET processing_stage='applied',affected_codes=?,run_id=? WHERE id=?")
+        .run(JSON.stringify([...affected]), run_id, prior?.id || event.id);
       bumpStateVersion(tx);
     });
     for (const action of actions) await recordAction(run_id, action);
-    if (startedRun) await finishRun(run_id, "done");
+    if (startedRun) {
+      withTx(tx => {
+        tx.prepare("UPDATE world_event SET state='processed',processed_at=? WHERE id=?").run(new Date().toISOString(), prior?.id || event.id);
+        bumpStateVersion(tx);
+      });
+      await finishRun(run_id, "done");
+    }
     return { applied: true, affected_codes: [...affected], actions, escalations };
   } catch (error) {
     if (startedRun) await finishRun(run_id, "failed");

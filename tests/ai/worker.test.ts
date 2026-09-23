@@ -21,6 +21,12 @@ beforeAll(() => {
   resetInstance();
   db().prepare("INSERT INTO supplier(id,name,lead_time_days) VALUES ('SE','System Electric',50)").run();
   db().prepare("INSERT INTO sku(code_1c,supplier_id,name) VALUES ('SE-BORDER','SE','Выключатель')").run();
+  for (let month = 1; month <= 12; month++) {
+    const ym = `2024-${String(month).padStart(2, "0")}`;
+    db().prepare("INSERT INTO sales_month(code_1c,ym,qty_file) VALUES ('SE-BORDER',?,'30')").run(ym);
+    db().prepare("INSERT INTO sales_line(code_1c,doc_no,at,qty) VALUES ('SE-BORDER',?,?,'30')").run(`BORDER-${ym}`, `${ym}-15`);
+  }
+  db().prepare("INSERT INTO stock_month(code_1c,ym,opening_qty) VALUES ('SE-BORDER','2024-12','0')").run();
 });
 beforeEach(() => {
   db().exec("DELETE FROM world_event; DELETE FROM task; DELETE FROM proposal; DELETE FROM decision_record");
@@ -82,7 +88,7 @@ describe("world event worker", () => {
     try {
       db().prepare(`INSERT INTO world_event(id,org_id,seq,kind,code_1c,source_id,at,text,payload,state)
         VALUES ('WE-BORDER','OWN',1,'judge_message','SE-BORDER','BORDER','2025-01-15','Разовый заказ',?,'pending')`)
-        .run(JSON.stringify({ qty: 100, threshold: 100, doc_no: "DOC-BORDER", at: "2025-01-15" }));
+        .run(JSON.stringify({ qty: 100, threshold: 1, doc_no: "DOC-BORDER", at: "2025-01-15" }));
       const result = await processEvent("WE-BORDER");
       expect(result.reason).toBeUndefined();
       const proposal = db().prepare("SELECT kind,state,payload FROM proposal WHERE subject_id='DOC-BORDER'")
@@ -108,7 +114,7 @@ describe("world event worker", () => {
       const result = await processEvent("WE-PROVIDER-ERROR");
       expect(result.reason).toBe("provider_error:one_off_order");
       expect(mocks.apply).not.toHaveBeenCalled();
-      expect((db().prepare("SELECT COUNT(*) AS n FROM sales_line").get() as { n: number }).n).toBe(0);
+      expect((db().prepare("SELECT COUNT(*) AS n FROM sales_line WHERE doc_no='DOC-PROVIDER-ERROR'").get() as { n: number }).n).toBe(0);
       expect((db().prepare("SELECT state FROM world_event WHERE id='WE-PROVIDER-ERROR'").get() as { state: string }).state).toBe("failed");
     } finally {
       for (const [key, value] of Object.entries(previous)) if (value === undefined) delete process.env[key]; else process.env[key] = value;
