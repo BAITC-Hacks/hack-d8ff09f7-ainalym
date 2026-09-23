@@ -40,11 +40,11 @@ function domainEvent(row: EventRow, payload: Record<string, unknown>, runId: str
 }
 
 async function recordDecision(runId: string, eventId: string, question: string, subject: string, context: Record<string, unknown>): Promise<void> {
-  const result = await decide(question, subject, context);
+  const result = await decide(question, subject, context, { fallback_to_rules: true });
   await recordAction(runId, {
     kind: "decision", subject_ref: subject, world_event_id: eventId,
     summary_ru: `Решение ${question}: ${result.answer ?? result.result_state}`,
-    rationale_ru: `provider=${result.provider}; model=${result.model_version}; state=${result.result_state}`,
+    rationale_ru: result.provider === "rules" ? "Решение принято по установленным правилам." : "Решение принято по данным события.",
     sources: [result.id, ...Object.keys(result.evidence_versions)], provider: result.provider, model_version: result.model_version,
     autonomy: "auto", idempotency_key: `worker:${eventId}:decision:${question}:${subject}`,
   });
@@ -110,7 +110,7 @@ async function maybeSemanticDecisions(row: EventRow, payload: Record<string, unk
       await recordAction(runId, {
         kind: "decision", subject_ref: String(line.doc_no || payload.doc_no || row.source_id), world_event_id: row.id,
         summary_ru: `Проверка разового заказа: ${judgment.answer ?? judgment.result_state}`,
-        rationale_ru: `provider=${judgment.provider}; model=${judgment.model_version || "none"}`,
+        rationale_ru: judgment.provider === "rules" ? "Документ проверен по установленным правилам." : "Документ проверен по данным продаж.",
         sources: judgment.decision_record_id ? [judgment.decision_record_id] : [row.id],
         provider: judgment.provider, model_version: judgment.model_version,
         idempotency_key: `worker:${row.id}:decision:one_off_order`,

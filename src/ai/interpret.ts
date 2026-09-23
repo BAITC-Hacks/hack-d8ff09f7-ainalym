@@ -41,7 +41,7 @@ export async function judgeOutlier(doc: unknown, stats: unknown): Promise<Outlie
     median_month_qty: values.median_month_qty, p95_doc_qty: values.p95_doc_qty,
     code_1c: item.code_1c, doc_no: subject, org_id: item.org_id,
     subject_versions: values.subject_versions,
-  });
+  }, { fallback_to_rules: true });
   return {
     answer: record.answer === "one_off" || record.answer === "regular" ? record.answer : null,
     result_state: record.result_state, provider: record.provider, model_version: record.model_version,
@@ -59,11 +59,11 @@ export async function summarizeChanges(run_id: string): Promise<string> {
   const total = (id: string) => (d.prepare("SELECT COALESCE(SUM(qty_recommended),0) AS qty FROM recommendation WHERE run_id=?").get(id) as { qty: number }).qty;
   const before = total(previous.id);
   const after = total(run_id);
-  const judgment = await decide("change_summary", run_id, { previous: { qty: before }, current: { qty: after } });
+  const judgment = await decide("change_summary", run_id, { previous: { qty: before }, current: { qty: after } }, { fallback_to_rules: true });
   if (run.agent_run_id) await recordAction(run.agent_run_id, {
     kind: "decision", subject_ref: run_id,
     summary_ru: `Изменение расчёта: ${judgment.answer ?? judgment.result_state}`,
-    rationale_ru: `provider=${judgment.provider}; model=${judgment.model_version}; state=${judgment.result_state}`,
+    rationale_ru: judgment.provider === "rules" ? "Изменение проверено по установленным правилам." : "Изменение проверено по расчётам.",
     sources: [previous.id, run_id, judgment.id], provider: judgment.provider, model_version: judgment.model_version,
     idempotency_key: `change_summary:${run_id}`,
   });
