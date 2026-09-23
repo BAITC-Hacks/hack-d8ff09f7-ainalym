@@ -1,0 +1,45 @@
+/* «Заказы» — Fable v2 language: greige canvas, hairlines, one chartreuse accent. */
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) var(--v2-rail-w); gap: 48px; align-items: start; }
+.main { min-width: 0; display: grid; gap: 16px; }
+.rail { min-width: 0; display: grid; gap: 24px; position: sticky; top: calc(var(--v2-top-h) + 24px); }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.row { display: grid; gap: 14px; width: 100%; padding: 18px 20px; text-align: left; background: var(--v2-card); border: 1px solid var(--v2-line); border-radius: var(--v2-radius); box-shadow: var(--v2-shadow); color: inherit; font: inherit; cursor: pointer; transition: background var(--v2-fast) var(--v2-ease), border-color var(--v2-fast) var(--v2-ease); }
+.row:hover { background: var(--v2-well); }
+.row:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.row[aria-pressed="true"] { border-color: var(--v2-ink); }
+.top { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 16px; align-items: start; }
+.icon { width: 40px; height: 40px; border-radius: 50%; background: var(--v2-well); display: grid; place-items: center; color: var(--v2-ink-2); }
+.icon[data-tone="accent"] { background: var(--v2-accent); color: var(--v2-on-accent); }
+.title { margin: 0; font: 500 17px/24px var(--v2-font); letter-spacing: -0.01em; }
+.meta { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font: var(--v2-meta); color: var(--v2-muted); }
+.sum { text-align: right; display: grid; gap: 4px; justify-items: end; }
+.sum strong { font: 500 19px/24px var(--v2-font); letter-spacing: -0.02em; }
+.sum span { font: var(--v2-meta); color: var(--v2-muted); }
+.policy { font: var(--v2-caption); color: var(--v2-muted); }
+.stages { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.stages li { display: grid; gap: 6px; font: var(--v2-caption); color: var(--v2-muted); min-width: 0; }
+.stages li i { display: block; height: 4px; border-radius: 2px; background: var(--v2-line); }
+.stages li[data-state="done"] i { background: var(--v2-good-line); }
+.stages li[data-state="done"] { color: var(--v2-ink-2); }
+.stages li[data-state="current"] i { background: var(--v2-ink); }
+.stages li[data-state="current"] { color: var(--v2-ink); font-weight: 500; }
+.stages li[data-state="unknown"] i { background: repeating-linear-gradient(90deg, var(--v2-line-strong) 0 6px, transparent 6px 10px); }
+.stages li span, .stages li em { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stages li em { font-style: normal; font-weight: 400; color: var(--v2-muted); }
+.quote { margin: 0; padding: 12px 14px; border-left: 3px solid var(--v2-line-strong); background: var(--v2-well); border-radius: 0 var(--v2-radius-sm) var(--v2-radius-sm) 0; font: 400 14px/20px var(--v2-font); white-space: pre-wrap; word-break: break-word; }
+.facts { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font: 400 14px/20px var(--v2-font); }
+.facts li { display: flex; gap: 8px; align-items: flex-start; }
+.facts svg { flex: none; margin-top: 2px; color: var(--v2-muted); }
+.docs { list-style: none; margin: 0; padding: 0; }
+.docs li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--v2-line); font: 400 14px/20px var(--v2-font); }
+.docs li:first-child { border-top: 0; }
+.docs li small { grid-column: 1 / -1; font: var(--v2-meta); color: var(--v2-muted); }
+.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-top: 1px solid var(--v2-line); }
+.kv:first-child { border-top: 0; }
+.kv b { font: 400 15px/20px var(--v2-font); }
+.kv span { font: var(--v2-meta); color: var(--v2-muted); }
+.kv .num { font: 500 15px/20px var(--v2-font); color: var(--v2-ink); }
+.muted { font: var(--v2-meta); color: var(--v2-muted); }
+.link { font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 1100px) { .grid { grid-template-columns: minmax(0, 1fr); } .rail { position: static; } }
+@media (max-width: 767px) { .stages { grid-template-columns: repeat(3, minmax(0, 1fr)); } .top { grid-template-columns: 40px minmax(0, 1fr); } .sum { grid-column: 2; justify-items: start; text-align: left; } }

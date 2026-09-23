@@ -1,0 +1,54 @@
+/* Assistant dock — Linear-style side sheet on the Fable (v2) tokens: one accent, hairlines, tight rhythm, no page shift. */
+.navTrigger { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 40px; padding: 8px 12px; border: 0; border-radius: var(--v2-radius-sm); background: transparent; color: var(--v2-ink); font: 400 15px/20px var(--v2-font); cursor: pointer; text-align: left; transition: background var(--v2-fast) var(--v2-ease); }
+.navTrigger:hover { background: rgba(20,20,19,.06); }
+.navTrigger[aria-expanded="true"] { background: rgba(20,20,19,.09); font-weight: 500; }
+.navLabel { display: inline-flex; align-items: center; gap: 8px; }
+.navTrigger kbd { font: 500 11px/18px var(--v2-font); color: var(--v2-muted); padding: 0 5px; border: 1px solid var(--v2-line-strong); border-radius: 4px; }
+
+.sheet {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 440px; max-width: 100vw; z-index: 60;
+  display: flex; flex-direction: column; background: var(--v2-card); color: var(--v2-ink);
+  border-left: 1px solid var(--v2-line); box-shadow: var(--v2-shadow-pop);
+  font: var(--v2-body); font-variant-numeric: tabular-nums;
+  animation: slide var(--v2-fast) var(--v2-ease);
+  /* ResultCard is shared with the older shell; map its tokens onto the v2 palette so there is one palette. */
+  --line: var(--v2-line); --muted: var(--v2-muted); --ink: var(--v2-ink); --panel: var(--v2-card); --accent: var(--v2-ink);
+  --radius-control: var(--v2-radius-sm); --t-meta: var(--v2-meta); --t-caption: var(--v2-caption); --t-row-title: 500 14px/20px var(--v2-font);
+}
+.sheet a { color: var(--v2-ink); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--v2-line-strong); }
+.sheet a:hover { text-decoration-color: var(--v2-ink); }
+@keyframes slide { from { transform: translateX(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+.page { position: static; width: 100%; height: 100dvh; max-width: none; border: 0; box-shadow: none; animation: none; }
+
+.head { display: flex; align-items: center; gap: 8px; height: 52px; flex: none; padding: 0 10px 0 16px; border-bottom: 1px solid var(--v2-line); }
+.spark { color: var(--v2-ink-2); flex: none; }
+.title { margin: 0; font: 500 15px/20px var(--v2-font); white-space: nowrap; }
+.scope { font: var(--v2-caption); color: var(--v2-muted); padding: 3px 8px; border: 1px solid var(--v2-line); border-radius: 999px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.headActions { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+.iconBtn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; border: 0; border-radius: var(--v2-radius-sm); background: transparent; color: var(--v2-ink-2); font: 500 13px/18px var(--v2-font); cursor: pointer; white-space: nowrap; transition: background var(--v2-fast) var(--v2-ease); }
+.iconBtn:hover { background: rgba(20,20,19,.06); color: var(--v2-ink); }
+
+.body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.intro { margin: 0; color: var(--v2-ink-2); font: var(--v2-meta); }
+.status { margin: 0; color: var(--v2-muted); font: var(--v2-meta); }
+
+.foot { flex: none; border-top: 1px solid var(--v2-line); padding: 10px 12px 12px; display: grid; gap: 8px; background: var(--v2-card); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { height: 28px; padding: 0 10px; border: 1px solid var(--v2-line); border-radius: 999px; background: var(--v2-card); color: var(--v2-ink); font: 400 13px/26px var(--v2-font); cursor: pointer; white-space: nowrap; transition: background var(--v2-fast) var(--v2-ease), border-color var(--v2-fast) var(--v2-ease); }
+.chip:hover { border-color: var(--v2-line-strong); background: var(--v2-well); }
+.chip:disabled { opacity: .55; cursor: default; }
+.composer { display: flex; align-items: flex-end; gap: 8px; border: 1px solid var(--v2-line-strong); border-radius: var(--v2-radius-sm); background: var(--v2-card); padding: 5px 5px 5px 10px; transition: border-color var(--v2-fast) var(--v2-ease); }
+.composer:focus-within { border-color: var(--v2-ink); }
+.composer textarea { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; resize: none; font: var(--v2-body); color: var(--v2-ink); min-height: 22px; max-height: 120px; padding: 4px 0; }
+.composer textarea::placeholder { color: var(--v2-muted); }
+.send { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border: 0; border-radius: var(--v2-radius-sm); background: var(--v2-accent); color: var(--v2-on-accent); cursor: pointer; transition: background var(--v2-fast) var(--v2-ease); }
+.send:hover { background: var(--v2-accent-hover); }
+.send:disabled { background: var(--v2-well); color: var(--v2-muted); cursor: default; }
+.hint { display: flex; justify-content: space-between; align-items: center; font: var(--v2-caption); color: var(--v2-muted); }
+.linkBtn { border: 0; background: transparent; padding: 2px 4px; color: var(--v2-muted); font: var(--v2-caption); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; border-radius: 4px; }
+.linkBtn:hover { color: var(--v2-ink); }
+
+.navTrigger:focus-visible, .iconBtn:focus-visible, .chip:focus-visible, .send:focus-visible, .linkBtn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+@media (max-width: 767px) { .sheet { width: 100vw; border-left: 0; } .iconBtn, .chip { min-height: 36px; } }
+@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
