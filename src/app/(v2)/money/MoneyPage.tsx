@@ -49,12 +49,12 @@ export function MoneyPage() {
       <div className={styles.gapsHead}><h2 className={styles.gapsTitle}>Что заполнить, чтобы видеть деньги полностью</h2><p className={styles.gapsSub}>Всё, что уже известно, показано ниже. Не хватает {gaps.length === 1 ? "одного" : "двух"}:</p></div>
       <ul className={styles.gaps}>{gaps.map(g => <li key={g.id}><span className={styles.gapText}><b>{g.text}</b><span className={styles.meta}>{g.why}</span></span><Fill href={g.href}>{g.label ?? "Заполнить"}</Fill></li>)}</ul>
     </Card>}
-    <Kpis items={[
+    <div className={styles.hero}><Kpis items={[
       { label: "Деньги на счетах", value: cashKnown ? fmtMoneyShort(data.cash[0].amount, data.cash[0].currency) : <Fill href="/settings#opening_cash" />, meta: cashKnown ? fmtMoney(data.cash[0].amount, data.cash[0].currency) : "остаток не задан — ноль не подставляем", tone: cashKnown ? undefined : "warn" },
       { label: "Обязательства перед поставщиками", value: data.committed_by_supplier.length ? fmtMoneyShort(committedTotal, cur) : "нет", meta: data.committed_by_supplier.length ? `${data.committed_by_supplier.length} поставщик${data.committed_by_supplier.length === 1 ? "" : "а"} · ${fmtMoney(committedTotal, cur)}${unknownLines ? " · без строк без цены" : ""}` : "утверждённых заказов нет" },
       { label: "Выплаты в ближайшие 60 дней", value: outflows.length ? fmtMoneyShort(outTotal, cur) : "нет дат", meta: outflows.length ? `${outflows.length} платеж${outflows.length === 1 ? "" : "а"} · первый ${fmtDate(outflows[0].at)}` : "появятся после утверждения заказа" },
       { label: "Склад по себестоимости", value: data.stock_value ? fmtMoneyShort(data.stock_value.amount, data.stock_value.currency) : <Fill href="/settings#cost">Где взять</Fill>, meta: data.stock_value ? <>цена известна у {Math.round((data.stock_value.cost_known_share ?? 0) * 100)} % позиций{data.stock_value.cost_unknown_count ? <> · {fmtNum(data.stock_value.cost_unknown_count)} без цены · <Link href="/settings#cost">где взять</Link></> : null}</> : "остатки без цены", tone: data.stock_value && (data.stock_value.cost_known_share ?? 0) < 0.5 ? "warn" : undefined },
-    ]} />
+    ]} /></div>
     <div className={styles.grid}>
       <div className={styles.main}>
         <Section id="committed" title="Обязательства по поставщикам" count={data.committed_by_supplier.length} aside={<Truth>сумма заказа = количество × себестоимость по утверждённым заказам</Truth>}>
