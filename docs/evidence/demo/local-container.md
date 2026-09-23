@@ -8,6 +8,8 @@ Guard run on port 3101 with a synthetic test code supplied only as a runtime env
 
 Runtime rate check: 61 authenticated `/api/today` requests from one IP in one minute → 60 passed to the route, one returned HTTP 429. A clean temporary build with staged `output: "standalone"` produced `.next/standalone/server.js`; the tracked Next config stayed unchanged.
 
+Host release shape check: clean standalone build copied into a separate temporary release; `npm ci --include=dev`, `scripts/deploy/first_etl.sh`, and `node server.js` ran locally with no provider keys. `GET /api/health` → `{"ok":true,"mode":"offline","ai_provider":"rules","providers":{"jev":"missing","openai":"missing","voice":"missing"},"db":"ok","version":1,"demo_guard":"off","remaining_daily_budget":null}`; SQLite `sku 3909`. Temporary release was removed after the check. Caddy, SSH transfer, and VPS restart remain externally unverified.
+
 After the L9 merge, a fresh container initialized `/data/ainalym.db` with `npm run etl -- --db /data/ainalym.db` on first start. Direct volume queries: `supplier 2`, `sku 3909`, `sales_line 248915`, `sales_month 99634`, `stock_month 117282`, `in_transit 313`. Docker health `healthy`. `curl -sS -i http://localhost:3103/api/health` → `HTTP/1.1 200 OK`, body `{"ok":true,"mode":"offline","ai_provider":"rules","providers":{"jev":"missing","openai":"missing","voice":"missing"},"db":"ok","version":1,"demo_guard":"off","remaining_daily_budget":null}`. No provider keys entered the container.
 
 Scenario gap: `POST /api/demo/example` → HTTP 404; `GET /api/today` → HTTP 404. L9 ETL and the L1 health route landed; the remaining L1 scenario routes have not. Rerun both after the next L1 floor.

@@ -21,10 +21,13 @@ awk -F= '
   /^[[:space:]]*(#|$)/ { next }
   {
     name=$1
+    value=substr($0, index($0, "=") + 1)
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+    present=(value != "" && value != "\"\"" && value != "\047\047")
     if (name !~ /^(DEMO_ACCESS_CODE|DEMO_DAILY_LIVE_CALLS|OPENAI_API_KEY|AI_GATEWAY_API_KEY|TYPESAFE_API_KEY|OPENAI_MODEL|AI_PROVIDER|AINALYM_FEED_AUTOPLAY)$/) bad=1
-    if (name == "DEMO_ACCESS_CODE" && length($2) > 0) access=1
-    if (name == "OPENAI_API_KEY" && length($2) > 0) openai=1
-    if (name == "AI_GATEWAY_API_KEY" && length($2) > 0) gateway=1
+    if (name == "DEMO_ACCESS_CODE" && present) access=1
+    if (name == "OPENAI_API_KEY" && present) openai=1
+    if (name == "AI_GATEWAY_API_KEY" && present) gateway=1
   }
   END { exit (bad || !access || !openai || !gateway) }
 ' "$AINALYM_DEPLOY_ENV_FILE" || { printf 'Deployment environment is missing required names or contains an unexpected name.\n' >&2; exit 2; }
