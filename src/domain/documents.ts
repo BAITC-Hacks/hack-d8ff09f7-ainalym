@@ -30,7 +30,7 @@ const packages: Record<SupplyRoute, PackageItem[]> = {
     item("packing_list", "Packing list", "transport", "supplier"), item("transport", "Транспортный документ (CMR / ж/д накладная / коносамент)", "transport", "carrier"),
     item("origin_certificate", "Сертификат происхождения", "import", "supplier"),
     item("tn_ved", "Коды ТН ВЭД ЕАЭС по строкам — предложение агента, проверка декларанта", "import", "agent_draft"),
-    item("dt_draft", "Декларация на товары (ДТ) через ИС «Кеден»", "import", "agent_draft"),
+    item("dt_draft", "Пакет для проверки и передачи таможенному представителю (оформление в «Кеден»)", "import", "agent_draft"),
     item("customs_payments", "Таможенные платежи (пошлина, НДС 12 %, сбор)", "import", "state_system"),
     item("conformity", "Сертификаты соответствия", "import", "supplier"), receipt,
   ],
