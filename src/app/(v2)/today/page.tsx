@@ -39,7 +39,7 @@ export default function TodayPage() {
       {t.loading && !d && <div className={`v2-priority-card ${styles.strip}`} aria-busy="true">{[0, 1, 2, 3].map(i => <div key={i} className={styles.tile}><Skeleton rows={2} height={i ? 14 : 30} /></div>)}</div>}
       {t.error && !d && <StateBlock kind={errorKind(t.error)} title={errorTitle(t.error)} detail={t.error.message} action={<Button onClick={t.reload}>Повторить</Button>} />}
       {d && <Pulse d={d} stale={!!t.error} />}
-      {m.data && <Outlook m={m.data} />}
+      {m.data && <Outlook m={m.data} d={d ?? null} />}
 
       <div className={styles.columns}>
         <section className={styles.decisions} aria-labelledby="dec-h">
@@ -85,70 +85,80 @@ export default function TodayPage() {
   );
 }
 
-/* ---------- 60-day money outlook: one glance at whether the cash covers the supplier payouts ---------- */
-const DAYS = 60, WEEKS = 9, W = 800, H = 200, PAD = { l: 8, r: 8, t: 14, b: 8 };
-const dayKey = (d: Date) => d.toISOString().slice(0, 10);
+/* ---------- Two rings: stock in money and whether the cash covers the 60-day supplier payouts ---------- */
+const DAYS = 60, R = 70, SW = 12, SIZE = 168, C = 2 * Math.PI * R;
 const shortDate = (d: Date) => d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" }).replace(".", "");
 
-function Outlook({ m }: { m: MoneyLite }) {
+function Ring({ segs, title, center, sub, tone }: { segs: { share: number; cls: string; label: string }[]; title: string; center: string; sub?: string; tone?: string }) {
+  let acc = 0;
+  return <svg className={styles.ring} viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={`${title}: ${center}${sub ? `, ${sub}` : ""}`}>
+    <circle cx={SIZE / 2} cy={SIZE / 2} r={R} className={styles.ringTrack} strokeWidth={SW} />
+    <g transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}>
+      {segs.map((sg, i) => { const len = Math.max(0, Math.min(1, sg.share)) * C; const off = acc; acc += len; return len > 0 && <circle key={i} cx={SIZE / 2} cy={SIZE / 2} r={R} className={`${styles.ringSeg} ${sg.cls}`} strokeWidth={SW} strokeDasharray={`${len} ${C - len}`} strokeDashoffset={-off}><title>{sg.label}</title></circle>; })}
+    </g>
+    <text x="50%" y={sub ? "47%" : "50%"} className={`${styles.ringCenter} ${tone ?? ""}`} textAnchor="middle" dominantBaseline="central">{center}</text>
+    {sub && <text x="50%" y="60%" className={styles.ringSub} textAnchor="middle" dominantBaseline="central">{sub}</text>}
+  </svg>;
+}
+
+function Outlook({ m, d }: { m: MoneyLite; d: Today | null }) {
   const model = useMemo(() => {
     const start = new Date(); start.setHours(0, 0, 0, 0);
     const cashKnown = m.cash.length > 0;
     const cash = cashKnown ? Number(m.cash[0].amount) : 0;
-    const cur = m.cash[0]?.currency ?? m.next_60d.out[0]?.currency ?? "KZT";
+    const cur = m.cash[0]?.currency ?? m.next_60d.out[0]?.currency ?? d?.pulse.money.stock_value?.currency ?? "KZT";
     const perDay = new Array<number>(DAYS + 1).fill(0);
     for (const o of m.next_60d.out) {
       const day = Math.round((new Date(o.at).setHours(0, 0, 0, 0) - start.getTime()) / 86400000);
       if (day > DAYS) continue;
       perDay[Math.max(0, day)] += Number(o.amount);
     }
-    const weeks = new Array<number>(WEEKS).fill(0);
-    perDay.forEach((v, i) => { weeks[Math.min(WEEKS - 1, Math.floor(i / 7))] += v; });
-    const balance: number[] = []; let acc = cash; let runsOutDay: number | null = null;
-    perDay.forEach((v, i) => { acc -= v; balance.push(acc); if (cashKnown && acc < 0 && runsOutDay === null) runsOutDay = i; });
+    let acc = cash; let runsOutDay: number | null = null;
+    perDay.forEach((v, i) => { acc -= v; if (cashKnown && acc < 0 && runsOutDay === null) runsOutDay = i; });
     const totalOut = perDay.reduce((a, b) => a + b, 0);
-    const peakWeek = weeks.reduce((best, v, i) => (v > weeks[best] ? i : best), 0);
-    const weekStart = (i: number) => new Date(start.getTime() + i * 7 * 86400000);
-    return { start, cashKnown, cash, cur, weeks, balance, runsOutDay, totalOut, peakWeek, weekStart, hasOut: totalOut > 0 };
-  }, [m]);
-  const { cashKnown, cash, cur, weeks, balance, runsOutDay, totalOut, peakWeek, weekStart, hasOut, start } = model;
+    const runsOut = runsOutDay === null ? null : new Date(start.getTime() + runsOutDay * 86400000);
+    return { cashKnown, cash, cur, totalOut, runsOut, shortfall: Math.max(0, totalOut - cash) };
+  }, [m, d]);
+  const { cashKnown, cash, cur, totalOut, runsOut, shortfall } = model;
   const money = (n: number) => fmtMoney({ amount: String(Math.round(n)), currency: cur }, true);
+  const sv = d?.pulse.money.stock_value ?? null;
+  const stock = sv ? Number(sv.amount) : 0;
+  const knownShare = sv ? Math.max(0, Math.min(1, sv.cost_known_share > 1 ? sv.cost_known_share / 100 : sv.cost_known_share)) : 0;
+  const riskCount = d?.pulse.stockout_risk.count ?? 0;
+  const covered = totalOut > 0 ? Math.max(0, Math.min(1, cash / totalOut)) : 1;
+  const coveredPct = Math.round(covered * 100);
+  const cashSub = !cashKnown ? "" : totalOut === 0 ? "выплат нет" : runsOut ? `до ${shortDate(runsOut)}` : "хватает";
+  const cap1 = !cashKnown ? "Остаток на счетах не задан — заполните его, и правое кольцо покажет, хватает ли денег." : totalOut === 0 ? `На счетах ${money(cash)} · выплат поставщикам в ближайшие 60 дней нет.` : runsOut ? `Денег хватает до ${shortDate(runsOut)}, дальше не хватает ${money(shortfall)} из ${money(totalOut)} выплат.` : `Денег ${money(cash)} хватает на все выплаты за 60 дней (${money(totalOut)}).`;
+  const cap2 = sv ? `Склад стоит ${money(stock)} по себестоимости · ${fmtInt(sv.cost_unknown_count)} позиций без цены не учтены · ${fmtInt(riskCount)} позиций под риском дефицита.` : "Задайте себестоимость в карточках товаров, и левое кольцо покажет, сколько денег лежит на складе.";
 
-  if (!cashKnown && !hasOut) {
-    return <section className={styles.outlook} aria-label="Деньги на 60 дней">
-      <div className={styles.outlookHead}><h2 className={styles.h3}>Деньги на 60 дней</h2></div>
-      <p className={styles.outlookEmpty}>Чтобы видеть, хватает ли денег на выплаты поставщикам, <Link href="/settings#opening_cash">заполните остаток на счетах в Настройках</Link>.</p>
-    </section>;
-  }
-
-  const top = Math.max(cashKnown ? cash : 0, ...weeks, 1);
-  const bottom = Math.min(0, ...(cashKnown ? balance : [0]));
-  const span = top - bottom || 1;
-  const y = (v: number) => PAD.t + ((top - v) / span) * (H - PAD.t - PAD.b);
-  const x = (day: number) => PAD.l + (day / DAYS) * (W - PAD.l - PAD.r);
-  const slot = (W - PAD.l - PAD.r) / WEEKS, barW = slot * 0.5;
-  const line = balance.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
-  const area = `${line} L${x(DAYS).toFixed(1)} ${y(0).toFixed(1)} L${x(0).toFixed(1)} ${y(0).toFixed(1)} Z`;
-  const runsOut = runsOutDay === null ? null : new Date(start.getTime() + runsOutDay * 86400000);
-  const endBalance = balance[DAYS];
-  const caption1 = !cashKnown ? "Остаток на счетах не задан — график показывает только выплаты" : !hasOut ? `На счетах ${money(cash)} · выплат поставщикам в ближайшие 60 дней нет` : runsOut ? `Денег на счетах хватает до ${shortDate(runsOut)} — дальше не хватает ${money(-endBalance)}` : `Денег на счетах хватает на все выплаты · останется ${money(endBalance)}`;
-  const caption2 = hasOut ? `Пик выплат: ${money(weeks[peakWeek])}, неделя ${shortDate(weekStart(peakWeek))} – ${shortDate(new Date(weekStart(peakWeek).getTime() + 6 * 86400000))} · всего ${money(totalOut)}` : "Утверждённые заказы поставят выплаты на календарь";
-
-  return <section className={styles.outlook} aria-label="Деньги на 60 дней">
-    <div className={styles.outlookHead}>
-      <div><h2 className={styles.h3}>Деньги на 60 дней</h2><p className={`${styles.outlookCap} ${runsOut ? styles.outlookWarn : ""}`}>{caption1}</p><p className={styles.outlookCap2}>{caption2}</p></div>
-      <Link href="/money" className={styles.more}>Деньги <ArrowRight size={13} aria-hidden="true" /></Link>
+  return <section className={styles.outlook} aria-label="Склад и деньги на 60 дней">
+    <div className={styles.outlookHead}><h2 className={styles.h3}>Склад и деньги на 60 дней</h2><Link href="/money" className={styles.more}>Деньги <ArrowRight size={13} aria-hidden="true" /></Link></div>
+    <div className={styles.rings}>
+      <div className={styles.ringCard}>
+        <p className={styles.ringTitle}>Склад в деньгах</p>
+        {sv ? <>
+          <Ring title="Склад в деньгах" center={money(stock)} sub="себестоимость" segs={[{ share: knownShare, cls: styles.segA, label: `Учтено по себестоимости: ${money(stock)}` }, { share: 1 - knownShare, cls: styles.segMuted, label: `Без цены: ${fmtInt(sv.cost_unknown_count)} позиций` }]} />
+          <ul className={styles.ringLegend}>
+            <li><i className={`${styles.dot} ${styles.dotA}`} />Учтено по себестоимости<b>{money(stock)}</b></li>
+            <li><i className={`${styles.dot} ${styles.dotMuted}`} />Позиций без цены<b>{fmtInt(sv.cost_unknown_count)}</b></li>
+            <li><i className={`${styles.dot} ${styles.dotWarn}`} /><Link href="/replenishment?urgency=critical">Под риском дефицита</Link><b>{fmtInt(riskCount)}</b></li>
+          </ul>
+        </> : <div className={styles.ringEmpty}><Link href="/settings">Заполните в Настройках</Link><span>себестоимость товаров</span></div>}
+      </div>
+      <div className={styles.ringCard}>
+        <p className={styles.ringTitle}>Деньги на 60 дней</p>
+        {cashKnown ? <>
+          <Ring title="Деньги на 60 дней" center={`${coveredPct} %`} sub={cashSub} tone={runsOut ? styles.ringWarnText : undefined} segs={[{ share: covered, cls: runsOut ? styles.segWarn : styles.segB, label: `Покрыто: ${money(Math.min(cash, totalOut))}` }, { share: 1 - covered, cls: styles.segMuted, label: `Не хватает: ${money(shortfall)}` }]} />
+          <ul className={styles.ringLegend}>
+            <li><i className={`${styles.dot} ${runsOut ? styles.dotWarn : styles.dotB}`} />На счетах сейчас<b>{money(cash)}</b></li>
+            <li><i className={`${styles.dot} ${styles.dotMuted}`} />Выплаты поставщикам<b>{money(totalOut)}</b></li>
+            <li className={runsOut ? styles.ringWarnText : ""}>{runsOut ? <>Не хватает<b>{money(shortfall)}</b></> : <>Останется<b>{money(cash - totalOut)}</b></>}</li>
+          </ul>
+        </> : <div className={styles.ringEmpty}><Link href="/settings#opening_cash">Заполните в Настройках</Link><span>остаток на счетах</span></div>}
+      </div>
     </div>
-    <svg className={styles.outlookSvg} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${caption1}. ${caption2}`}>
-      <line x1={PAD.l} x2={W - PAD.r} y1={y(0)} y2={y(0)} className={styles.zero} />
-      {weeks.map((v, i) => v > 0 && <rect key={i} x={x(i * 7) + slot / 2 - barW / 2} y={y(v)} width={barW} height={Math.max(2, y(0) - y(v))} rx={2} className={styles.payout}><title>{`Выплаты ${shortDate(weekStart(i))} – ${shortDate(new Date(weekStart(i).getTime() + 6 * 86400000))}: ${money(v)}`}</title></rect>)}
-      {cashKnown && <><path d={area} className={styles.cashArea} /><path d={line} className={styles.cashLine} /></>}
-      {cashKnown && <circle cx={x(0)} cy={y(cash)} r={3.5} className={styles.cashDot} />}
-      <line x1={x(0)} x2={x(0)} y1={PAD.t - 8} y2={H - PAD.b} className={styles.todayLine} />
-      {runsOutDay !== null && <line x1={x(runsOutDay)} x2={x(runsOutDay)} y1={PAD.t} y2={H - PAD.b} className={styles.runsOutLine} />}
-    </svg>
-    <div className={styles.outlookAxis} aria-hidden="true">{weeks.map((_, i) => <span key={i}>{i === 0 ? "сегодня" : shortDate(weekStart(i))}</span>)}</div>
-    <div className={styles.outlookLegend} aria-hidden="true">{cashKnown && <span><i className={styles.legLine} />остаток на счетах</span>}<span><i className={styles.legBar} />выплаты поставщикам за неделю</span>{cashKnown && <span className={styles.outlookLegVal}>сейчас {money(cash)}</span>}</div>
+    <p className={`${styles.outlookCap} ${runsOut ? styles.outlookWarn : ""}`}>{cap1}</p>
+    <p className={styles.outlookCap2}>{cap2}</p>
   </section>;
 }
 
