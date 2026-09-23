@@ -1,36 +1,44 @@
 "use client";
 import Link from "next/link";
+import { useState } from "react";
+import { AdjustForm, useAdjustmentAvailability } from "./AdjustForm";
+import { safeReturnPath } from "./navigation";
 import { ArrowLeft, ArrowRight, Database, FileSpreadsheet, Package, Sigma, Truck } from "lucide-react";
 import { useApi } from "@/components/shell/api";
 import type { TruthAxes } from "@/components/labels";
 import { clock, day, money, monthLong, qty } from "./format";
-import { ErrorState, Pill, Skel, State, Truth, UrgencyPill } from "./ui";
+import { ErrorState, ProductImage, Pill, Skel, State, Truth, UrgencyPill } from "./ui";
 import { Exclusions, Forecast, Receipt, type Components } from "./rationale";
 import { SalesChart, type SeriesPoint } from "./SalesChart";
 
-type Sku = { code_1c: string; supplier_id: string; supplier_name?: string; article: string | null; name: string; unit: string | null; category: string | null; unit_cost: string | null; moq: number; first_sale_ym: string | null; months_with_sales: number | null; on_hand_qty: string | null; on_hand_as_of: string | null; currency?: string };
+type Sku = { image_url?: string | null; code_1c: string; supplier_id: string; supplier_name?: string; article: string | null; name: string; unit: string | null; category: string | null; unit_cost: string | null; moq: number; first_sale_ym: string | null; months_with_sales: number | null; on_hand_qty: string | null; on_hand_as_of: string | null; currency?: string };
 type Rec = { id: string; qty_recommended: number; qty_adjusted: number | null; urgency: string; rationale_ru: string; components: Components; state: string; version: number };
 type Transit = { id: number; po_ref: string; qty: string; expected_at: string | null; source_file: string | null };
 type Timeline = { id: string; kind: string; summary_ru: string; autonomy: string; result: string; at: string };
-type SkuResp = TruthAxes & { sku: Sku; series: SeriesPoint[]; forecast?: { method_ru?: string | null; horizon_months?: number } | null; recommendation?: Rec | null; in_transit: Transit[]; timeline: Timeline[] };
+type Ekt = { price: string | number | null; currency: string; stock_total: string | number | null; as_of: string; source: string; url?: string };
+type SkuResp = TruthAxes & { ekt?: Ekt | null; sku: Sku; series: SeriesPoint[]; forecast?: { method_ru?: string | null; horizon_months?: number } | null; recommendation?: Rec | null; in_transit: Transit[]; timeline: Timeline[] };
 const REC_STATE: Record<string, string> = { proposed: "предложено агентом", adjusted: "изменено вами", approved: "утверждено", superseded: "заменено новым расчётом" };
 const base = (p: string | null) => p ? p.split("/").pop() : "—";
 
-export function SkuCard({ code }: { code: string }) {
+export function SkuCard({ code, from }: { code: string; from?: string }) {
+  const [editing, setEditing] = useState(false);
   const r = useApi<SkuResp>(`/api/skus/${encodeURIComponent(code)}`);
   const d = r.data; const s = d?.sku; const rec = d?.recommendation; const c = rec?.components ?? {};
+  const canAdjust = useAdjustmentAvailability(rec?.id);
   const transit = d?.in_transit ?? [];
   const transitSum = transit.reduce((a, t) => a + Number(t.qty), 0);
   const params = useApi<{ suppliers: { id: string; lead_time_days: number }[] }>("/api/params");
   const lead = params.data?.suppliers.find(p => p.id === s?.supplier_id)?.lead_time_days;
-  return <main className="oa-page" id="main">
+  const back = safeReturnPath(from, s ? `/opus_a/replenishment?supplier=${s.supplier_id}` : "/opus_a/replenishment");
+  if (r.error && !d) return <main className="oa-page" id="main"><Link className="oa-crumb" href={back}><ArrowLeft size={16} aria-hidden /> Назад к списку</Link><h1>Товар</h1>{r.error.status === 404 ? <State kind="unavailable" title="Товар не найден">Кода {code} нет в данных партнёра. Найдите товар через поиск ⌘K.</State> : <ErrorState error={r.error} onRetry={r.reload} />}</main>;
+  return <main className="oa-page oa-sku-page" id="main">
     <div className="oa-head">
       <div style={{ minWidth: 0 }}>
-        <div className="oa-crumb"><Link href={s ? `/opus_a/replenishment?supplier=${s.supplier_id}` : "/opus_a/replenishment"}><ArrowLeft size={16} aria-hidden style={{ verticalAlign: -2 }} /> Пополнение</Link>{s ? <span className="muted">/ {s.supplier_name ?? s.supplier_id}</span> : null}</div>
-        {s ? <h1 className="oa-long">{s.name}</h1> : r.loading ? <Skel w={520} h={44} style={{ marginTop: 10 }} /> : <h1>Товар</h1>}
+        <div className="oa-crumb"><Link href={back}><ArrowLeft size={16} aria-hidden style={{ verticalAlign: -2 }} /> {back.startsWith("/opus_a/today") ? "Сегодня" : "Пополнение"}</Link>{s ? <span className="muted">/ {s.supplier_name ?? s.supplier_id}</span> : null}</div>
+        {s ? <div className="oa-sku-title"><ProductImage src={s.image_url} /><h1 className="oa-long">{s.name}</h1></div> : r.loading ? <Skel w={520} h={44} style={{ marginTop: 10 }} /> : <h1>Товар</h1>}
         {s ? <div className="muted" style={{ font: "var(--oa-meta)", marginTop: 8 }}>Код 1С {s.code_1c}{s.article ? ` · артикул ${s.article}` : ""}{s.category ? ` · категория ${s.category}` : ""} · кратность {s.moq}</div> : null}
       </div>
-      {s ? <div className="oa-head-actions"><Link className="oa-btn oa-btn-primary" href={`/opus_a/replenishment?supplier=${s.supplier_id}`}>Изменить количество<ArrowRight size={16} aria-hidden /></Link></div> : null}
+      {s && rec && canAdjust === true && ["proposed", "adjusted"].includes(rec.state) ? <div className="oa-head-actions"><button className="oa-btn oa-btn-primary" onClick={() => { setEditing(true); requestAnimationFrame(() => document.getElementById("oa-rec")?.scrollIntoView({ block: "start" })); }}>Изменить количество<ArrowRight size={16} aria-hidden /></button></div> : null}
     </div>
     <Truth axes={d} />
     {r.error && !d ? (r.error.status === 404 ? <State kind="unavailable" title="Товар не найден">Кода {code} нет в данных партнёра. Найдите товар через поиск ⌘K.</State> : <ErrorState error={r.error} onRetry={r.reload} />) : null}
@@ -47,8 +55,8 @@ export function SkuCard({ code }: { code: string }) {
       </div>)}
     </section>
 
-    <div className="oa-cols">
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 28, minWidth: 0 }}>
+    <div className="oa-cols oa-sku-cols">
+      <div className="oa-sku-analysis" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 28, minWidth: 0 }}>
         <section style={{ display: "grid", gap: 14 }} aria-labelledby="oa-sales">
           <div className="oa-section-head"><h2 className="oa-h2" id="oa-sales">Продажи и прогноз <small>24 месяца, Алматы</small></h2>
             <div className="oa-legend"><span><i style={{ background: "#6f84c0" }} />продажи</span><span><i style={{ background: "repeating-linear-gradient(45deg,#f1e5c8 0 3px,#b07a12 3px 4px)" }} />разовый документ — исключён</span><span><i style={{ background: "#efe2d6", boxShadow: "inset 0 -3px 0 #c2432a" }} />нет остатка</span><span><i style={{ background: "transparent", borderTop: "2px dashed #5b3b58", height: 0, width: 16 }} />прогноз</span></div>
@@ -66,16 +74,19 @@ export function SkuCard({ code }: { code: string }) {
       </div>
 
       <aside className="oa-rightrail" aria-label="Рекомендация, поставки, источники">
-        <section className="oa-card" style={{ padding: 20, display: "grid", gap: 14 }} aria-labelledby="oa-rec">
+        <section className="oa-card oa-rec" style={{ padding: 20, display: "grid", gap: 14 }} aria-labelledby="oa-rec">
           <div className="oa-section-head"><h2 id="oa-rec" style={{ font: "500 19px/24px var(--oa-font)", margin: 0 }}>Рекомендация</h2>{rec ? <UrgencyPill urgency={rec.urgency} /> : null}</div>
           {!d && r.loading ? <Skel h={120} /> : null}
-          {d && !rec ? <State kind="empty" title="В последнем расчёте заказ не нужен">Запаса хватает на срок поставки, или товар не попал в расчёт.</State> : null}
+          {d && !rec ? <State kind="empty" title="Рекомендации нет">Товар не вошёл в рекомендации. Проверьте остаток и дату последнего расчёта в пополнении.</State> : null}
           {rec ? <>
             <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}><span className="oa-bigqty">{qty(rec.qty_adjusted ?? rec.qty_recommended)}</span><span className="muted">шт к заказу</span></div>
-            <div className="oa-chips"><Pill>{REC_STATE[rec.state] ?? rec.state}</Pill><Pill>v{rec.version}</Pill>{s?.unit_cost ? <Pill tone="ok">{money({ amount: s.unit_cost, currency: s.currency ?? "KZT" }, true)} за шт</Pill> : <Pill tone="warn">себестоимость не задана</Pill>}</div>
+            <div className="oa-chips"><Pill>{REC_STATE[rec.state] ?? rec.state}</Pill>{s?.unit_cost ? <Pill tone="ok">{money({ amount: s.unit_cost, currency: s.currency ?? "KZT" }, true)} за шт</Pill> : <Pill tone="warn">себестоимость не задана</Pill>}</div>
             <Receipt c={c} recommended={rec.qty_recommended} adjusted={rec.qty_adjusted} />
+            {canAdjust === false && rec && ["proposed", "adjusted"].includes(rec.state) ? <State kind="unavailable" title="Изменение количества пока недоступно">Сервис корректировки недоступен. Количество не изменено.</State> : null}
+            {editing && s ? <div onKeyDown={event => { if (event.key === "Escape") setEditing(false); }}><AdjustForm row={{ ...rec, code_1c: code, moq: s.moq }} onClose={() => setEditing(false)} /></div> : null}
           </> : null}
         </section>
+        {d?.ekt ? <section className="oa-rail-block oa-ekt" aria-labelledby="oa-ekt"><h2 id="oa-ekt">Каталог ЭКТ</h2><div className="oa-kv"><b>Цена поставщика</b><span className="num">{d.ekt.price === null ? "Не указана" : money({ amount: String(d.ekt.price), currency: d.ekt.currency }, true)}</span></div><div className="oa-kv"><b>Остаток у поставщика</b><span className="num">{qty(d.ekt.stock_total)} шт</span></div><p className="muted">{d.ekt.source === "ekt_api_live" ? "Каталог ЭКТ · текущий ответ" : "Каталог ЭКТ · сохранённый снимок"}<br /><time dateTime={d.ekt.as_of}>На {clock(d.ekt.as_of)}</time></p></section> : null}
         <section className="oa-rail-block" aria-labelledby="oa-transit">
           <h2 id="oa-transit">В пути</h2>
           {d && !transit.length ? <State kind="empty" title="Ничего не в пути">Открытых поставок по этому товару нет.</State> : null}

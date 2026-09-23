@@ -32,10 +32,17 @@ export function State({ kind, title, children, onRetry, retryLabel }: { kind: "e
     {onRetry ? <button type="button" className="oa-btn oa-btn-outline oa-btn-sm" onClick={onRetry}>{retryLabel ?? "Повторить"}</button> : null}
   </div>;
 }
-export const STALE_TITLE = "Данные обновились — обновите";
+export const STALE_TITLE = "Данные обновились";
 export type ApiErr = { status: number; code: string; message: string } | null;
 export function ErrorState({ error, onRetry }: { error: ApiErr; onRetry?: () => void }) {
   if (!error) return null;
   if (error.status === 409) return <State kind="stale" title={STALE_TITLE} onRetry={onRetry} retryLabel="Обновить">Кто-то изменил запись после того, как вы её открыли.</State>;
   return <State kind="unavailable" title={error.status === 0 ? "Нет связи — показываю последнее" : "Данные недоступны"} onRetry={onRetry}>{error.message}</State>;
+}
+
+/** Real partner image only; null and failed assets leave no decorative placeholder. */
+export function ProductImage({ src }: { src?: string | null }) {
+  if (!src) return null;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img className="oa-product-image" src={src} alt="" width={28} height={28} loading="lazy" onError={event => { event.currentTarget.hidden = true; }} />;
 }
