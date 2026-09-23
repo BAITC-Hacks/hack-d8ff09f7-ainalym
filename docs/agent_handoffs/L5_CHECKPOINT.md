@@ -1,5 +1,5 @@
 # L5 voice checkpoint
-done: session; WebRTC; four tools; typed fallback; note persistence; cursor-based what_changed; state refresh.
-undone: merge L1/L2/L3 services, real microphone round-trip, task-outlives-call gate.
-resumable: run `npm run check -- voice`; integrate calc route when main lands.
+done: session/WebRTC; typed fallback; notes; recommend_for now runs L2a engine and persists one proposal/task under replay.
+undone: L1 ledger, L2 views, L4 panel, real mic/UI gates; organization row absent from current ETL.
+resumable: merge main; `npm run check -- voice` (10 pass, 2 external) and `npm run build` green.
 sha: this checkpoint commit (`git rev-parse HEAD`).

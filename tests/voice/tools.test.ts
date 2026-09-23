@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { bumpStateVersion, db, resetInstance } from "../../src/db/client";
 import { executeVoiceTool } from "../../src/voice/tools";
+import { VoiceTurnGate } from "../../src/voice/transport";
 
 const priorPath = process.env.DATABASE_PATH;
 beforeEach(() => {
@@ -17,6 +18,15 @@ afterEach(() => {
 });
 
 describe("voice tool bridge", () => {
+  function seedDemand() {
+    db().prepare("INSERT INTO sku (code_1c, supplier_id, name, unit_cost, moq) VALUES (?, ?, ?, ?, ?)").run("CODE-1", "SE", "Деталь", "12.50", 5);
+    for (let index = 0; index < 12; index++) {
+      const ym = `${index < 4 ? 2025 : 2026}-${String(index < 4 ? index + 9 : index - 3).padStart(2, "0")}`;
+      db().prepare("INSERT INTO sales_month (code_1c, ym, qty_file) VALUES (?, ?, ?)").run("CODE-1", ym, "30");
+      db().prepare("INSERT INTO sales_line (code_1c, doc_no, at, qty) VALUES (?, ?, ?, ?)").run("CODE-1", `DOC-${ym}`, `${ym}-15`, "30");
+    }
+    db().prepare("INSERT INTO stock_month (code_1c, ym, opening_qty) VALUES (?, ?, ?)").run("CODE-1", "2026-08", "0");
+  }
   it("reads only confirmed ledger actions for a status question", async () => {
     db().prepare("INSERT INTO agent_action (id, run_id, org_id, kind, summary_ru, at) VALUES (?, ?, ?, ?, ?, ?)")
       .run("AR-1", "RUN-1", "ORG-1", "recommendation_prepared", "Расчёт сохранён", "2026-09-23T00:00:00Z");
@@ -34,18 +44,19 @@ describe("voice tool bridge", () => {
   });
 
   it("executes a duplicate transport delivery only once", async () => {
-    const fetcher = vi.fn().mockImplementation(async () => {
-      await new Promise(resolve => setTimeout(resolve, 30));
-      return Response.json({ ok: true, run_id: "RUN-1", recommended: 1 });
-    });
-    vi.stubGlobal("fetch", fetcher);
+    seedDemand();
     const call = { request_id: "call-duplicate", scope: { org_id: "ORG-1", supplier_id: "SE" }, args: { supplier_id: "SE" } };
     const [first, second] = await Promise.all([
       executeVoiceTool("recommend_for", call), executeVoiceTool("recommend_for", call),
     ]);
-    expect(fetcher).toHaveBeenCalledTimes(1);
-    expect(first.result).toMatchObject({ ok: true, run_id: "RUN-1" });
-    expect(second.result).toMatchObject({ ok: true, run_id: "RUN-1", replayed: true });
+    expect(first.result).toMatchObject({ ok: true, recommended: 1 });
+    expect(second.result).toMatchObject({ ok: true, run_id: first.result.run_id, replayed: true });
+    expect(db().prepare("SELECT COUNT(*) AS n FROM calc_run").get()).toEqual({ n: 1 });
+    expect(db().prepare("SELECT COUNT(*) AS n FROM proposal").get()).toEqual({ n: 1 });
+    expect(db().prepare("SELECT COUNT(*) AS n FROM task").get()).toEqual({ n: 1 });
+    const turn = new VoiceTurnGate();
+    turn.cancel(); // Same gate used by stop(); the durable review task is independent of the call.
+    expect(db().prepare("SELECT state FROM task LIMIT 1").get()).toEqual({ state: "needs_review" });
   });
 
   it("rejects a SKU outside the current supplier", async () => {

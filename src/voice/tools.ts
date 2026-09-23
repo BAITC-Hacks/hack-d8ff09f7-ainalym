@@ -1,6 +1,7 @@
 import { db, stateVersion } from "../db/client";
 import { queueView } from "../domain/views";
 import { skuView } from "../domain/skus";
+import { runCalculation } from "../domain/apply";
 
 export const toolNames = ["what_needs_me", "what_changed", "recommend_for", "explain_sku"] as const;
 export type ToolName = typeof toolNames[number];
@@ -45,7 +46,7 @@ function scopeError(scope: ToolScope, name: ToolName, args: Record<string, unkno
   return null;
 }
 
-async function run(name: ToolName, call: ToolCall, origin: string): Promise<{ status: number; result: ToolResult }> {
+async function run(name: ToolName, call: ToolCall): Promise<{ status: number; result: ToolResult }> {
   const d = db();
   const version = stateVersion(d);
   if (name === "what_needs_me") {
@@ -88,24 +89,18 @@ async function run(name: ToolName, call: ToolCall, origin: string): Promise<{ st
   if (typeof call.args.utterance === "string" && ambiguousQuantity(call.args.utterance)) return err("needs_clarification", "Уточните количество перед расчётом.", 422, version);
   if (supplier === undefined && category === undefined) return err("invalid", "Supplier or category is required", 400, version);
   if (category !== undefined && (typeof category !== "string" || !category.trim())) return err("invalid", "Invalid category", 400, version);
-  const routeScope = { ...(supplier ? { supplier } : {}), ...(category ? { category } : {}) };
-  let response: Response;
+  const routeScope = { ...(supplier ? { supplier: String(supplier) } : {}), ...(category ? { category: String(category) } : {}), ...(call.scope.code_1c ? { codes: [call.scope.code_1c] } : {}) };
+  let calculated: Awaited<ReturnType<typeof runCalculation>>;
   try {
-    response = await fetch(new URL("/api/calc/run", origin), {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scope: routeScope }), cache: "no-store",
-    });
+    calculated = await runCalculation(routeScope, {}, { org_id: call.scope.org_id });
   } catch {
-    return err("dependency_unavailable", "Calculation route is not ready", 503, version);
+    return err("dependency_unavailable", "Calculation could not complete", 503, version);
   }
-  let body: unknown;
-  try { body = await response.json(); } catch { return err("dependency_unavailable", "Calculation route returned no result", 503, version); }
-  if (!response.ok || !own(body) || typeof body.run_id !== "string") return err("dependency_unavailable", "Calculation did not confirm a run", 503, version);
-  const top = d.prepare("SELECT code_1c, qty_recommended AS qty, urgency FROM recommendation WHERE run_id = ? ORDER BY qty_recommended DESC LIMIT 5").all(body.run_id);
-  return { status: 200, result: { ok: true, run_id: body.run_id, recommended: body.recommended, top, state_version: stateVersion(d), labels } };
+  const top = d.prepare("SELECT code_1c, qty_recommended AS qty, urgency FROM recommendation WHERE run_id = ? ORDER BY qty_recommended DESC LIMIT 5").all(calculated.run_id);
+  return { status: 200, result: { ok: true, run_id: calculated.run_id, recommended: calculated.recommended, top, proposal_ids: calculated.proposals.map(row => row.id), task_ids: calculated.tasks.map(row => row.id), state_version: stateVersion(d), labels } };
 }
 
-export async function executeVoiceTool(name: string, raw: unknown, origin = "http://localhost"): Promise<{ status: number; result: ToolResult }> {
+export async function executeVoiceTool(name: string, raw: unknown): Promise<{ status: number; result: ToolResult }> {
   if (!toolNames.includes(name as ToolName)) return err("unknown_tool", "Unknown voice tool", 404);
   if (!own(raw) || typeof raw.request_id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(raw.request_id) || !own(raw.scope) || typeof raw.scope.org_id !== "string" || !raw.scope.org_id || !own(raw.args)) return err("invalid", "Invalid tool call", 400);
   const call = raw as unknown as ToolCall;
@@ -131,7 +126,7 @@ export async function executeVoiceTool(name: string, raw: unknown, origin = "htt
     return err("request_pending", "Original call is still in progress", 409);
   }
   let executed: { status: number; result: ToolResult };
-  try { executed = await run(name as ToolName, call, origin); }
+  try { executed = await run(name as ToolName, call); }
   catch { executed = err("tool_unavailable", "Tool execution failed", 503); }
   d.prepare("UPDATE voice_tool_call SET state = 'done', result_json = ? WHERE request_id = ?").run(JSON.stringify(executed), call.request_id);
   return executed;

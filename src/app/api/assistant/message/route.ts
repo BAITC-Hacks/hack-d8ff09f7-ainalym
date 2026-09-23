@@ -21,6 +21,6 @@ export async function POST(request: Request) {
   if (intent.tool === "clarify") {
     return Response.json({ ok: true, reply_ru: "Уточните, пожалуйста: изменения, очередь решений, расчёт по поставщику или объяснение товара?", labels: { ai: intentMode }, state_version: stateVersion() });
   }
-  const { status, result } = await executeVoiceTool(intent.tool, { request_id, scope, args: intent.args }, request.url);
+  const { status, result } = await executeVoiceTool(intent.tool, { request_id, scope, args: intent.args });
   return Response.json({ ok: result.ok, reply_ru: replyFromResult(intent.tool, result), tool: intent.tool, result, labels: { ...result.labels, intent: intentMode }, state_version: result.state_version }, { status });
 }

@@ -29,6 +29,7 @@ export function replyFromResult(tool: ToolName, result: ToolResult): string {
     return `Нужна ваша проверка: ${items.map(item => typeof item === "object" && item && "title" in item ? String(item.title) : "задача").join("; ")}.`;
   }
   if (tool === "explain_sku") return typeof result.rationale_ru === "string" && result.rationale_ru ? result.rationale_ru : "Обоснование для этого товара ещё не сохранено.";
+  if (result.recommended === 0) return `Расчёт ${String(result.run_id)} сохранён. Позиции для заказа не рекомендованы.`;
   return `Расчёт ${String(result.run_id)} сохранён. Рекомендации ждут проверки. Черновик заказа — не отправлен.`;
 }
 
