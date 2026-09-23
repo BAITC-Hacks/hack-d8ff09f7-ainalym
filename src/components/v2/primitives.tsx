@@ -32,11 +32,11 @@ export function Pill({ tone = "neutral", children }: { tone?: "ok" | "warn" | "d
 
 /** Truth labels — canonical RU strings (CONTRACTS §5). */
 export function TruthStrip({ ai, external, note }: { ai?: string; external?: string; note?: string }) {
-  const aiLabel = ai === "live" ? "Живой AI" : ai === "replay" ? "Воспроизведение · записанное решение" : ai === "unavailable" ? "Провайдер недоступен" : ai === "rules" ? "Правила без LLM" : null;
+  const aiLabel = ai === "live" ? "Живой AI" : ai === "replay" ? "Воспроизведение · записанное решение" : ai === "unavailable" ? "Провайдер недоступен" : ai === "rules" ? "Локальный режим" : null;
   return (
     <p className={styles.truth}>
       <span>Данные партнёра · обезличены</span>
-      {aiLabel && <span>{aiLabel}</span>}
+      {aiLabel && <span title={ai === "rules" ? "Правила без LLM" : undefined}>{aiLabel}</span>}
       {external === "export_only" && <span>Экспорт для 1С (файл)</span>}
       {note && <span>{note}</span>}
     </p>

@@ -36,7 +36,7 @@ export function MoneyPage() {
   return <>
     {error && <StaleBanner>Обновление не удалось — показываю последние известные данные.</StaleBanner>}
     <PageHead crumbs={[{ label: "Финансы" }]} title="Деньги" badges={<><Pill tone={cashKnown ? "good" : "warn"}>{cashKnown ? "касса задана" : "касса не задана"}</Pill><Pill tone={unknownLines ? "warn" : "good"}>{unknownLines ? `${fmtNum(unknownLines)} строк без себестоимости` : "себестоимость полная"}</Pill></>}
-      sub={<>Обязательства по утверждённым заказам · условия: предоплата 30 % при утверждении, остаток к ETA · {data.ai === "rules" ? "Правила без LLM" : data.ai}</>} />
+      sub={<>Обязательства по утверждённым заказам · условия: предоплата 30 % при утверждении, остаток к ETA · {data.ai === "rules" ? <span title="Правила без LLM">Локальный режим</span> : data.ai}</>} />
     <Kpis items={[
       { label: "Денежные средства", value: cashKnown ? fmtMoneyShort(data.cash[0].amount, data.cash[0].currency) : "не заданы", meta: cashKnown ? fmtMoney(data.cash[0].amount, data.cash[0].currency) : (openingRisk?.label_ru ?? "начальный остаток не передан") + " — ноль не подставляю", tone: cashKnown ? undefined : "warn" },
       { label: "Обязательства перед поставщиками", value: data.committed_by_supplier.length ? fmtMoneyShort(committedTotal, cur) : "нет", meta: data.committed_by_supplier.length ? `${data.committed_by_supplier.length} поставщик${data.committed_by_supplier.length === 1 ? "" : "а"} · ${fmtMoney(committedTotal, cur)}${unknownLines ? " · без учёта строк без цены" : ""}` : "утверждённых заказов нет" },

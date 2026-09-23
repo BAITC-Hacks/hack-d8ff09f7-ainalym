@@ -1,8 +1,9 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Coins, Database, FileSpreadsheet, Package, Sigma, SlidersHorizontal, Truck } from "lucide-react";
 import { ApiError, apiRequest, useApi, useApiSync } from "@/components/shell";
 import { Bars, type Month } from "@/components/v2/Bars";
-import { Btn, Card, Empty, Kpis, Loading, PageHead, Pill, Row, Rows, Section, StaleBanner, Truth, Unavailable, URGENCY, fmtDate, fmtMoney, fmtNum, fmtQty, fmtYm, useRowKeys } from "@/components/v2/ui";
+import { Btn, Card, Empty, Loading, PageHead, Pill, Row, Rows, Section, StaleBanner, Truth, Unavailable, URGENCY, fmtDate, fmtMoney, fmtNum, fmtQty, fmtYm, useRowKeys } from "@/components/v2/ui";
 import styles from "./sku.module.css";
 
 type Series = { ym: string; qty_file: string | null; qty_lines: string | null; qty_regular: string | null; stockout: number; stock: string | null; stock_known: boolean; outliers: unknown[] };
@@ -17,19 +18,23 @@ type Ekt = { url?: string | null; price?: string | number | null; currency?: str
 type SkuResponse = { ok: true; ai: string; sku: Sku & { image_url?: string | null }; series: Series[]; forecast?: Forecast | null; recommendation?: Rec | null; in_transit: Transit[]; timeline: Action[]; image_url?: string | null; ekt?: Ekt | null; state_version: number };
 
 const REC_STATE: Record<string, string> = { draft: "черновик", needs_review: "ждёт вас", proposed: "ждёт вас", approved: "утверждено", adjusted: "скорректировано", stale: "устарело — есть новая версия", rejected: "отклонено", delivered: "передано", delivery_failed: "ошибка передачи" };
+const RESULT: Record<string, string> = { ok: "выполнено", done: "выполнено", success: "выполнено", failed: "ошибка", error: "ошибка", skipped: "пропущено", pending: "в работе" };
+const CRUMB_BACK = { href: "/replenishment", label: "← Пополнение" };
+
 export function SkuCard({ code }: { code: string }) {
   const { data, error, loading, reload } = useApi<SkuResponse>(`/api/skus/${encodeURIComponent(code)}`);
   const rail = useRef<HTMLDivElement>(null);
   useRowKeys(rail);
-  if (loading && !data) return <><PageHead crumbs={[{ href: "/replenishment", label: "Пополнение" }, { label: code }]} title={<span className={styles.ghost}>Загружаю…</span>} /><Loading label="Загружаю карточку позиции…" /></>;
-  if (error && !data) return <><PageHead crumbs={[{ href: "/replenishment", label: "Пополнение" }, { label: code }]} title={error.status === 404 ? "Позиция не найдена" : "Карточка недоступна"} />
-    <Unavailable title={error.status === 404 ? `Код 1С «${code}» отсутствует в данных партнёра` : "Не удалось получить данные позиции"} detail={error.status === 404 ? "Проверьте код: девять цифр и подчёркивание, например 130300027_." : `${error.message} (${error.code})`} retry={reload} /></>;
+  if (loading && !data) return <><PageHead crumbs={[CRUMB_BACK, { label: code }]} title={<span className={styles.ghost}>Загружаю…</span>} /><Loading label="Загружаю карточку позиции…" /></>;
+  if (error && !data) return <><PageHead crumbs={[CRUMB_BACK, { label: code }]} title={error.status === 404 ? "Позиция не найдена" : "Карточка недоступна"} />
+    <Unavailable title={error.status === 404 ? `Код 1С «${code}» отсутствует в данных партнёра` : "Не удалось получить данные позиции"} detail={error.status === 404 ? "Проверьте код: девять цифр и подчёркивание, например 130300027_." : "Попробуйте обновить страницу через минуту — данные подтянутся сами."} retry={reload} /></>;
   if (!data) return null;
   return <SkuBody data={data} reload={reload} rail={rail} stale={!!error} />;
 }
 
 function SkuBody({ data, reload, rail, stale }: { data: SkuResponse; reload: () => void; rail: React.RefObject<HTMLDivElement | null>; stale: boolean }) {
   const { sku, series, forecast, recommendation: rec, in_transit, timeline } = data;
+  const [open, setOpen] = useState(false);
   const unit = sku.unit ?? "шт";
   const comp = rec?.components ?? {};
   const outliers = comp.outliers_excluded ?? [];
@@ -50,23 +55,31 @@ function SkuBody({ data, reload, rail, stale }: { data: SkuResponse; reload: () 
   const urgency = rec ? URGENCY[rec.urgency] ?? URGENCY.none : null;
   const qty = rec ? rec.qty_adjusted ?? rec.qty_recommended : null;
   const need = comp.forecast_qty !== undefined && comp.safety !== undefined ? comp.forecast_qty + comp.safety - Number(rec?.on_hand ?? 0) - Number(rec?.in_transit ?? 0) : null;
+  const transitTotal = in_transit.reduce((a, t) => a + Number(t.qty), 0);
+  const image = data.image_url ?? sku.image_url;
+  const canAdjust = !!rec && !open;
+  const jumpToAdjust = () => { setOpen(true); requestAnimationFrame(() => document.getElementById("rec")?.scrollIntoView({ block: "start", behavior: "smooth" })); };
   return <>
-    {stale && <StaleBanner>Обновление не удалось — показываю последние известные данные.</StaleBanner>}
-    <PageHead crumbs={[{ href: "/replenishment", label: "Пополнение" }, { label: sku.supplier_name ?? sku.supplier_id }, { label: sku.code_1c }]}
-      title={<span className={styles.titleRow}>{(data.image_url ?? sku.image_url) ? <img className={styles.productImage} src={(data.image_url ?? sku.image_url) as string} alt="" width={56} height={56} loading="lazy" /> : null}<span>{sku.name}</span></span>}
-      badges={<>{urgency && <Pill tone={urgency.tone}>{urgency.label}</Pill>}<Pill>{sku.supplier_name ?? sku.supplier_id}</Pill></>}
+    {stale && <StaleBanner>Обновление не удалось — показываю последний сохранённый снимок.</StaleBanner>}
+    <PageHead crumbs={[CRUMB_BACK, { label: sku.supplier_name ?? sku.supplier_id }]}
+      title={<span className={styles.titleRow}>{image ? <img className={styles.productImage} src={image} alt="" width={44} height={44} loading="lazy" /> : null}<span>{sku.name}</span></span>}
       sub={<>Код 1С {sku.code_1c}{sku.article && <> · артикул {sku.article}</>}{sku.category && <> · категория {sku.category}</>} · кратность {fmtNum(sku.moq)}</>}
-      />
-    <Kpis items={[
-      { label: "Остаток", value: sku.on_hand_qty === null ? "не задан" : fmtQty(sku.on_hand_qty, unit), meta: sku.on_hand_as_of ? `на ${fmtDate(sku.on_hand_as_of)}${comp.stock_stale ? " · устарел" : ""}` : "остатков в файле нет", tone: sku.on_hand_qty === null ? "warn" : undefined },
-      { label: "В пути", value: fmtQty(rec?.in_transit ?? in_transit.reduce((a, t) => a + Number(t.qty), 0), unit), meta: in_transit.length ? `${in_transit.length} поставк${in_transit.length === 1 ? "а" : "и"} · ETA ${fmtDate(in_transit[0].expected_at)}` : "открытых поставок нет" },
-      { label: comp.horizon_days ? `Прогноз на ${comp.horizon_days} дн` : "Прогноз", value: comp.forecast_qty !== undefined ? fmtQty(Math.round(comp.forecast_qty), unit) : "нет расчёта", meta: forecast ? `${fmtNum(forecast.base_rate, 1)} ${unit}/мес × сезон × рост ${fmtNum(forecast.growth, 2)}` : "запустите расчёт", tone: forecast ? undefined : "warn" },
-      { label: "Рекомендация", value: qty !== null ? fmtQty(qty, unit) : "—", meta: rec ? (rec.qty_adjusted !== null ? `скорректировано · было ${fmtNum(rec.qty_recommended)}` : `кратность ${fmtNum(sku.moq)} · ${REC_STATE[rec.state ?? ""] ?? rec.state ?? "черновик"}`) : "нет рекомендации", tone: urgency?.tone === "bad" ? "bad" : undefined },
-    ]} />
+      badges={<>{urgency && <Pill tone={urgency.tone}>{urgency.label}</Pill>}<Pill>{sku.supplier_name ?? sku.supplier_id}</Pill><Pill>Данные партнёра · обезличены</Pill></>}
+      actions={canAdjust ? <button type="button" className={styles.headBtn} onClick={jumpToAdjust}>Изменить количество<ArrowRight size={16} aria-hidden /></button> : undefined} />
+    <dl className={styles.strip} aria-label="Запас и прогноз">
+      <Metric label="Остаток" value={sku.on_hand_qty === null ? "не задан" : fmtNum(sku.on_hand_qty)} unit={sku.on_hand_qty === null ? undefined : unit} tone={sku.on_hand_qty === null ? "warn" : undefined}
+        sub={sku.on_hand_as_of ? `на ${fmtDate(sku.on_hand_as_of)}${comp.stock_stale ? " · устарел" : ""}` : "остатков в файле нет"} />
+      <Metric label="В пути" value={fmtNum(rec?.in_transit ?? transitTotal)} unit={unit}
+        sub={in_transit.length ? `${in_transit.length} поставк${in_transit.length === 1 ? "а" : "и"} · ETA ${fmtDate(in_transit[0].expected_at)}` : "открытых поставок нет"} />
+      <Metric label={comp.horizon_days ? `Прогноз на ${comp.horizon_days} дн` : "Прогноз"} value={comp.forecast_qty !== undefined ? fmtNum(Math.round(comp.forecast_qty)) : "нет расчёта"} unit={comp.forecast_qty !== undefined ? unit : undefined} tone={forecast ? undefined : "warn"}
+        sub={forecast ? `${fmtNum(forecast.base_rate, 1)} ${unit}/мес × сезон × рост ${fmtNum(forecast.growth, 2)}` : "запустите расчёт"} />
+      <Metric label="Рекомендация" value={qty !== null ? fmtNum(qty) : "—"} unit={qty !== null ? unit : undefined} tone={urgency?.tone === "bad" ? "bad" : undefined}
+        sub={rec ? (rec.qty_adjusted !== null ? `скорректировано · было ${fmtNum(rec.qty_recommended)}` : `кратность ${fmtNum(sku.moq)} · ${REC_STATE[rec.state ?? ""] ?? rec.state ?? "черновик"}`) : "нет рекомендации"} />
+    </dl>
     <div className={styles.grid}>
       <div className={styles.main}>
-        <Section id="sales" title="Продажи, 24 месяца" aside={<><Truth>Данные партнёра · обезличены</Truth><Truth>по {lastYm ? fmtYm(lastYm) : "—"} · склад Алматы</Truth></>}>
-          <Card>
+        <Section id="sales" title="Продажи, 24 месяца" aside={<><Truth>по {lastYm ? fmtYm(lastYm) : "—"} · склад Алматы</Truth></>}>
+          <Card className={styles.chartCard}>
             {months.length ? <Bars months={months} unit={unit} ariaLabel={`Продажи ${sku.code_1c} по месяцам, ${months.length} столбцов`} /> : <Empty title="Продаж за период нет" />}
           </Card>
           <div className={styles.chartNotes}>
@@ -76,98 +89,118 @@ function SkuBody({ data, reload, rail, stale }: { data: SkuResponse; reload: () 
           </div>
         </Section>
         <Section id="sources" title="Источники и даты" aside={<Truth>каждое число сверху выводится из этих строк</Truth>}>
-          <Rows>
-            <Row label="Строки продаж (документы)" meta={`с ${sku.first_sale_ym ? fmtYm(sku.first_sale_ym) : "—"} · ${sku.months_with_sales ?? 0} мес с продажами`} value={fmtNum(comp.sales_lines ?? series.reduce((a, s) => a + Number(s.qty_lines ?? 0) > 0 ? 1 : 0, 0))} valueMeta={`по ${lastYm ? fmtYm(lastYm) : "—"}`} />
-            <Row label="Остаток на складе (файл остатков)" meta={comp.stock_stale ? "снимок старше текущего месяца" : `месяц ${comp.stock_month ? fmtYm(comp.stock_month) : lastYm ? fmtYm(lastYm) : "—"}`} value={sku.on_hand_qty === null ? "не задан" : fmtQty(sku.on_hand_qty, unit)} valueMeta={sku.on_hand_as_of ? `на ${fmtDate(sku.on_hand_as_of)}` : "нет даты"} />
-            <Row label="В пути (файл поставок)" meta={in_transit[0]?.source_file ? basename(in_transit[0].source_file) : "открытых поставок нет"} value={fmtQty(in_transit.reduce((a, t) => a + Number(t.qty), 0), unit)} valueMeta={in_transit.length ? `ETA ${fmtDate(in_transit[0].expected_at)}` : "—"} />
-            <Row label="Сезонность" meta={comp.season_source === "sku" ? "собственные месяцы позиции (≥ 12 с продажами)" : comp.season_source === "supplier" ? `выручка поставщика ${sku.supplier_id} по месяцам` : "нет расчёта"} value={forecast ? `×${fmtNum(monthIndex(comp, lastYm), 2)}` : "—"} valueMeta={lastYm ? `индекс ${fmtYm(lastYm)}` : undefined} />
-            <Row label="Себестоимость" meta={sku.unit_cost === null ? "в файле поставщика нет — деньги по позиции не считаются" : `${sku.supplier_id} · «СС реал»`} value={sku.unit_cost === null ? "не задана" : fmtMoney(sku.unit_cost, sku.currency)} valueMeta={sku.unit_cost === null ? undefined : `за ${unit}`} />
-            <Row label="Политика" meta={`срок поставки + период обзора = ${comp.horizon_days ?? "—"} дн · уровень сервиса 90 % (z = 1,28)`} value={comp.horizon_days ? `${comp.horizon_days} дн` : "—"} valueMeta="editable через /api/params" />
-          </Rows>
+          <Card className={styles.listCard}><Rows>
+            <Row label={<Fact icon={<Database size={15} aria-hidden />}>Строки продаж (документы)</Fact>} meta={`с ${sku.first_sale_ym ? fmtYm(sku.first_sale_ym) : "—"} · ${sku.months_with_sales ?? 0} мес с продажами`} value={fmtNum(comp.sales_lines ?? series.reduce((a, s) => a + Number(s.qty_lines ?? 0) > 0 ? 1 : 0, 0))} valueMeta={`по ${lastYm ? fmtYm(lastYm) : "—"}`} />
+            <Row label={<Fact icon={<Package size={15} aria-hidden />}>Остаток на складе (файл остатков)</Fact>} meta={comp.stock_stale ? "снимок старше текущего месяца" : `месяц ${comp.stock_month ? fmtYm(comp.stock_month) : lastYm ? fmtYm(lastYm) : "—"}`} value={sku.on_hand_qty === null ? "не задан" : fmtQty(sku.on_hand_qty, unit)} valueMeta={sku.on_hand_as_of ? `на ${fmtDate(sku.on_hand_as_of)}` : "нет даты"} />
+            <Row label={<Fact icon={<FileSpreadsheet size={15} aria-hidden />}>В пути (файл поставок)</Fact>} meta={in_transit[0]?.source_file ? basename(in_transit[0].source_file) : "открытых поставок нет"} value={fmtQty(transitTotal, unit)} valueMeta={in_transit.length ? `ETA ${fmtDate(in_transit[0].expected_at)}` : "—"} />
+            <Row label={<Fact icon={<Sigma size={15} aria-hidden />}>Сезонность</Fact>} meta={comp.season_source === "sku" ? "собственные месяцы позиции (≥ 12 с продажами)" : comp.season_source === "supplier" ? `выручка поставщика ${sku.supplier_name ?? sku.supplier_id} по месяцам` : "нет расчёта"} value={forecast ? `×${fmtNum(monthIndex(comp, lastYm), 2)}` : "—"} valueMeta={lastYm ? `индекс ${fmtYm(lastYm)}` : undefined} />
+            <Row label={<Fact icon={<Coins size={15} aria-hidden />}>Себестоимость</Fact>} meta={sku.unit_cost === null ? "в файле поставщика нет — деньги по позиции не считаются" : `${sku.supplier_name ?? sku.supplier_id} · «СС реал»`} value={sku.unit_cost === null ? "не задана" : fmtMoney(sku.unit_cost, sku.currency)} valueMeta={sku.unit_cost === null ? undefined : `за ${unit}`} />
+            <Row label={<Fact icon={<SlidersHorizontal size={15} aria-hidden />}>Политика</Fact>} meta={`срок поставки + период обзора = ${comp.horizon_days ?? "—"} дн · уровень сервиса 90 %`} value={comp.horizon_days ? `${comp.horizon_days} дн` : "—"} valueMeta="настраивается в параметрах поставщика" />
+          </Rows></Card>
         </Section>
         {outliers.length > 0 && <Section id="outliers" title="Исключённые разовые документы" count={outliers.length} aside={<Truth>правило: строка &gt; max(20, min(3 × медиана месяца, 5 × p95 документа))</Truth>}>
-          <Rows>{outliers.map(o => <Row key={o.doc_no} label={`Документ ${o.doc_no}`} meta={`${fmtYm(o.ym)} · порог ${fmtNum(o.threshold)} ${unit}`} value={`${fmtNum(o.qty)} ${unit}`} valueMeta="исключено из регулярного спроса" />)}</Rows>
+          <Card className={styles.listCard}><Rows>{outliers.map(o => <Row key={o.doc_no} label={`Документ ${o.doc_no}`} meta={`${fmtYm(o.ym)} · порог ${fmtNum(o.threshold)} ${unit}`} value={`${fmtNum(o.qty)} ${unit}`} valueMeta="исключено из регулярного спроса" />)}</Rows></Card>
         </Section>}
       </div>
       <aside className={styles.rail} ref={rail} aria-label="Рекомендация и поставки">
-        <RecommendationCard rec={rec} sku={sku} unit={unit} need={need} comp={comp} reload={reload} />
+        <RecommendationCard rec={rec} sku={sku} unit={unit} need={need} comp={comp} reload={reload} open={open} setOpen={setOpen} />
         {data.ekt && <EktBlock ekt={data.ekt} unit={unit} />}
-        <Section id="transit" title="В пути" count={in_transit.length}>
+        <section className={styles.block} aria-labelledby="transit">
+          <h2 id="transit" className={styles.blockTitle}>В пути<span className={styles.blockCount}>{in_transit.length}</span></h2>
           {in_transit.length === 0 ? <Empty title="Открытых поставок нет">Строк по позиции в файле «в пути» не найдено — потребность считается без транзита.</Empty>
-            : <Rows>{in_transit.map(t => <div key={t.id} data-row tabIndex={0} className={styles.transit}>
-              <div className={styles.transitTop}><span className={styles.transitRef}>{t.po_ref}</span><span className={styles.transitQty}>{fmtQty(t.qty, unit)}</span></div>
-              <div className={styles.transitMeta}><span>ETA {fmtDate(t.expected_at)}</span><span>{t.source_file ? basename(t.source_file) : "источник не указан"}</span></div>
-            </div>)}</Rows>}
-        </Section>
-        <Section id="timeline" title="Действия агента" count={timeline.length}>
+            : <div>{in_transit.map(t => <div key={t.id} data-row tabIndex={0} className={styles.transit}>
+              <span className={styles.transitTop}><Truck size={14} aria-hidden />{fmtQty(t.qty, unit)} · ожидается {fmtDate(t.expected_at)}</span>
+              <span className={styles.transitMeta}>{t.po_ref}</span>
+              <span className={styles.transitMeta}>{t.source_file ? `из файла «${basename(t.source_file)}»` : "источник не указан"}</span>
+            </div>)}</div>}
+        </section>
+        <section className={styles.block} aria-labelledby="timeline">
+          <h2 id="timeline" className={styles.blockTitle}>Действия агента<span className={styles.blockCount}>{timeline.length}</span></h2>
           {timeline.length === 0 ? <Empty title="Действий пока нет">Появятся после запуска расчёта или события мира.</Empty>
-            : <Rows>{timeline.slice(0, 6).map(a => <div key={a.id} data-row tabIndex={0} className={styles.action}>
-              <div className={styles.transitTop}><span>{a.summary_ru}</span><Pill tone={a.autonomy === "auto" ? "neutral" : "warn"}>{a.autonomy === "auto" ? "авто" : "нужны вы"}</Pill></div>
-              <div className={styles.transitMeta}><span>{new Date(a.at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span><span>{a.kind} · {a.result}</span></div>
-            </div>)}</Rows>}
-        </Section>
+            : <ol className={styles.feed}>{timeline.slice(0, 6).map(a => {
+              const failed = a.result === "failed" || a.result === "error";
+              return <li key={a.id} data-row tabIndex={0} className={styles.action}>
+                <span className={`${styles.dot} ${failed ? styles.dot_bad : a.autonomy === "auto" ? "" : styles.dot_warn}`} aria-hidden />
+                <div><div className={styles.actionTitle}>{a.summary_ru}</div><div className={styles.actionMeta}>{a.autonomy === "auto" ? "сам" : "нужны вы"} · {RESULT[a.result] ?? a.result}</div></div>
+                <time className={styles.actionTime} dateTime={a.at}>{new Date(a.at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</time>
+              </li>;
+            })}</ol>}
+        </section>
       </aside>
     </div>
   </>;
 }
 
-function RecommendationCard({ rec, sku, unit, need, comp, reload }: { rec: Rec | null | undefined; sku: Sku; unit: string; need: number | null; comp: Components; reload: () => void }) {
+function Metric({ label, value, unit, sub, tone }: { label: string; value: string; unit?: string; sub: string; tone?: "bad" | "warn" }) {
+  return <div className={`${styles.metric} ${tone ? styles[`metric_${tone}`] : ""}`}>
+    <dt>{label}</dt><dd>{value}{unit && <small>{unit}</small>}</dd><p className={styles.metricSub}>{sub}</p>
+  </div>;
+}
+function Fact({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) { return <span className={styles.rowLabel}>{icon}<span>{children}</span></span>; }
+
+function RecommendationCard({ rec, sku, unit, need, comp, reload, open, setOpen }: { rec: Rec | null | undefined; sku: Sku; unit: string; need: number | null; comp: Components; reload: () => void; open: boolean; setOpen: (v: boolean) => void }) {
   const { refresh } = useApiSync();
-  const [open, setOpen] = useState(false);
   const [qty, setQty] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ kind: "ok" | "stale" | "missing" | "error"; text: string } | null>(null);
-  if (!rec) return <Card tone="alert"><p className={styles.railTitle}>Рекомендации нет</p><p className={styles.railBody}>Расчёт по этой позиции не выполнен: {sku.on_hand_qty === null ? "в файле остатков нет строки — без остатка потребность не считается." : "позиция не вошла в последний запуск или потребность равна нулю."}</p><p className={styles.railBody}>Запустите расчёт (<code>POST /api/calc/run</code>) — карточка обновится сама.</p></Card>;
+  const [prevOpen, setPrevOpen] = useState(open);
+  const current = rec ? rec.qty_adjusted ?? rec.qty_recommended : 0;
+  if (open !== prevOpen) { setPrevOpen(open); if (open) setQty(String(current)); }
+  if (!rec) return <Card tone="alert"><p className={styles.railTitle}>Рекомендации нет</p><p className={styles.railBody}>Расчёт по этой позиции не выполнен: {sku.on_hand_qty === null ? "в файле остатков нет строки — без остатка потребность не считается." : "позиция не вошла в последний запуск или потребность равна нулю."}</p><p className={styles.railBody}>Запустите расчёт в разделе «Пополнение» — карточка обновится сама.</p></Card>;
   const urgency = URGENCY[rec.urgency] ?? URGENCY.none;
-  const current = rec.qty_adjusted ?? rec.qty_recommended;
   async function submit(event: React.FormEvent) {
     event.preventDefault(); if (busy) return; setBusy(true); setStatus(null);
     try {
       await apiRequest(`/api/recommendations/${encodeURIComponent(rec!.id)}/adjust`, { method: "POST", body: JSON.stringify({ qty: Number(qty), reason, version: rec!.version }) });
-      setStatus({ kind: "ok", text: `Количество ${fmtNum(qty)} ${unit} сохранено — версия ${rec!.version + 1}.` }); setOpen(false); refresh();
+      setStatus({ kind: "ok", text: `Количество ${fmtNum(qty)} ${unit} сохранено.` }); setOpen(false); refresh();
     } catch (failure) {
       const e = failure instanceof ApiError ? failure : new ApiError(500, "unknown", "Не удалось сохранить.");
       if (e.status === 409) { setStatus({ kind: "stale", text: "Данные обновились — рекомендация пересчитана. Проверьте новое количество." }); refresh(); reload(); }
-      else if (e.status === 404) setStatus({ kind: "missing", text: "Корректировка недоступна: маршрут /api/recommendations/:id/adjust на сервере не реализован. Количество можно изменить при утверждении заказа поставщику." });
-      else setStatus({ kind: "error", text: `${e.message} (${e.code})` });
+      else if (e.status === 404) setStatus({ kind: "missing", text: "Корректировка недоступна: количество можно изменить при утверждении заказа поставщику." });
+      else setStatus({ kind: "error", text: e.message || "Не удалось сохранить." });
     } finally { setBusy(false); }
   }
   return <Card className={styles.recCard}>
-    <div className={styles.recTop}><Pill tone={urgency.tone}>{urgency.label}</Pill><Truth>Правила без LLM · запуск {rec.run_id.slice(4, 12)}</Truth></div>
-    <p className={styles.recQty}>{fmtNum(current)} <span>{unit}</span></p>
-    <p className={styles.recSub}>к заказу у {sku.supplier_name ?? sku.supplier_id}{rec.qty_adjusted !== null && <> · агент предлагал {fmtNum(rec.qty_recommended)}</>}</p>
-    <dl className={styles.formula}>
-      <div><dt>Прогноз на {comp.horizon_days ?? "—"} дн</dt><dd>{fmtNum(comp.forecast_qty, 1)}</dd></div>
-      <div><dt>+ страховой запас</dt><dd>{fmtNum(comp.safety, 1)}</dd></div>
-      <div><dt>− остаток{comp.on_hand_as_of ? ` (${fmtDate(comp.on_hand_as_of)})` : ""}</dt><dd>{fmtNum(rec.on_hand)}</dd></div>
-      <div><dt>− в пути</dt><dd>{fmtNum(rec.in_transit)}</dd></div>
-      <div className={styles.formulaTotal}><dt>= потребность</dt><dd>{need === null ? "—" : fmtNum(Math.max(0, need), 1)}</dd></div>
-      <div className={styles.formulaTotal}><dt>округление до кратности {fmtNum(sku.moq)}</dt><dd>{fmtNum(rec.qty_recommended)}</dd></div>
+    <div className={styles.recTop} id="rec"><h2 className={styles.railTitle} style={{ margin: 0 }}>Рекомендация</h2><Pill tone={urgency.tone}>{urgency.label}</Pill></div>
+    <div className={styles.recQtyRow}><p className={styles.recQty}>{fmtNum(current)}</p><span className={styles.recUnit}>{unit} к заказу у {sku.supplier_name ?? sku.supplier_id}</span></div>
+    <div className={styles.chips}>
+      <Pill>{REC_STATE[rec.state ?? ""] ?? rec.state ?? "черновик"}</Pill>
+      {rec.qty_adjusted !== null && <Pill tone="warn">агент предлагал {fmtNum(rec.qty_recommended)}</Pill>}
+      {sku.unit_cost === null ? <Pill tone="warn">себестоимость не задана</Pill> : <Pill tone="good">{fmtMoney(sku.unit_cost, sku.currency)} за {unit}</Pill>}
+    </div>
+    <dl className={styles.receipt}>
+      <dt>Прогноз на {comp.horizon_days ?? "—"} дн</dt><dd>{fmtNum(comp.forecast_qty, 1)}</dd>
+      <dt>+ Страховой запас</dt><dd>{fmtNum(comp.safety, 1)}</dd>
+      <dt>− Остаток{comp.on_hand_as_of ? ` на ${fmtDate(comp.on_hand_as_of)}` : ""}</dt><dd>{fmtNum(rec.on_hand)}</dd>
+      <dt>− В пути</dt><dd>{fmtNum(rec.in_transit)}</dd>
+      <dt className={styles.receiptTotal}>= Потребность</dt><dd className={styles.receiptTotal}>{need === null ? "—" : fmtNum(Math.max(0, need), 1)}</dd>
+      <dt>Кратность {fmtNum(sku.moq)} → к заказу</dt><dd><strong>{fmtNum(rec.qty_recommended)} {unit}</strong></dd>
+      {rec.qty_adjusted !== null && <><dt>Ваша корректировка</dt><dd><strong>{fmtNum(rec.qty_adjusted)} {unit}</strong></dd></>}
     </dl>
     <details className={styles.why}><summary>Почему так</summary><p>{rec.rationale_ru}</p></details>
-    {status && <p className={`${styles.status} ${styles[`status_${status.kind}`]}`} role={status.kind === "ok" ? "status" : "alert"}>{status.text}</p>}
-    {!open ? <div className={styles.recActions}><Btn variant="primary" onClick={() => { setQty(String(current)); setOpen(true); }}>Скорректировать</Btn><Btn variant="quiet" onClick={() => { void navigator.clipboard?.writeText(rec.rationale_ru); }}>Копировать обоснование</Btn></div>
+    {status && <p className={`${styles.status} ${styles[`status_${status.kind}`]}`} role={status.kind === "ok" ? "status" : "alert"}>{status.kind === "ok" ? <CheckCircle2 size={16} aria-hidden /> : <AlertTriangle size={16} aria-hidden />}<span>{status.text}</span></p>}
+    {!open ? <div className={styles.recActions}><Btn variant="primary" onClick={() => setOpen(true)}>Скорректировать</Btn><Btn variant="quiet" onClick={() => { void navigator.clipboard?.writeText(rec.rationale_ru); }}>Копировать обоснование</Btn></div>
       : <form className={styles.adjust} onSubmit={submit} onKeyDown={e => { if (e.key === "Escape") setOpen(false); }}>
         <label>Количество, {unit}<input autoFocus inputMode="numeric" pattern="[0-9]*" value={qty} onChange={e => setQty(e.target.value.replace(/\D/g, ""))} required /></label>
         <label>Причина<input value={reason} onChange={e => setReason(e.target.value)} placeholder="например, акция у клиента в ноябре" required /></label>
-        <div className={styles.recActions}><Btn variant="black" type="submit" busy={busy} disabled={!qty || !reason.trim()}>Сохранить · версия {rec.version}</Btn><Btn variant="quiet" type="button" onClick={() => setOpen(false)}>Отмена (Esc)</Btn></div>
+        <div className={styles.recActions}><Btn variant="black" type="submit" busy={busy} disabled={!qty || !reason.trim()}>Сохранить</Btn><Btn variant="quiet" type="button" onClick={() => setOpen(false)}>Отмена (Esc)</Btn></div>
       </form>}
   </Card>;
 }
 function EktBlock({ ekt, unit }: { ekt: Ekt; unit: string }) {
   const live = ekt.source === "ekt_api_live";
-  const truth = live ? "Каталог ekt.kz · живой API" : `Снимок каталога ekt.kz${ekt.as_of ? ` от ${fmtDate(ekt.as_of)}` : ""}`;
+  const truth = live ? "Каталог ekt.kz · текущий ответ" : `Каталог ekt.kz · сохранённый снимок${ekt.as_of ? ` от ${fmtDate(ekt.as_of)}` : ""}`;
   const byWh: { warehouse: string; qty: number | string }[] = Array.isArray(ekt.stock_by_warehouse) ? ekt.stock_by_warehouse : ekt.stock_by_warehouse ? Object.entries(ekt.stock_by_warehouse).map(([warehouse, qty]) => ({ warehouse, qty })) : [];
   const price = ekt.price === null || ekt.price === undefined || ekt.price === "" ? null : fmtMoney(String(ekt.price), ekt.currency ?? "KZT");
-  return <section className={styles.ekt} aria-label="Каталог ekt.kz">
-    <div className={styles.ektTop}><span className={styles.ektName}>ekt.kz</span>{ekt.url && <a href={ekt.url} target="_blank" rel="noreferrer">страница товара ↗</a>}</div>
-    <dl className={styles.ektRows}>
-      <div><dt>Цена</dt><dd>{price ?? "нет"}</dd></div>
-      <div><dt>Остаток</dt><dd>{ekt.stock_total === null || ekt.stock_total === undefined ? "нет" : fmtQty(ekt.stock_total, unit)}</dd></div>
-      {ekt.availability && <div><dt>Наличие</dt><dd>{ekt.availability}</dd></div>}
-    </dl>
-    {byWh.length > 0 && <details className={styles.ektWh}><summary>По складам · {byWh.length}</summary><dl className={styles.ektRows}>{byWh.map(w => <div key={w.warehouse}><dt>{w.warehouse}</dt><dd>{fmtQty(w.qty, unit)}</dd></div>)}</dl></details>}
+  return <section className={styles.block} aria-labelledby="ekt">
+    <div className={styles.recTop}><h2 id="ekt" className={styles.blockTitle}>Каталог ekt.kz</h2>{ekt.url && <a className={styles.ektLink} href={ekt.url} target="_blank" rel="noreferrer">страница товара ↗</a>}</div>
+    <div>
+      <div className={styles.kv}><b>Цена поставщика</b><span className={styles.kvNum}>{price ?? "не указана"}</span></div>
+      <div className={styles.kv}><b>Остаток у поставщика</b><span className={styles.kvNum}>{ekt.stock_total === null || ekt.stock_total === undefined ? "не указан" : fmtQty(ekt.stock_total, unit)}</span></div>
+      {ekt.availability && <div className={styles.kv}><b>Наличие</b><span className={styles.kvNum}>{ekt.availability}</span></div>}
+    </div>
+    {byWh.length > 0 && <details className={styles.kvWh}><summary>По складам · {byWh.length}</summary><div>{byWh.map(w => <div key={w.warehouse} className={styles.kv}><b>{w.warehouse}</b><span className={styles.kvNum}>{fmtQty(w.qty, unit)}</span></div>)}</div></details>}
     <Truth>{truth}{ekt.as_of && live ? ` · ${fmtDate(ekt.as_of)}` : ""}</Truth>
   </section>;
 }
