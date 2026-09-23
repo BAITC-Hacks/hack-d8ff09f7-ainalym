@@ -194,6 +194,10 @@ function ruleChoice(question: ChoiceQuestion, context: unknown): ChoiceResult {
     case "supplier_terms_hint":
       answer = /предоплат|prepay|预付|预付款/.test(input) ? "prepayment" : /отсроч|net [0-9]|账期|後付/.test(input) ? "deferred" : "unknown";
       break;
+    case "supplier_fulfilment":
+      answer = /\d[\d\s]*(?:[,.]\d+)?\s*%|\d[\d\s]*\s*шт|\d[\d\s]*\s*(?:из|of)\s*\d/.test(input)
+        ? "split" : /задерж|позже|через|до\s+\d|сроч|delay|late/.test(input) ? "expedite" : "unknown";
+      break;
     default: return empty("rules", "rules-v1", "unsupported", "Правила без LLM");
   }
   if (!answer || !(answer in question.criteria)) return empty("rules", "rules-v1", "unsupported", "Правила без LLM");

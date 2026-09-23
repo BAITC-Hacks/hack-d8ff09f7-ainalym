@@ -18,17 +18,25 @@ export async function queueView(_orgId: string, database: DatabaseSync = db()): 
     .all() as TaskRow[];
   const items: QueueItem[] = proposals.map((row) => {
     const payload = JSON.parse(row.payload) as { lines?: unknown[] };
-    const title = row.kind === "supplier_order" ? `Заказ поставщику ${row.subject_id}: ${payload.lines?.length ?? 0} позиций` :
+    const title = row.kind === "supplier_split" ? `Разделить поставку по заказу ${row.subject_id}` :
+      row.kind === "supplier_expedite" ? `Ускорить поставку по заказу ${row.subject_id}` :
+      row.kind === "supplier_order" ? `Заказ поставщику ${row.subject_id}: ${payload.lines?.length ?? 0} позиций` :
       row.kind === "clarification" ? `Уточнить ожидание по задаче ${row.subject_id}` : `Проверить ${row.kind}`;
     return { id: row.id, kind: "proposal", title, why: row.rationale_ru ?? "Требуется ваше решение",
       sources: JSON.parse(row.sources), money_at_stake: row.money_at_stake ? JSON.parse(row.money_at_stake) : null,
-      options: row.kind === "clarification" ? [
+      options: row.kind === "supplier_split" ? [
+        { key: "approve", label: "Утвердить разделение", effect: "Разделит заказ и покажет платежи 30 % / 70 % по каждой части; ничего не отправит" },
+        { key: "reject", label: "Отклонить", effect: "Оставит заказ без изменений" },
+      ] : row.kind === "supplier_expedite" ? [
+        { key: "approve", label: "Поручить ускорение", effect: "Поднимет срочность и создаст задачу; ничего не отправит" },
+        { key: "reject", label: "Отклонить", effect: "Оставит заказ без изменений" },
+      ] : row.kind === "clarification" ? [
         { key: "approve", label: "Подготовить уточнение", effect: "Создаст одобренное внутреннее действие; отправка отдельно" },
         { key: "reject", label: "Перенести срок", effect: "Закроет предложение без отправки" },
       ] : [
         { key: "approve", label: "Подготовить заказ", effect: "Создаст внутренний черновик; отдельное одобрение заказа создаст обязательства" },
         { key: "reject", label: "Отклонить", effect: "Закроет предложение без заказа" },
-      ], href: `/proposals/${row.id}`, since: row.created_at };
+      ], href: `/review/${row.id}`, since: row.created_at };
   });
   for (const task of tasks) {
     if (task.proposal_id && proposalIds.has(task.proposal_id)) continue;

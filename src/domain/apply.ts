@@ -7,6 +7,7 @@ import { paramsForSupplier } from "./params";
 import { Money } from "./money";
 import { transitionTask } from "./tasks";
 import { createTask } from "./tasks";
+import { syncOrderObligations } from "./obligations";
 
 export interface CalcScope { supplier?: string; category?: string; codes?: string[] }
 export interface CalcContext extends EngineContext { org_id?: string; agent_run_id?: string; world_event_id?: string }
@@ -242,7 +243,10 @@ export async function decideProposal(id: string, proposalVersion: number, decisi
   if (!proposal) throw new ProposalNotFoundError(`proposal ${id} is missing`);
   if (proposal.version !== proposalVersion || proposal.state !== "needs_review") throw new ProposalConflictError(`proposal ${id} is stale`);
   const payload = JSON.parse(proposal.payload) as { run_id?: string; supplier_id?: string; lines?: OrderLine[]; task_id?: string; task_version?: number;
-    changes?: Partial<EngineParams>; code_1c?: string; doc_no?: string; ym?: string; state?: "excluded" | "kept" };
+    changes?: Partial<EngineParams>; code_1c?: string; doc_no?: string; ym?: string; state?: "excluded" | "kept";
+    parts?: { now: { eta: string; lines: OrderLine[]; total_qty: number; total_cost: string | null };
+      later: { eta: string; lines: OrderLine[]; total_qty: number; total_cost: string | null } };
+    decision?: { affected_lines?: string[] } };
   const adjustmentMap = new Map(adjustments.map((row) => [row.code_1c, row.qty]));
   if (adjustmentMap.size !== adjustments.length || adjustments.some((row) => !globalThis.Number.isSafeInteger(row.qty) || row.qty < 0))
     throw new RangeError("invalid adjustments");
@@ -253,13 +257,71 @@ export async function decideProposal(id: string, proposalVersion: number, decisi
   let poId: string | null = null;
   let totalCost: ReturnType<Money["toJSON"]> | null = null;
   let recomputeScope: CalcScope | null = null;
-  const affected = (payload.lines ?? []).map((line) => line.code_1c);
+  const affected = payload.decision?.affected_lines ?? (payload.lines ?? []).map((line) => line.code_1c);
+  let splitOrderIds: [string, string] | null = null;
+  if ((proposal.kind === "supplier_split" || proposal.kind === "supplier_expedite") && adjustments.length)
+    throw new RangeError("Измените состав заказа отдельным решением");
   inTx(database, () => {
     const updated = database.prepare("UPDATE proposal SET state=?,version=version+1 WHERE id=? AND version=? AND state='needs_review'")
       .run(decision === "approve" ? "approved" : "rejected", id, proposalVersion);
     if (updated.changes !== 1) throw new ProposalConflictError(`proposal ${id} is stale`);
     database.prepare("INSERT INTO approval (id,proposal_id,proposal_version,decision,adjustments,by,at) VALUES (?,?,?,?,?,?,?)")
       .run(approvalId, id, proposalVersion, decision, JSON.stringify(adjustments), ctx.by ?? "owner", at);
+    if (proposal.kind === "supplier_split" && decision === "approve") {
+      const original = database.prepare("SELECT id,supplier_id,state,version,total_qty,total_cost FROM purchase_order WHERE id=?")
+        .get(proposal.subject_id) as { id: string; supplier_id: string; state: string; version: number; total_qty: number; total_cost: string | null } | undefined;
+      const parts = payload.parts;
+      if (!original || original.state !== "approved" || original.version !== proposal.subject_version ||
+          !parts || !parts.now.lines.length || !parts.later.lines.length ||
+          parts.now.total_qty + parts.later.total_qty !== original.total_qty ||
+          database.prepare("SELECT 1 FROM obligation WHERE po_id=? AND state='settled'").get(original.id))
+        throw new ProposalConflictError("Заказ изменился; проверьте предложение заново");
+      const originalLines = database.prepare("SELECT code_1c,qty,unit_cost FROM purchase_order_line WHERE po_id=? ORDER BY id")
+        .all(original.id) as { code_1c: string; qty: number; unit_cost: string | null }[];
+      const planned = [...parts.now.lines, ...parts.later.lines];
+      const totals = (lines: { code_1c: string; qty: number; unit_cost: string | null }[]) => {
+        const byLine = new Map<string, number>();
+        for (const line of lines) {
+          if (!Number.isSafeInteger(line.qty) || line.qty < 1) throw new ProposalConflictError("Количество заказа изменилось; проверьте предложение заново");
+          const key = JSON.stringify([line.code_1c, line.unit_cost]);
+          byLine.set(key, (byLine.get(key) ?? 0) + line.qty);
+        }
+        return [...byLine].sort(([a], [b]) => a.localeCompare(b));
+      };
+      if (JSON.stringify(totals(originalLines)) !== JSON.stringify(totals(planned)) ||
+          parts.now.lines.reduce((sum, line) => sum + line.qty, 0) !== parts.now.total_qty ||
+          parts.later.lines.reduce((sum, line) => sum + line.qty, 0) !== parts.later.total_qty)
+        throw new ProposalConflictError("Количество заказа изменилось; проверьте предложение заново");
+      if (original.total_cost !== null &&
+          (!parts.now.total_cost || !parts.later.total_cost ||
+          Money.of(parts.now.total_cost).add(Money.of(parts.later.total_cost)).amount !== Money.of(original.total_cost).amount))
+        throw new ProposalConflictError("Стоимость заказа изменилась; проверьте предложение заново");
+      const remainderId = `PO-${randomUUID()}`;
+      database.prepare("UPDATE purchase_order SET total_qty=?,total_cost=?,cost_known_lines=?,eta=?,version=version+1 WHERE id=?")
+        .run(parts.now.total_qty, parts.now.total_cost, parts.now.lines.filter(line => line.unit_cost !== null).length, parts.now.eta, original.id);
+      database.prepare("DELETE FROM purchase_order_line WHERE po_id=?").run(original.id);
+      database.prepare("INSERT INTO purchase_order(id,supplier_id,state,total_qty,total_cost,cost_known_lines,eta) VALUES (?,?,'approved',?,?,?,?)")
+        .run(remainderId, original.supplier_id, parts.later.total_qty, parts.later.total_cost,
+          parts.later.lines.filter(line => line.unit_cost !== null).length, parts.later.eta);
+      for (const [orderId, lines] of [[original.id, parts.now.lines], [remainderId, parts.later.lines]] as const)
+        for (const line of lines) database.prepare("INSERT INTO purchase_order_line(po_id,code_1c,qty,unit_cost,rationale_ru,recommendation_id) VALUES (?,?,?,?,?,?)")
+          .run(orderId, line.code_1c, line.qty, line.unit_cost, line.rationale_ru, line.recommendation_id);
+      syncOrderObligations(original.id, database);
+      syncOrderObligations(remainderId, database);
+      splitOrderIds = [original.id, remainderId];
+      totalCost = original.total_cost ? Money.of(original.total_cost).toJSON() : null;
+    }
+    if (proposal.kind === "supplier_expedite" && decision === "approve") {
+      const original = database.prepare("SELECT id,state,version FROM purchase_order WHERE id=?").get(proposal.subject_id) as
+        { id: string; state: string; version: number } | undefined;
+      if (!original || original.state !== "approved" || original.version !== proposal.subject_version)
+        throw new ProposalConflictError("Заказ изменился; проверьте предложение заново");
+      for (const code of affected) database.prepare(`UPDATE recommendation SET urgency='critical',version=version+1
+        WHERE id IN (SELECT recommendation_id FROM purchase_order_line WHERE po_id=? AND code_1c=? AND recommendation_id IS NOT NULL)`)
+        .run(original.id, code);
+      database.prepare("INSERT INTO task(id,title,state,owner_role,proposal_id,updated_at) VALUES (?,?, 'needs_review','purchasing_manager',?,?)")
+        .run(`TK-${randomUUID()}`, `Согласовать ускорение заказа ${original.id}; ничего не отправлено`, null, at);
+    }
     if (proposal.kind === "supplier_order") {
       if (decision === "approve") {
         const lines = (payload.lines ?? []).map((line) => ({ ...line, qty: adjustmentMap.get(line.code_1c) ?? line.qty })).filter((line) => line.qty > 0);
@@ -331,6 +393,6 @@ export async function decideProposal(id: string, proposalVersion: number, decisi
   if (decision === "approve" && proposal.kind === "clarification" && payload.task_id) await createTask({ title: `Подготовить уточнение по ${payload.task_id}`,
     proposal_id: id, sources: [`task:${payload.task_id}`] }, { database, org_id: ctx.org_id });
   const recalculated = recomputeScope ? await runCalculation(recomputeScope, {}, { database, org_id: ctx.org_id }) : null;
-  return { id, decision, proposal_version: proposalVersion + 1, po_id: poId, total_cost: totalCost,
+  return { id, decision, proposal_version: proposalVersion + 1, po_id: poId, split_po_ids: splitOrderIds as [string, string] | null, total_cost: totalCost,
     recompute_run_id: recalculated?.run_id ?? null, state_version: stateVersion(database), affected };
 }
