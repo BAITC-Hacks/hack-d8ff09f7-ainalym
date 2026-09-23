@@ -67,8 +67,17 @@ describe("calculation to supplier approval", () => {
     const result = await runCalculation({}, {}, { database, as_of: "2025-01-01" });
     expect(result.recommended).toBe(0);
     expect(result.proposals).toHaveLength(0);
-    expect(result.unresolved).toEqual([expect.objectContaining({ code_1c: "CODE-1", reason: expect.stringMatching(/stock source missing/) })]);
+    expect(result.unresolved).toEqual([expect.objectContaining({ code_1c: "CODE-1", reason: expect.stringMatching(/не рассчитано: нет подтверждённого остатка/) })]);
     expect(result.tasks).toHaveLength(1);
+  });
+
+  it("isolates a throwing SKU and reports computed and not computed counts", async () => {
+    const database = fixture();
+    database.prepare("INSERT INTO sku (code_1c,supplier_id,name,moq) VALUES ('BROKEN','SE','Сбой',0)").run();
+    const result = await runCalculation({ supplier: "SE" }, {}, { database, as_of: "2025-01-01" });
+    expect(result).toMatchObject({ skus: 2, computed: 1, not_computed: 1, recommended: 1 });
+    expect(result.unresolved).toEqual([expect.objectContaining({ code_1c: "BROKEN", reason: "не рассчитано: неверные параметры расчёта" })]);
+    expect(database.prepare("SELECT code_1c FROM recommendation").all()).toEqual([{ code_1c: "CODE-1" }]);
   });
 
   it("escalates a provisional worker result instead of proposing its quantity", async () => {

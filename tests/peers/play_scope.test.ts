@@ -8,8 +8,12 @@ beforeEach(() => {
   const d = db();
   d.prepare("INSERT INTO organization (id,name) VALUES (?,?)").run("ORG-A", "A");
   d.prepare("INSERT INTO organization (id,name) VALUES (?,?)").run("ORG-B", "B");
-  d.prepare("INSERT INTO world_event (id,org_id,seq,kind,source_id,state) VALUES (?,?,?,?,?,?)")
-    .run("WE-A", "ORG-A", 2, "supplier_reply", "A", "scripted");
+  d.prepare("INSERT INTO supplier(id,name,lead_time_days) VALUES ('SE','Поставщик',21)").run();
+  d.prepare("INSERT INTO sku(code_1c,supplier_id,name) VALUES ('SKU-A','SE','Товар')").run();
+  d.prepare("INSERT INTO purchase_order(id,supplier_id,state,total_qty) VALUES ('PO-A','SE','approved',1)").run();
+  d.prepare("INSERT INTO purchase_order_line(po_id,code_1c,qty) VALUES ('PO-A','SKU-A',1)").run();
+  d.prepare("INSERT INTO world_event (id,org_id,seq,kind,actor_id,po_id,source_id,text,state) VALUES (?,?,?,?,?,?,?,?,?)")
+    .run("WE-A", "ORG-A", 2, "supplier_reply", "SE", "PO-A", "A", "Подтверждаем получение заказа.", "scripted");
   d.prepare("INSERT INTO world_event (id,org_id,seq,kind,source_id,state) VALUES (?,?,?,?,?,?)")
     .run("WE-B", "ORG-B", 1, "supplier_reply", "B", "pending");
 });

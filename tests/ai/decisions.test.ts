@@ -20,9 +20,9 @@ afterAll(() => {
 });
 
 describe("typed decision service", () => {
-  it("validates the five-question catalog", () => {
+  it("validates the six-question catalog", () => {
     expect(loadCatalog().questions.map(q => q.id)).toEqual([
-      "one_off_order", "category_hint", "urgency_override_reason", "change_summary", "supplier_terms_hint",
+      "supplier_fulfilment", "one_off_order", "category_hint", "urgency_override_reason", "change_summary", "supplier_terms_hint",
     ]);
   });
 

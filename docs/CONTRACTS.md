@@ -9,7 +9,7 @@ Status: **v1, L1 implementation checkpoint**. `src/db/schema.sql` is the storage
 - Modes (`AINALYM_MODE`): `live | offline`. Typed-decision provider `AI_PROVIDER=jev|openai|rules|offline` (auto when unset: `jev` if `TYPESAFE_API_KEY` or `AI_GATEWAY_API_KEY`, else `openai` if `OPENAI_API_KEY`, else `rules`). `jev` = direct TypeSafe API first, Vercel AI Gateway (`typesafe-ai/jev`) as fallback on a missing key or provider error — two parsers, `provider` = `jev:typesafe` | `jev:gateway`. `openai` honours `OPENAI_BASE_URL` + `OPENAI_MODEL`. `rules` = deterministic answers («Правила без LLM») — every must-have passes with no key. `offline` = replay for tests. A failed live call is `provider_error`/503, never a synthetic success.
 - Errors: `{ ok:false, code, message, field? }` — 400 invalid · 403 denied · 404 unknown · 409 stale (version mismatch) · 422 business rejection · 503 provider_unavailable. Success bodies include `ok:true` and `state_version`.
 - Idempotency: world events by `(org_id, source_id)`; ledger actions by `idempotency_key`; approvals bind `version`; voice tools by `request_id` (same id within 10 min → first result + `replayed:true`).
-- Policies (stated, editable through `/api/params`, every change is a `param_change` proposal): lead time IEK 40 d, SE 50 d; review period 30 d; service level 90 % (z = 1.28); outlier rule: a document line with qty > max(20, min(3 × the SKU's median monthly qty, 5 × the SKU's p95 document qty)) is a one-off (excluded from the regular series, listed in the rationale; rule tightened 09:2xZ — the earlier max() form excluded nothing on high-volume SKUs) → one-off; growth cap ±50 %; IEK category = first 4 characters of `code_1c`; supplier terms prepayment 30 % at approval, balance at ETA.
+- Policies (stated, editable through `/api/params`, every change is a `param_change` proposal): lead time IEK 40 d, SE 50 d; review period 30 d; service level 90 % (z = 1.28); outlier rule: a document total with qty > max(20, min(3 × the SKU's median monthly qty, 5 × p95 of the other documents)) is a one-off; with fewer than 6 documents use the other documents' median instead of p95 (excluded from the regular series, listed in the rationale); growth cap ±50 %; IEK category = first 4 characters of `code_1c`; IEK `moq` is a minimum, SE `moq` is a multiple, with quantity measured in `sku.unit`; approved unreceived order lines and transit due within the horizon count as supply; supplier terms prepayment 30 % at approval, balance at ETA.
 
 ## 2. SQLite entities
 
@@ -21,7 +21,7 @@ Storage source: src/db/schema.sql. The raw row types are Tables in src/db/repo/i
 | supplier | id:s, name:s, lead_time_days:i, review_days:i, terms:j, currency:s, version:i | id |
 | sku | code_1c:s, supplier_id:s, article:s?, name:s, unit:s?, category:s?, unit_cost:s?, moq:i, weight:s?, first_sale_ym:s?, months_with_sales:i?, median_month_qty:s?, p95_doc_qty:s?, version:i | code_1c |
 | sales_line | id:i, code_1c:s, doc_no:s?, doc_type:s?, at:s, warehouse:s?, qty:s, source:s | id |
-| sales_month | code_1c:s, ym:s, qty_file:s?, qty_lines:s?, qty_regular:s?, stockout:i | (code_1c, ym) |
+| sales_month | code_1c:s, ym:s, qty_file:s?, qty_lines:s?, qty_regular:s?, stockout:i, stockout_kind:s? (`observed`/`inferred`) | (code_1c, ym) |
 | stock_month | code_1c:s, ym:s, opening_qty:s?, known:i | (code_1c, ym) |
 | in_transit | id:i, code_1c:s, po_ref:s, qty:s, expected_at:s?, source_file:s? | id |
 | seasonality | supplier_id:s, year:i, month:i, revenue_kzt:s? | (supplier_id, year, month) |
@@ -44,7 +44,7 @@ Storage source: src/db/schema.sql. The raw row types are Tables in src/db/repo/i
 | ledger_peer_record | id:s, peer:s, external_identity:s, kind:s?, payload:j, version:i, state:s, as_of:s | id; (peer, external_identity) |
 | state_version | n:i | singleton row, initial n=1 |
 
-The L1 repository accepts typed raw rows, validates column names, and provides get/list/insert/update. Insert and update use a transaction; update increments row version where the column exists and increments state_version. Added indexes: world_event(org_id,state,seq), world_event(code_1c,state), agent_run(org_id,started_at), agent_action(org_id,at), agent_action(po_id,at). The L9 ETL produces 3,909 union SKUs; demo reset imports 45 scripted events and one partner organization. Scripted events have no processing side effect until played.
+The L1 repository accepts typed raw rows, validates column names, and provides get/list/insert/update. Insert and update use a transaction; update increments row version where the column exists and increments state_version. Added indexes: world_event(org_id,state,seq), world_event(code_1c,state), agent_run(org_id,started_at), agent_action(org_id,at), agent_action(po_id,at). The L9 ETL produces 3,909 union SKUs; demo reset imports the original 45 scripted events plus one supplier reply, one local approved demo order, and one partner organization. Scripted events have no processing side effect until played.
 
 ## 3. JSON API
 
@@ -55,7 +55,7 @@ App Router handlers use the zod schemas in src/server/contracts.ts. A successful
 | GET /api/health | mode:live or offline; ai_provider:jev/openai/rules/offline; providers:{jev,openai,voice}:configured or missing; demo_guard:on/off; remaining_daily_budget:i or null; db:ok; version:i | 200, 503 |
 | GET /api/state | fingerprint:s, state_version:i, at:ISO string | 200 |
 | GET /api/modes | axes:{provenance,ai,external}, labels:map with section 5 values; connections includes `onec_in` (file_import, ETL `as_of` when loaded) and `onec_out` (export_only) | 200 |
-| POST /api/demo/reset | Rebuild partner.db via ETL; returns counts: table-name to integer, including world_event=45 before processing | 200, 503 |
+| POST /api/demo/reset | Rebuild partner.db via ETL; returns counts: table-name to integer, including world_event=46 before processing | 200, 503 |
 | POST /api/demo/example | Empty body; performs the SE calculation; same result as /api/calc/run | 200, 500 |
 | POST /api/calc/run | {scope:{supplier?:IEK or SE,category?:s},params?:{lead_time_days?:i,review_days?:i,service_level?:number,growth_cap?:number,outlier?:{k_month,k_doc,min_units:number}}} → {run_id:s,skus:i,recommended:i,proposals:[{id,kind,subject_id,state,money_at_stake}],excluded:{missing_sales:i,missing_stock:i}} | 200, 400, 500 |
 | GET /api/calc/runs; GET /api/calc/runs/:id | {runs:[calc_run]} newest first; {run:calc_run} with parsed scope and params | 200, 404 |
@@ -76,6 +76,16 @@ App Router handlers use the zod schemas in src/server/contracts.ts. A successful
 EKT-1 additions: `GET /api/skus/:code` carries `ekt:{id,url,price,currency,stock_total,stock_by_warehouse,availability,image_url,as_of,source}|null`. SKU and recommendation rows carry nullable `image_url`, `ekt_url`, `ekt_stock_total`, `ekt_source`, `ekt_as_of` from the dated snapshot; recommendation rows also carry nullable `ekt_price`, `ekt_currency`. Only the single-SKU route attempts a live detail lookup. EKT source labels are in §5.
 
 Internal entry onEvent(kind, payload, source_id) accepts the section 2 world kinds, validates the current organization, inserts one pending world_event by (org_id,source_id), then calls processEvent(id). An identical source returns {event_id,run_id,replayed:true} with no second insert or state_version bump. Ledger startRun, recordAction and finishRun accept an optional caller DatabaseSync transaction; action idempotency_key replay returns the existing ID with no write.
+
+### Supplier reply consequence
+
+| Shape | Fields and effect |
+|---|---|
+| `world_event.kind=supplier_reply` | `actor_id=supplier_id`, `po_id`, `text` in Russian, `payload:{supplier_id,po_id,affected_lines?:code_1c[]}`, unique `(org_id,source_id)`. Scripted `WE-046` refers to the local demo order and follows the original 45 events. |
+| Typed interpretation | `{action:split\|expedite\|unknown, partial_share:string\|null, partial_qty:integer\|null, delay_days:integer\|null, promised_eta:ISO-date\|null, affected_lines:code_1c[], decision_record_id}`. `supplier_fulfilment` uses the existing provider choice layer; the rules adapter works without keys. Quantity and date extraction are validated by rules before proposing an order change. |
+| `proposal.kind=supplier_split` | `subject_type=purchase_order`, `subject_id=po_id`, `subject_version=PO.version`, `state=needs_review`, `payload:{source_id,supplier_id,original_text,decision,parts:{now,later}}`. Each part has `eta,lines,total_qty,total_cost,prepayment,balance`; the parts conserve quantity and priced cost. Queue and feed use Russian explanations. |
+| `proposal.kind=supplier_expedite` | Same subject binding; `payload` also has `alternatives:[{code_1c,available_supplier}]`. Approval raises recommendation urgency and prepares an internal purchasing task. A supplier move is suggested only when that exact SKU exists under another supplier. |
+| Approval and money | No event sends or changes an order. Approving a split against the current PO version divides the approved local order into two approved parts, synchronizes 30 % prepayment and 70 % balance for each part, and exposes four obligations in `/api/money`. Settled obligations block the split. Rejecting leaves the order unchanged. |
 
 Delegated surface remains: GET /api/orders[/:id], POST /api/orders/:id/approve and GET /api/orders/:id/export.csv|xlsx (L2/L6, versioned PO approval and 1C export); GET /api/proposals and POST /api/proposals/:id/approve|reject (L2a, proposal_version, 409 stale); GET /api/world/feed, POST /api/world/play|compose (L6, scripted events); POST/GET /api/decisions and POST /api/drafts, GET /api/artifacts/:id[/download] (L3); voice and assistant routes (L5); supplier simulator and search/notifications routes (L6/L4c). Their owner-specific request details continue under sections 4–8 and their route modules.
 
@@ -109,7 +119,7 @@ Client seam (L5 exports, L4 imports): `useVoiceSession(scope) → {state: idle|c
 | proposal states | `draft · needs_review · approved · stale · rejected · delivered · delivery_failed` | «черновик · ждёт вас · утверждено · устарело — есть новая версия · отклонено · передано · ошибка передачи» |
 
 ## 6. Data and evaluation isolation
-Runtime data = `fixtures/partner/{IEK,SE}/*.xlsx` (the partner's anonymised exports, verbatim, disclosed) loaded by `npm run etl` (L9) into the tables of §2; `fixtures/world_events.jsonl` (L9: real sales days replayed + judge presets) loaded as `scripted` rows; `fixtures/decision_catalog.json` (L3: five typed questions — `one_off_order`, `category_hint`, `urgency_override_reason`, `change_summary`, `supplier_terms_hint`; authority `proposal_only`); `fixtures/replay_decisions.json` (L3). Evaluation only: `tests/fixtures/eval/replenishment_expectations.json` (L9: the named SKUs `seasonal`, `stockout`, `oneoff`, `intransit`, `nocost` + the five property checks + counts) — never imported by `src/`. Reset = ETL rebuild; nothing processed.
+Runtime data = `fixtures/partner/{IEK,SE}/*.xlsx` (the partner's anonymised exports, verbatim, disclosed) loaded by `npm run etl` (L9) into the tables of §2; `fixtures/world_events.jsonl` (40 sales days, two stock/transit events, three judge presets, one supplier reply) loaded as `scripted` rows; `fixtures/decision_catalog.json` (six typed questions, including `supplier_fulfilment`; authority `proposal_only`); `fixtures/replay_decisions.json` (L3). Evaluation only: `tests/fixtures/eval/replenishment_expectations.json` (L9: the named SKUs `seasonal`, `stockout`, `oneoff`, `intransit`, `nocost` + the five property checks + counts) — never imported by `src/`. Reset = ETL rebuild plus the one local demo order; no event processed.
 
 ## 7. Check runner (`npm run check [-- domain|ai|ui|voice|peers|skeleton|etl|demo]`, owner L1; `scripts/scenario.mjs` owner L2b, run when present)
 One line per item `[PASS|FAIL|SKIP|UNVERIFIED] <id> — <property>` then `check: passed=N failed=N skipped=N externally-unverified=N`; exit 1 only when `failed>0`; a test lacking a key/mic/network calls `ctx.skip("UNVERIFIED: <reason>")`. Tests run on `DATABASE_PATH=":memory:"`. `scripts/scenario.mjs` prints the five ТЗ checks M1–M5 as `[PASS|FAIL]` lines and the money view.

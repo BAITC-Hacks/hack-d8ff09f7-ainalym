@@ -52,6 +52,36 @@ describe("deterministic replenishment need", () => {
     expect(base.need - supplied.need).toBe(2);
   });
 
+  it("counts only transit due within the horizon and names its arrival date", async () => {
+    const database = fixture();
+    database.prepare("INSERT INTO in_transit(code_1c,po_ref,qty,expected_at) VALUES ('TEST','SOON','4','2025-09-30')").run();
+    database.prepare("INSERT INTO in_transit(code_1c,po_ref,qty,expected_at) VALUES ('TEST','LATE','100','2026-01-01')").run();
+    const result = await computeNeed("TEST", params, context(database));
+    expect(result.components.in_transit).toBe(4);
+    expect(result.components.in_transit_sources).toEqual([expect.objectContaining({ po_ref: "SOON", expected_at: "2025-09-30" })]);
+    expect(result.rationale_ru).toContain("прибудет до 30.09");
+  });
+
+  it("uses metre units, an IEK minimum, and an SE multiple", async () => {
+    const database = fixture();
+    database.prepare("UPDATE sku SET unit='м',moq=10 WHERE code_1c='TEST'").run();
+    const baseline = await computeNeed("TEST", params, context(database));
+    const onHand = Number(baseline.components.on_hand) + Number(baseline.components.net_need) - 12.1;
+    database.prepare("UPDATE stock_month SET opening_qty=? WHERE code_1c='TEST'").run(String(onHand));
+    const iek = await computeNeed("TEST", params, context(database));
+    expect(iek.need).toBe(13);
+    expect(iek.rationale_ru).toContain("потребность 13 м (минимум 10 м)");
+    database.prepare("UPDATE stock_month SET opening_qty=? WHERE code_1c='TEST'").run(String(onHand + 6));
+    const belowMinimum = await computeNeed("TEST", params, context(database));
+    expect(belowMinimum.need).toBe(10);
+    database.prepare("UPDATE stock_month SET opening_qty=? WHERE code_1c='TEST'").run(String(onHand));
+    database.prepare("INSERT INTO supplier (id,name,lead_time_days) VALUES ('SE','SE',40)").run();
+    database.prepare("UPDATE sku SET supplier_id='SE' WHERE code_1c='TEST'").run();
+    const se = await computeNeed("TEST", params, context(database));
+    expect(se.need).toBe(20);
+    expect(se.rationale_ru).toContain("потребность 20 м (кратность 10 м)");
+  });
+
   it("responds to sales and stock changes independently", async () => {
     const database = fixture();
     const before = await computeNeed("TEST", params, context(database));
@@ -61,6 +91,16 @@ describe("deterministic replenishment need", () => {
     database.prepare("UPDATE sales_month SET qty_file='30' WHERE code_1c='TEST' AND ym='2025-08'").run();
     const moreSales = await computeNeed("TEST", params, context(database));
     expect(moreSales.components.base_rate).toBeGreaterThan(lessStock.components.base_rate as number);
+  });
+
+  it("averages completed months starting at first sale, excluding current partial month", async () => {
+    const database = fixture();
+    database.prepare("UPDATE sku SET first_sale_ym='2025-05' WHERE code_1c='TEST'").run();
+    database.prepare("UPDATE sales_month SET qty_file='0' WHERE code_1c='TEST' AND ym<'2025-05'").run();
+    database.prepare("UPDATE sales_month SET qty_file='1000' WHERE code_1c='TEST' AND ym='2025-09'").run();
+    const result = await computeNeed("TEST", params, context(database, "2025-09-23"));
+    expect(result.components.source_months).toBe(4);
+    expect(result.components.base_rate).toBe(10);
   });
 
   it("includes a new world sales day but excludes its one-off judge document", async () => {
@@ -82,12 +122,13 @@ describe("deterministic replenishment need", () => {
     expect(peak.components.forecast_qty).toBeGreaterThan(quiet.components.forecast_qty as number);
   });
 
-  it("compensates a censored stockout month", async () => {
-    const baseline = await computeNeed("TEST", params, context(fixture()));
-    const censored = await computeNeed("TEST", params, context(fixture({ stockout: true })));
-    expect(censored.components.stockout_months).toContain("2025-08");
-    expect(censored.components.stockout_uplift).toBeGreaterThan(0);
-    expect(censored.need).toBeGreaterThanOrEqual(baseline.need - 1);
+  it("shows raw and corrected demand for the same SKU with observed stockout", async () => {
+    const result = await computeNeed("TEST", params, context(fixture({ stockout: true })));
+    expect(result.components.stockout_months).toContain("2025-08");
+    expect(result.components.stockout_uplift).toBeGreaterThan(0);
+    expect(result.components.corrected_demand_rate).toBeGreaterThan(result.components.raw_demand_rate as number);
+    expect(result.rationale_ru).toContain(`фактические продажи ${result.components.raw_demand_rate}`);
+    expect(result.rationale_ru).toContain(`спрос с учётом дефицита ${result.components.corrected_demand_rate}`);
   });
 
   it("excludes an injected one-off document from regular demand", async () => {
@@ -98,6 +139,18 @@ describe("deterministic replenishment need", () => {
     expect(spiked.rationale_ru).toContain("ONEOFF");
   });
 
+  it("uses peer documents for a sparse SKU with no cached statistics", async () => {
+    const database = fixture();
+    database.prepare("UPDATE sku SET median_month_qty=NULL,p95_doc_qty=NULL WHERE code_1c='TEST'").run();
+    database.prepare("UPDATE sales_month SET qty_file='10000' WHERE code_1c='TEST'").run();
+    database.prepare("DELETE FROM sales_line WHERE code_1c='TEST' AND at<'2025-07-01'").run();
+    const before = await computeNeed("TEST", params, context(database));
+    database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty,source) VALUES ('TEST','SPARSE-5000','2025-08-20','5000','judge')").run();
+    const after = await computeNeed("TEST", params, context(database));
+    expect(after.components.outliers_excluded).toEqual(expect.arrayContaining([expect.objectContaining({ doc_no: "SPARSE-5000", threshold: 50 })]));
+    expect(after.components.base_rate).toBe(before.components.base_rate);
+  });
+
   it("excludes the eval document and a 5000-unit injection on a high-volume SKU", async () => {
     const database = fixture();
     database.prepare("UPDATE sku SET median_month_qty='14502',p95_doc_qty='144' WHERE code_1c='TEST'").run();
@@ -105,7 +158,7 @@ describe("deterministic replenishment need", () => {
     const before = await computeNeed("TEST", params, context(database));
     database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty,source) VALUES ('TEST','INJECTED','2025-08-20','5000','judge')").run();
     const after = await computeNeed("TEST", params, context(database));
-    expect(after.components.outlier_threshold).toBe(720);
+    expect(after.components.outlier_threshold).toBe(50);
     expect(after.components.outliers_excluded).toEqual(expect.arrayContaining([
       expect.objectContaining({ doc_no: "20000099834" }), expect.objectContaining({ doc_no: "INJECTED" }),
     ]));

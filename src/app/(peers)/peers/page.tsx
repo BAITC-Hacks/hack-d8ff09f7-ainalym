@@ -13,7 +13,7 @@ function eventSummary(event: WorldRow): string {
   if (event.text) return event.text;
   const p = event.payload;
   if (event.kind === "sales_day") return `${p.supplier_id ?? "Продажи"} · ${p.date ?? event.at?.slice(0, 10) ?? "день"} · ${Array.isArray(p.lines) ? p.lines.length : 0} строк`;
-  if (event.kind === "stock_snapshot") return `Срез остатков · ${p.ym ?? ""} · ${Array.isArray(p.stocks) ? p.stocks.length : 0} SKU`;
+  if (event.kind === "stock_snapshot") return `Срез остатков · ${p.ym ?? ""} · ${Array.isArray(p.stocks) ? p.stocks.length : 0} товаров`;
   if (event.kind === "in_transit_update") return `Товар в пути · ${Array.isArray(p.rows) ? `${p.rows.length} позиций` : `${p.delta_qty ?? "?"} шт`}`;
   if (event.kind === "price_update") return `Новая цена · ${p.to ?? p.unit_cost ?? "—"} ${p.currency ?? "KZT"}`;
   return "Событие без текста";
@@ -23,6 +23,9 @@ function shortTime(value: string | null): string {
   return match ? `${match[3]}.${match[2]}.${match[1]} · ${match[4]}:${match[5]}` : value ?? "Сценарий";
 }
 const eventStates: Record<string, string> = { scripted: "Готово к запуску", pending: "В очереди", processed: "Обработано", replayed: "Повтор", failed: "Ошибка" };
+const eventKinds: Record<string, string> = { sales_day: "Продажи за день", stock_snapshot: "Остатки на складе",
+  in_transit_update: "Товары в пути", price_update: "Изменение цены", judge_message: "Событие сценария",
+  supplier_reply: "Ответ поставщика" };
 
 export default function PeersPage() {
   try { activeOrg(); } catch (error) { if (error instanceof WorldError && error.status === 404) notFound(); throw error; }
@@ -39,9 +42,9 @@ export default function PeersPage() {
       <PeerActions kind="play" enabled={events.some((event) => event.state === "scripted")} />
       {events.length ? <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>№ / время</th><th>Событие</th><th>Объект</th><th>Состояние / запуск</th></tr></thead><tbody>{events.map((event) => <tr key={event.id}>
         <td>{event.seq ?? "—"}<br /><small>{shortTime(event.emitted_at ?? event.at)}</small></td>
-        <td><strong>{event.kind}</strong><br />{eventSummary(event)}<br /><WorldLabel /></td>
+        <td><strong>{eventKinds[event.kind] ?? "Событие"}</strong><br />{eventSummary(event)}<br /><WorldLabel /></td>
         <td>{event.code_1c ? <Link className={styles.link} href={`/world/${encodeURIComponent(event.code_1c)}`}>{event.code_1c}</Link> : event.po_id ? <Link className={styles.link} href={`/supplier/${encodeURIComponent(event.po_id)}`}>{event.po_id}</Link> : String(event.payload.supplier_id ?? (event.kind === "stock_snapshot" ? "Все SKU" : "—"))}</td>
-        <td title={event.state}>{eventStates[event.state] ?? event.state}{event.run_id && <><br /><Link className={styles.link} href={`/api/agent/runs/${encodeURIComponent(event.run_id)}`}>Запуск {event.run_id}</Link></>}</td>
+        <td>{eventStates[event.state] ?? "Проверить состояние"}{event.run_id && <><br /><Link className={styles.link} href={`/api/agent/runs/${encodeURIComponent(event.run_id)}`}>Открыть запуск</Link></>}</td>
       </tr>)}</tbody></table></div> : <p className={styles.truth}>Событий пока нет. Сценарий появится после загрузки данных партнёра.</p>}
     </section>
     <section className={styles.panel} aria-labelledby="orders-title"><h2 id="orders-title">Заказы к экспорту</h2>
