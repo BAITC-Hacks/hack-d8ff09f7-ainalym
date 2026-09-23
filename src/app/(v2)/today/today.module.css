@@ -33,7 +33,7 @@
 .h3 { font: 600 15px/20px var(--v2-font); }
 .more { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font: var(--v2-meta); color: var(--v2-ink-2); text-decoration: underline; text-underline-offset: 3px; }
 
-.decisions { display: flex; flex-direction: column; gap: 12px; }
+.decisions { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 .card { border: 1px solid var(--v2-line); border-radius: var(--v2-r-card); background: var(--v2-card); padding: 18px 20px; }
 .cardRow { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 16px; align-items: start; }
 .cardIcon { width: 40px; height: 40px; border-radius: 50%; background: var(--v2-wash); display: inline-flex; align-items: center; justify-content: center; color: var(--v2-ink-2); }
@@ -45,7 +45,7 @@
 .sources summary::-webkit-details-marker { display: none; }
 .sources summary:focus-visible { outline: 2px solid var(--v2-ring); outline-offset: 2px; border-radius: 2px; }
 .sources ul { margin: 6px 0 0; padding-left: 16px; }
-.sources code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+.sources code { overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
 .cardMoney { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
 .moneyValue { font: 600 20px/24px var(--v2-font); letter-spacing: -0.02em; white-space: nowrap; }
 .moneyNone { font: 600 20px/24px var(--v2-font); color: var(--v2-faint); }
@@ -80,7 +80,7 @@
   .strip { grid-template-columns: repeat(2, 1fr); }
   .tile:nth-child(2) { border-right: 0; }
   .tile:nth-child(-n+2) { border-bottom: 1px solid var(--v2-line); }
-  .columns { grid-template-columns: 1fr; gap: 32px; }
+  .columns { grid-template-columns: minmax(0, 1fr); gap: 32px; }
 }
 @media (max-width: 767px) {
   .head { flex-direction: column; align-items: flex-start; }

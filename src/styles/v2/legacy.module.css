@@ -1,0 +1,13 @@
+.surface {
+  --page: var(--v2-canvas); --panel: var(--v2-card); --wash: var(--v2-wash); --pressed: var(--v2-rail-active);
+  --ink: var(--v2-ink); --muted: var(--v2-muted); --line: var(--v2-line); --gridline: var(--v2-line);
+  --accent: var(--v2-ink-2); --ring: var(--v2-ring); --primary: var(--v2-accent); --primary-hover: var(--v2-accent-hover); --on-primary: var(--v2-accent-ink);
+  --success: var(--v2-ok); --warning: var(--v2-warn); --warning-bg: var(--v2-warn-bg); --danger-fg: var(--v2-danger); --danger-bg: var(--v2-danger-bg);
+  --insight-bg: var(--v2-wash); --track: var(--v2-line); --shadow-pop: var(--v2-shadow-pop);
+  --radius-panel: var(--v2-r-card); --radius-control: var(--v2-r-control);
+  --font-ui: var(--v2-font); --t-body: var(--v2-body); --t-meta: var(--v2-meta); --t-caption: var(--v2-caption); --t-label: var(--v2-body); --t-display: var(--v2-display); --t-section: var(--v2-h2); --t-row-title: var(--v2-body-strong);
+  --dur-fast: var(--v2-fast); --dur-settle: var(--v2-settle); --dur-pop: var(--v2-settle); --control-h: var(--v2-control-h); --button-h: var(--v2-control-h);
+  min-width: 0;
+}
+.surface h1 { font: var(--v2-display); letter-spacing: var(--v2-display-tracking); overflow-wrap: anywhere; }
+@media (max-width: 767px) { .surface > div > header { flex-wrap: wrap; } }

@@ -17,6 +17,7 @@
   --v2-accent-hover: #d2e61c;
   --v2-accent-ink: #131311;
   --v2-ring: #131311;
+  --accent: var(--v2-ink-2); --muted: var(--v2-muted); --radius-control: var(--v2-r-control);
   --v2-ok: #1f7a3e; --v2-ok-bg: #e4f0e5; --v2-ok-line: #b9d8bd;
   --v2-warn: #8a5a00; --v2-warn-bg: #f5ecd3; --v2-warn-line: #e3d2a2;
   --v2-danger: #b3261e; --v2-danger-bg: #f7e2de; --v2-danger-line: #e8b8b1;
@@ -41,17 +42,17 @@
   --v2-rail-w: 248px;
   --v2-shadow-pop: 0 12px 32px #13131118, 0 1px 2px #13131114;
   --v2-ease: cubic-bezier(.2,.8,.2,1);
-  --v2-fast: 100ms; --v2-settle: 160ms;
+  --v2-fast: 100ms; --v2-settle: 150ms;
   /* names the SKU, Money and Supplier screens (FABLE-UI-2) use; same palette, kept so one token file serves every page */
-  --v2-side: #e9e7e0;
-  --v2-well: #edebe4;
-  --v2-on-accent: #141413;
-  --v2-good: #1d6b3a;
-  --v2-good-bg: #e2eedf;
-  --v2-good-line: #a9c9a7;
-  --v2-bad: #a8281d;
-  --v2-bad-bg: #f5e1dd;
-  --v2-bad-line: #dfb0a8;
+  --v2-side: var(--v2-rail);
+  --v2-well: var(--v2-wash);
+  --v2-on-accent: var(--v2-accent-ink);
+  --v2-good: var(--v2-ok);
+  --v2-good-bg: var(--v2-ok-bg);
+  --v2-good-line: var(--v2-ok-line);
+  --v2-bad: var(--v2-danger);
+  --v2-bad-bg: var(--v2-danger-bg);
+  --v2-bad-line: var(--v2-danger-line);
   --v2-info-bg: #e7e9f2;
   --v2-bar: #7f93c9;
   --v2-bar-soft: #c5cde6;
@@ -60,9 +61,9 @@
   --v2-stockout: #c4463a;
   --v2-spark-purple: #6f4d72;
   --v2-spark-green: #7f9a7c;
-  --ring: #141413;
-  --v2-radius: 10px;
-  --v2-radius-sm: 6px;
+  --ring: var(--v2-ring);
+  --v2-radius: var(--v2-r-card);
+  --v2-radius-sm: var(--v2-r-control);
   --v2-shadow: 0 1px 0 rgba(20,20,19,.04), 0 8px 24px -16px rgba(20,20,19,.25);
   --v2-num: 500 32px/1.1 var(--v2-font);
   --v2-side-w: 248px;

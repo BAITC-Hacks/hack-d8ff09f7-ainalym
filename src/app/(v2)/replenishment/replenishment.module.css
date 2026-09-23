@@ -24,7 +24,7 @@
 .search input { flex: 1; border: 0; outline: 0; background: none; color: var(--v2-ink); font: var(--v2-body); min-width: 0; }
 .search input::-webkit-search-cancel-button { appearance: none; }
 .search kbd { font: 500 11px/18px var(--v2-font); padding: 0 5px; border-radius: 4px; border: 1px solid var(--v2-line); color: var(--v2-muted); }
-.chips { display: flex; gap: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; height: var(--v2-control-h); padding: 0 8px 0 4px; border: 1px solid transparent; border-radius: var(--v2-r-pill); background: none; transition: background var(--v2-fast) var(--v2-ease); }
 .chip:hover { background: var(--v2-wash); }
 .chip:focus-visible { outline: 2px solid var(--v2-ring); outline-offset: 1px; }
@@ -66,7 +66,7 @@
 .ektLine { margin-top: 8px; font: var(--v2-meta); color: var(--v2-muted); }
 .ektLine a { color: var(--v2-ink-2); }
 .meta { font: var(--v2-meta); color: var(--v2-muted); margin-top: 2px; white-space: nowrap; }
-.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table th.num, .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .qtyValue { font: 600 15px/20px var(--v2-font); display: inline-flex; align-items: center; gap: 5px; justify-content: flex-end; }
 .draftMark { color: var(--v2-warn); }
 .none { color: var(--v2-faint); }
