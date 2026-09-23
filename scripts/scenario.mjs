@@ -93,8 +93,22 @@ try {
     const drop = netNeed(before) - netNeed(after);
     report("M1", "Товар в пути +100 уменьшает чистую потребность до ограничения нулём", Math.abs(drop - 100) < 0.01,
       `Δ=${drop.toFixed(3)}, заказ ${before.need}→${after.need} из-за достаточного запаса`);
-    d.prepare("DELETE FROM stock_month WHERE code_1c IN (SELECT code_1c FROM sku WHERE supplier_id='IEK')").run();
-    d.prepare("UPDATE sku SET on_hand_qty=NULL,on_hand_as_of=NULL WHERE supplier_id='IEK'").run();
+    let active = null;
+    for (const row of d.prepare("SELECT DISTINCT code_1c FROM in_transit WHERE code_1c<>? ORDER BY code_1c").all(code("intransit"))) {
+      try {
+        const candidate = await computeNeed(row.code_1c, params(d, row.code_1c), { database: d, as_of: asOf });
+        if (component(candidate, "raw_need") > 150) { active = { code: row.code_1c, before: candidate }; break; }
+      } catch { /* catalog rows without required sources are not calculable */ }
+    }
+    if (active) {
+      await applyWorldEvent({ id: "WE-SCENARIO-ACTIVE-TRANSIT", kind: "in_transit_update", org_id: "partner", code_1c: active.code, payload: { delta_qty: 100 } });
+      const revised = await computeNeed(active.code, params(d, active.code), { database: d, as_of: asOf });
+      const activeDrop = component(active.before, "raw_need") - component(revised, "raw_need");
+      report("M1-active", "При дефиците +100 в пути снижает потребность до кратности на 100", Math.abs(activeDrop - 100) < 0.01,
+        `SKU=${active.code}, Δ=${activeDrop.toFixed(3)}`);
+    } else report("M1-active", "Найден SKU с активным дефицитом и товаром в пути", false);
+    d.prepare("DELETE FROM stock_month WHERE code_1c=?").run(code("intransit"));
+    d.prepare("UPDATE sku SET on_hand_qty=NULL,on_hand_as_of=NULL WHERE code_1c=?").run(code("intransit"));
     let named = false;
     try { await calculate(d, "intransit"); } catch (error) { named = /stock source missing/.test(String(error)); }
     report("M1-source", "Отсутствующий обязательный источник назван", named);
@@ -161,6 +175,15 @@ try {
       approveOrder("PO-SCENARIO", 1);
     }
     const after = await moneyView("partner", new Date(`${asOf}T00:00:00Z`));
+    if (selected) {
+      const po = d.prepare("SELECT total_qty,total_cost FROM purchase_order WHERE id='PO-SCENARIO'").get();
+      const installments = d.prepare("SELECT kind,amount FROM obligation WHERE po_id='PO-SCENARIO'").all();
+      const installment = (kind) => installments.find(row => row.kind === kind)?.amount ?? "not determined";
+      console.log("Economics (approved SE order, KZT):");
+      console.log("| Qty | Unit cost | Committed | Prepayment 30% | Balance 70% |");
+      console.log("|---:|---:|---:|---:|---:|");
+      console.log(`| ${po.total_qty} | ${selected.unit_cost} | ${po.total_cost ?? "not determined"} | ${installment("supplier_prepayment")} | ${installment("supplier_balance")} |`);
+    }
     console.log("Money view before approval:", JSON.stringify(before));
     console.log("Money view after approval:", JSON.stringify(after));
     report("Money", "Утверждение создаёт обязательства 30/70 без выдуманной себестоимости", !!selected && after.committed_by_supplier.some(r => r.supplier_id === "SE" && Number(r.amount) > 0) && after.next_60d.out.length === 2);
