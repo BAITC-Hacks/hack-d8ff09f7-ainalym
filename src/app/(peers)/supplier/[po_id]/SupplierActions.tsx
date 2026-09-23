@@ -19,7 +19,7 @@ export default function SupplierActions({ poId, orderState, channel }: { poId: s
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Ошибка канала"); }
     finally { setBusy(false); }
   }
-  if (channel.state === "confirmed") return <><p className={styles.body}>{channel.reply_text}</p><p className={styles.truth}>Confirmed (simulator) · оригинальный ответ сохранён.</p></>;
+  if (channel.state === "confirmed") return <><p className={styles.body}>{channel.reply_text}</p><p className={styles.truth}>Локальный симулятор · оригинальный ответ сохранён.</p></>;
   if (channel.state === "draft") return <div className={styles.form}>
     <p className={styles.subtitle}>{orderState === "approved" || orderState === "exported" ? "Заказ утверждён. Разместите его в локальном демо-канале перед ответом поставщика." : "Заказ ожидает утверждения. Канал откроется после решения менеджера."}</p>
     {(orderState === "approved" || orderState === "exported") && <button className={styles.button} disabled={busy} onClick={() => submit("send_demo")}>Разместить в демо-канале</button>}
