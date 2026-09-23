@@ -1,0 +1,11 @@
+# L5 integrated no-key gate — 2026-09-23
+
+Environment: after MERGE-2 (L1/L2a/L2b) landed on `main`, a disposable local SQLite database was reset with `DATABASE_PATH=<temporary>/partner.db npm run demo:reset`; the dev server used that same path with `OPENAI_API_KEY=''` on localhost:3337. No provider request was made. Reset counted organization=1, supplier=2, sku=3909.
+
+HTTP sequence: `POST /api/voice/tools/recommend_for` with `{request_id:"voice-http-recommend-1",scope:{org_id:"partner",supplier_id:"SE"},args:{supplier_id:"SE"}}` returned 200, 294 recommendations, one proposal, two tasks, state_version=724. The same request again returned 200 with the same run id and `replayed:true`. Direct SQLite read after both requests: calc_run=1, proposal=1, task=2, approval=0, purchase_order=0. The second task is for missing source data.
+
+`GET /api/queue` returned two items including the SE supplier order; `GET /api/state` returned `state_version:724`, `fingerprint:"sv-724"`. `POST /api/assistant/message` with «Что изменилось по СЭ?» and global `scope:{org_id:"partner"}` returned 200, `tool:"what_changed"`, 20 persisted ledger changes including the SE recommendation, decision and missing-source escalation. A new `POST /api/voice/tools/what_needs_me` scoped to SE returned the proposal link under `/review/:id`; `GET` of that page returned 200.
+
+`POST /api/voice/session` with the key disabled returned 503, `code:"provider_unavailable"`, `label:"Provider unavailable"`. In the browser, `/assistant` showed the same unavailable label, disabled microphone control, enabled typed composer, the confirmed SE status card and the queue card from backend records. [Integrated screenshot](typed-partner-status.png); the earlier [initial no-key screenshot](no-key-panel.png) shows the fallback before L1 routes landed.
+
+This gate proves the typed and HTTP tool path against anonymised partner records. It does not prove a live microphone/WebRTC round trip, provider speech, or that a voice-created result card is rendered: those remain externally unverified. L4 still needs to subscribe to `ainalym:voice-tool-result`; L8 budget-zero middleware still blocks the typed route in live mode. The upstream `/api/queue` hrefs for proposal/task are not valid page routes; the L5 tool bridge maps its own proposal result to `/review/:id` and task result to `/review`.

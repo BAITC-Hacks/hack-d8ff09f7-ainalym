@@ -34,6 +34,22 @@ describe("typed recovery and voice notes", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  it("narrows a global status question to the supplier named in Russian", async () => {
+    for (const supplier of ["SE", "IEK"]) {
+      db().prepare("INSERT INTO supplier (id, name, lead_time_days) VALUES (?, ?, ?)").run(supplier, supplier, 30);
+      db().prepare("INSERT INTO sku (code_1c, supplier_id, name) VALUES (?, ?, ?)").run(`${supplier}-1`, supplier, supplier);
+      db().prepare("INSERT INTO agent_action (id, run_id, org_id, code_1c, kind, summary_ru, at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .run(`AR-${supplier}`, "RUN-1", "ORG-1", `${supplier}-1`, "recompute", `${supplier} пересчитан`, "2026-09-23T00:00:00Z");
+    }
+    const response = await message(new Request("http://localhost/api/assistant/message", {
+      method: "POST", body: JSON.stringify({ text: "Что изменилось по СЭ?", scope: { org_id: "ORG-1" }, request_id: "typed-scoped-status" }),
+    }));
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.reply_ru).toBe("SE пересчитан");
+    expect(body.result.changes).toHaveLength(1);
+  });
+
   it("does not invent a transcript when the provider is missing", async () => {
     const response = await transcribe(new Request("http://localhost/api/voice/transcribe", { method: "POST" }));
     expect(response.status).toBe(503);

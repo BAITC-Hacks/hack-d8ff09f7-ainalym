@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { TranscriptGate, VoiceTurnGate } from "./transport";
+import { TranscriptGate, VoiceTurnGate, mentionedSupplier } from "./transport";
 
 export type VoiceState = "idle" | "connecting" | "listening" | "checking" | "preparing" | "waiting_review" | "ended" | "unavailable";
 export interface Caption { who: "user" | "assistant" | "tool"; text: string }
@@ -87,6 +87,8 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
     if (callEpoch === null) return;
     const calls = event.response.output?.filter(item => item.type === "function_call") ?? [];
     if (!calls.length) return;
+    let utterance: string | undefined;
+    let checkedTranscript = false;
     for (const call of calls) {
       if (sessionGeneration !== generation.current || !turn.current.isCurrent(callEpoch) || !call.call_id) return;
       const controller = new AbortController();
@@ -96,9 +98,14 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       let output: Record<string, unknown>;
       try {
         const args = JSON.parse(call.arguments || "{}") as Record<string, unknown>;
-        if (call.name === "recommend_for") {
+        if (!checkedTranscript) {
           for (let attempt = 0; attempt < 30 && !transcript.current.peek() && !controller.signal.aborted; attempt++) await new Promise(resolve => setTimeout(resolve, 100));
-          const utterance = transcript.current.take();
+          utterance = transcript.current.take();
+          checkedTranscript = true;
+        }
+        const namedSupplier = utterance ? mentionedSupplier(utterance) : undefined;
+        const toolScope = !scopeRef.current.supplier_id && namedSupplier ? { ...scopeRef.current, supplier_id: namedSupplier } : scopeRef.current;
+        if (call.name === "recommend_for") {
           if (!utterance) {
             output = { ok: false, code: "needs_clarification", message: "Не удалось надёжно распознать запрос. Повторите его или используйте текст." };
           } else {
@@ -106,7 +113,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
             if (latestStateVersion.current !== undefined) args.expected_state_version = latestStateVersion.current;
             const response = await fetch(`/api/voice/tools/${encodeURIComponent(call.name)}`, {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ request_id: call.call_id, scope: scopeRef.current, args }), signal: controller.signal,
+              body: JSON.stringify({ request_id: call.call_id, scope: toolScope, args }), signal: controller.signal,
             });
             output = await response.json();
             if (!response.ok) output = { ...output, ok: false };
@@ -114,7 +121,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
         } else {
           const response = await fetch(`/api/voice/tools/${encodeURIComponent(call.name)}`, {
             method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ request_id: call.call_id, scope: scopeRef.current, args }), signal: controller.signal,
+            body: JSON.stringify({ request_id: call.call_id, scope: toolScope, args }), signal: controller.signal,
           });
           output = await response.json();
           if (!response.ok) output = { ...output, ok: false };

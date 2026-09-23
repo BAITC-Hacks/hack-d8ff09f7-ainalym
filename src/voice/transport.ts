@@ -36,3 +36,9 @@ export class TranscriptGate {
   take() { const text = this.transcript; this.transcript = ""; this.active = false; return text; }
   clear() { this.transcript = ""; this.active = false; this.inputItemId = undefined; }
 }
+
+export function mentionedSupplier(text: string): "IEK" | "SE" | undefined {
+  if (/\biek\b|иэк/i.test(text)) return "IEK";
+  if (/\bse\b|сэ/i.test(text)) return "SE";
+  return undefined;
+}
