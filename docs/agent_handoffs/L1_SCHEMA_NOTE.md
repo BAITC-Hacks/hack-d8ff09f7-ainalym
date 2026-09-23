@@ -1,0 +1,5 @@
+tables: organization, supplier, sku, sales_line, sales_month, stock_month, in_transit, seasonality, season_index, outlier_doc, forecast, calc_run, recommendation, purchase_order, purchase_order_line, proposal, approval, task, obligation, payment, world_event, agent_run, agent_action, decision_record, ledger_peer_record, state_version.
+unique keys: each table primary key per schema; composite sales_month(code_1c,ym), stock_month(code_1c,ym), seasonality(supplier_id,year,month), season_index(supplier_id,month); payment_ref; world_event(org_id,source_id); agent_action.idempotency_key; ledger_peer_record(peer,external_identity).
+additive changes: indexes world_event(org_id,state,seq), world_event(code_1c,state), agent_run(org_id,started_at), agent_action(org_id,at), agent_action(po_id,at).
+repository: src/db/repo/index.ts typed raw SQLite rows; get/list/insert/update; writes bump state_version in caller transaction, update bumps row version when present.
+sha: HEAD (repository checkpoint commit).
