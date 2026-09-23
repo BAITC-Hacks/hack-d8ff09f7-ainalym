@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { read as readXlsx, utils as xlsxUtils } from "xlsx";
 import { db, resetInstance } from "../../src/db/client";
 import { deliverOrder } from "../../src/peers/deliver";
 import { exportOrder } from "../../src/peers/onec_export";
@@ -43,5 +44,18 @@ describe("1C file export boundary", () => {
     db().prepare("UPDATE purchase_order SET state = 'draft' WHERE id = 'PO-1'").run();
     expect(() => exportOrder("PO-1")).toThrow("po_not_approved");
     expect(await deliverOrder({ id: "PO-1" })).toMatchObject({ state: "delivery_failed", reason: "po_not_approved" });
+  });
+
+  it.each([["critical", "критично"], ["soon", "скоро"], ["normal", "планово"], ["none", "не требуется"]])("writes %s urgency as the canonical Russian label", (urgency, label) => {
+    db().prepare("INSERT INTO calc_run(id,scope,params,started_at) VALUES ('RUN-1','{}','{}','2026-09-23')").run();
+    db().prepare("UPDATE purchase_order SET run_id='RUN-1' WHERE id='PO-1'").run();
+    db().prepare("INSERT INTO recommendation(id,run_id,code_1c,supplier_id,qty_recommended,urgency) VALUES (?,?,?,?,?,?)")
+      .run("REC-1", "RUN-1", "03001_", "IEK", 20, urgency);
+    const files = exportOrder("PO-1");
+    const csvRow = readFileSync(files.csv_path, "utf8").trim().split(/\r?\n/)[1].split(";");
+    expect(csvRow[5]).toBe(label);
+    const workbook = readXlsx(readFileSync(files.xlsx_path), { type: "buffer" });
+    const rows = xlsxUtils.sheet_to_json<(string | number)[]>(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+    expect(rows[1][5]).toBe(label);
   });
 });
