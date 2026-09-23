@@ -4,8 +4,18 @@ export type Currency = "KZT" | "CNY" | "USD" | "RUB";
 export interface MoneyJSON { amount: string; currency: Currency }
 
 export function formatAmount(value: Decimal): string {
-  const [whole, fraction = ""] = value.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toString().split(".");
-  return `${whole}.${fraction.padEnd(2, "0")}`;
+  if (value.isZero()) return "0.00";
+  if (value.e > 1000) throw new RangeError("money amount is too large");
+  const raw = value.toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toString();
+  const match = raw.match(/^(-?)(\d+)(?:\.(\d+))?(?:e([+-]?\d+))?$/i);
+  if (!match) throw new RangeError("invalid money amount");
+  const [, sign, whole, fraction = "", exponent = "0"] = match;
+  const digits = whole + fraction;
+  const point = whole.length + parseInt(exponent, 10);
+  const plain = point <= 0 ? `0.${"0".repeat(-point)}${digits}` : point >= digits.length
+    ? `${digits}${"0".repeat(point - digits.length)}` : `${digits.slice(0, point)}.${digits.slice(point)}`;
+  const [integer, cents = ""] = plain.split(".");
+  return `${sign}${integer}.${cents.padEnd(2, "0")}`;
 }
 
 /** Exact two-decimal money. Allocation gives leftover cents to earlier shares. */

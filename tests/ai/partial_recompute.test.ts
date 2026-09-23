@@ -6,6 +6,7 @@ import { DatabaseSync } from "node:sqlite";
 import { migrate } from "../../src/db/client";
 import { applyRecommendations } from "../../src/domain/apply";
 
+const asOf = new Date().toISOString().slice(0, 10);
 beforeAll(() => {
   resetInstance();
   const d = db();
@@ -17,7 +18,7 @@ beforeAll(() => {
       d.prepare("INSERT INTO sales_month(code_1c,ym,qty_file) VALUES (?,?,'30')").run(code, ym);
       d.prepare("INSERT INTO sales_line(code_1c,doc_no,at,qty) VALUES (?,?,?,'30')").run(code, `${code}-${ym}`, `${ym}-15`);
     }
-    d.prepare("INSERT INTO stock_month(code_1c,ym,opening_qty) VALUES (?,'2024-12','0')").run(code);
+    d.prepare("INSERT INTO stock_month(code_1c,ym,opening_qty) VALUES (?,?,'0')").run(code, asOf.slice(0, 7));
   }
 });
 
@@ -35,12 +36,12 @@ it("does not create an empty supplier proposal for zero need", async () => {
 afterAll(() => resetInstance());
 
 it("carries unchanged supplier lines with their rationale into a partial recompute proposal", async () => {
-  const initial = await runCalculation({ supplier: "SE" }, {}, { as_of: "2025-01-01" });
+  const initial = await runCalculation({ supplier: "SE" }, {}, { as_of: asOf });
   const before = initial.proposals[0] as { id: string; payload: string };
   const oldLines = JSON.parse(before.payload).lines as Array<{ code_1c: string; recommendation_id: string }>;
   db().prepare(`INSERT INTO world_event(id,org_id,kind,code_1c,source_id,at,payload,state)
-    VALUES ('WE-B','ORG-1','in_transit_update','SE-B','TRANSIT-B','2025-01-02',?,'pending')`)
-    .run(JSON.stringify({ code_1c: "SE-B", po_ref: "INBOUND-B", qty: "10" }));
+    VALUES ('WE-B','ORG-1','in_transit_update','SE-B','TRANSIT-B',?,?,'pending')`)
+    .run(asOf, JSON.stringify({ code_1c: "SE-B", po_ref: "INBOUND-B", qty: "10" }));
   expect((await processEvent("WE-B")).reason).toBeUndefined();
   const next = db().prepare("SELECT * FROM proposal WHERE kind='supplier_order' AND state='needs_review' AND subject_id='SE'").get() as { payload: string; supersedes_id: string; version: number };
   const lines = JSON.parse(next.payload).lines as typeof oldLines;
