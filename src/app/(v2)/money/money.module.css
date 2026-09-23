@@ -21,7 +21,7 @@
 .dayBar { width: 100%; max-width: 40px; background: var(--v2-bar); border-radius: 3px 3px 0 0; }
 .risks { display: flex; flex-direction: column; gap: 12px; }
 .risk { padding: 16px; }
-.riskTop { display: flex; justify-content: space-between; align-items: center; }
+.riskTop { display: flex; justify-content: flex-start; align-items: center; gap: 16px; }
 .riskCount { font: 500 24px/1 var(--v2-font); letter-spacing: -.02em; }
 .riskLabel { margin: 10px 0 4px; font: 500 15px/20px var(--v2-font); }
 .riskBody { margin: 0; font: var(--v2-meta); color: var(--v2-ink-2); }

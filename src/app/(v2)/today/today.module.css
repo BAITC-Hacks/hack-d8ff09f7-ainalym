@@ -1,6 +1,6 @@
 .page { max-width: 1280px; margin: 0 auto; }
 .eyebrow { font: var(--v2-meta); color: var(--v2-muted); text-transform: none; }
-.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-top: 8px; }
+.head { display: flex; align-items: flex-end; justify-content: flex-start; gap: 24px; margin-top: 8px; }
 .display { font: var(--v2-display); letter-spacing: var(--v2-display-tracking); margin: 0; }
 .headActions { display: flex; align-items: center; gap: 8px; }
 .primaryLink { display: inline-flex; align-items: center; gap: 8px; height: var(--v2-control-h); padding: 0 16px; border-radius: var(--v2-r-control); background: var(--v2-accent); color: var(--v2-accent-ink); font: 500 14px/20px var(--v2-font); text-decoration: none; }
@@ -28,7 +28,7 @@
 
 /* 60-day money outlook: bounded card, one accent, labels in HTML so the SVG scales cleanly down to 390 px. */
 .outlook { max-width: 820px; margin-top: 24px; padding: 18px 22px 16px; border: 1px solid var(--v2-line); border-radius: var(--v2-r-card); background: var(--v2-card); min-width: 0; }
-.outlookHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.outlookHead { display: flex; align-items: flex-start; justify-content: flex-start; gap: 16px; }
 .outlookHead h2 { margin: 0; }
 .outlookCap { margin-top: 4px; font: 500 15px/20px var(--v2-font); color: var(--v2-ink); font-variant-numeric: tabular-nums; }
 .outlookWarn { color: var(--v2-danger); }
@@ -50,14 +50,14 @@
 .outlookLegend span { display: inline-flex; align-items: center; gap: 6px; }
 .legLine { width: 14px; height: 0; border-top: 1.5px solid var(--v2-ink); }
 .legBar { width: 10px; height: 10px; border-radius: 2px; background: var(--v2-viz-a); opacity: .55; }
-.outlookLegVal { margin-left: auto; color: var(--v2-ink-2); font-variant-numeric: tabular-nums; }
+.outlookLegVal { margin-left: 12px; color: var(--v2-ink-2); font-variant-numeric: tabular-nums; }
 
 .columns { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 40px; margin-top: 40px; }
 .sectionHead { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .sectionHead h2 { font: var(--v2-h2); letter-spacing: -0.01em; margin: 0; }
 .sectionCount { min-width: 24px; height: 22px; padding: 0 7px; border-radius: var(--v2-r-pill); border: 1px solid var(--v2-line-strong); font: 500 12px/20px var(--v2-font); text-align: center; color: var(--v2-ink-2); }
 .h3 { font: 600 15px/20px var(--v2-font); }
-.more { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font: var(--v2-meta); color: var(--v2-ink-2); text-decoration: underline; text-underline-offset: 3px; }
+.more { margin-left: 16px; display: inline-flex; align-items: center; gap: 4px; font: var(--v2-meta); color: var(--v2-ink-2); text-decoration: underline; text-underline-offset: 3px; }
 
 .decisions { display: flex; flex-direction: column; gap: 12px; }
 .card { border: 1px solid var(--v2-line); border-radius: var(--v2-r-card); background: var(--v2-card); padding: 18px 20px; }
@@ -77,18 +77,18 @@
 .moneyNone { font: 600 20px/24px var(--v2-font); color: var(--v2-faint); }
 .moneyMeta { font: var(--v2-meta); color: var(--v2-muted); }
 .cardActions { display: flex; align-items: center; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--v2-line); flex-wrap: wrap; }
-.reviewLink { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font: var(--v2-body); color: var(--v2-ink-2); text-decoration: underline; text-underline-offset: 3px; }
+.reviewLink { margin-left: 16px; display: inline-flex; align-items: center; gap: 6px; font: var(--v2-body); color: var(--v2-ink-2); text-decoration: underline; text-underline-offset: 3px; }
 .versionNote { font: var(--v2-meta); color: var(--v2-danger); }
 .alert { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding: 10px 12px; border-radius: var(--v2-r-control); font: var(--v2-body); }
 .alertStale { background: var(--v2-alert-row); color: var(--v2-warn); }
 .alertError { background: var(--v2-danger-bg); color: var(--v2-danger); }
 .alertOk { background: var(--v2-ok-bg); color: var(--v2-ok); }
-.linkBtn { margin-left: auto; background: none; border: 0; padding: 4px 6px; text-decoration: underline; text-underline-offset: 3px; color: inherit; font: var(--v2-body-strong); }
+.linkBtn { margin-left: 12px; background: none; border: 0; padding: 4px 6px; text-decoration: underline; text-underline-offset: 3px; color: inherit; font: var(--v2-body-strong); }
 
 .rail { display: flex; flex-direction: column; gap: 32px; }
 .railBlock h2 { margin: 0; }
 .list { list-style: none; margin: 0; padding: 0; }
-.listRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--v2-line); }
+.listRow { display: flex; align-items: center; justify-content: flex-start; gap: 12px; padding: 10px 0; border-top: 1px solid var(--v2-line); }
 .listRow:first-child { border-top: 0; }
 .rowMain { display: flex; flex-direction: column; min-width: 0; color: inherit; text-decoration: none; }
 .rowMain:focus-visible { outline: 2px solid var(--v2-ring); outline-offset: 2px; border-radius: 2px; }

@@ -2,7 +2,7 @@
 .page { max-width: 1280px; margin: 0 auto; }
 .back { display: inline-flex; align-items: center; gap: 6px; font: var(--v2-meta); color: var(--v2-muted); text-decoration: none; }
 .back:hover { color: var(--v2-ink); text-decoration: underline; text-underline-offset: 3px; }
-.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-top: 10px; }
+.head { display: flex; align-items: flex-end; justify-content: flex-start; gap: 24px; margin-top: 10px; }
 .headText { min-width: 0; }
 .display { font: var(--v2-display); letter-spacing: var(--v2-display-tracking); margin: 0; text-wrap: balance; overflow-wrap: anywhere; }
 .headMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 12px; font: var(--v2-meta); color: var(--v2-muted); }
@@ -24,7 +24,7 @@
 .sectionHead { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
 .sectionHead h2 { font: var(--v2-h2); letter-spacing: -0.01em; margin: 0; }
 .count { min-width: 24px; height: 22px; padding: 0 7px; border-radius: var(--v2-r-pill); border: 1px solid var(--v2-line-strong); font: 500 12px/20px var(--v2-font); text-align: center; color: var(--v2-ink-2); }
-.sort { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font: var(--v2-meta); color: var(--v2-muted); }
+.sort { margin-left: 16px; display: inline-flex; align-items: center; gap: 4px; font: var(--v2-meta); color: var(--v2-muted); }
 .sortBtn { height: 28px; padding: 0 10px; border-radius: var(--v2-r-pill); border: 1px solid var(--v2-line); background: transparent; color: var(--v2-ink-2); font: 500 12.5px/26px var(--v2-font); cursor: pointer; }
 .sortBtn:hover { background: var(--v2-wash); }
 .sortBtn[aria-pressed="true"] { background: var(--v2-ink); border-color: var(--v2-ink); color: #fff; }
@@ -85,7 +85,7 @@
 .alertStale { background: var(--v2-alert-row); color: var(--v2-warn); }
 .alertError { background: var(--v2-danger-bg); color: var(--v2-danger); }
 .alertOk { background: var(--v2-ok-bg); color: var(--v2-ok); }
-.linkBtn { margin-left: auto; background: none; border: 0; padding: 0 4px; text-decoration: underline; text-underline-offset: 3px; color: inherit; font: var(--v2-body-strong); cursor: pointer; }
+.linkBtn { margin-left: 12px; background: none; border: 0; padding: 0 4px; text-decoration: underline; text-underline-offset: 3px; color: inherit; font: var(--v2-body-strong); cursor: pointer; }
 
 /* receipt */
 .receipt { margin-top: 24px; border: 1px solid var(--v2-ok-line); border-radius: var(--v2-r-card); background: var(--v2-ok-bg); padding: 18px 20px; }
