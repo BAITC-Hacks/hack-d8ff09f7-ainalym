@@ -141,7 +141,7 @@ export async function decideChoice(question: ChoiceQuestion, context: unknown, p
     const keys = Object.keys(question.criteria);
     const distribution = z.object(Object.fromEntries(keys.map(key => [key, z.number().min(0).max(1)])) as Record<string, z.ZodNumber>);
     try {
-      const client = createOpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL });
+      const client = createOpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL?.trim() || undefined });
       const { object, response } = await generateObject({
         model: client(model),
         schema: z.object({ answer: z.enum(keys as [string, ...string[]]), distribution }),
