@@ -31,6 +31,7 @@ export function migrate(d: DatabaseSync = db()): void {
   if (!supplierColumns.has("route")) d.exec("ALTER TABLE supplier ADD COLUMN route TEXT");
   const documentColumns = new Set((d.prepare("PRAGMA table_info(document)").all() as { name: string }[]).map(row => row.name));
   if (!documentColumns.has("package_key")) d.exec("ALTER TABLE document ADD COLUMN package_key TEXT");
+  if (!documentColumns.has("size_bytes")) d.exec("ALTER TABLE document ADD COLUMN size_bytes INTEGER");
   const columns = new Set((d.prepare("PRAGMA table_info(sku)").all() as { name: string }[]).map((row) => row.name));
   for (const name of ["on_hand_qty", "on_hand_as_of"]) if (!columns.has(name)) d.exec(`ALTER TABLE sku ADD COLUMN ${name} TEXT`);
   const salesMonthColumns = new Set((d.prepare("PRAGMA table_info(sales_month)").all() as { name: string }[]).map((row) => row.name));

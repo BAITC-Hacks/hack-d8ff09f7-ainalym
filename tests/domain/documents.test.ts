@@ -7,6 +7,7 @@ import { POST as accept } from "../../src/app/api/documents/[id]/accept/route";
 import { POST as ingest } from "../../src/app/api/documents/route";
 import { GET as getPackage } from "../../src/app/api/orders/[id]/package/route";
 import { GET as getDocument } from "../../src/app/api/documents/[id]/route";
+import { PATCH as patchSupplier } from "../../src/app/api/suppliers/[id]/route";
 
 const mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const fixture = () => extractDeterministic(readFileSync(join(process.cwd(), "fixtures/documents/iek_invoice_demo.xlsx")), mime);
@@ -87,12 +88,14 @@ describe("document intake", () => {
     let receiptPath: string | null = null, contractPath: string | null = null, photoPath: string | null = null;
     try {
       expect(body.document.po_id).toBe("PO-DOC");
+      expect(body.document.size_bytes).toBeGreaterThan(0);
       expect(body.document.match.summary.discrepancies).toBe(2);
       expect(body.document.state).toBe("discrepancy");
       const pkg = await getPackage(new Request("http://localhost/api/orders/PO-DOC/package"), { params: Promise.resolve({ id: "PO-DOC" }) });
       expect(pkg.status).toBe(200);
       const packageBody = await pkg.json();
       expect(packageBody.route).toBe("eaeu");
+      expect(packageBody.route_note_ru).toBe("маршрут задан по умолчанию, уточните у менеджера");
       expect(packageBody.items.find((x: { key: string }) => x.key === "invoice").status).toBe("discrepancy");
       expect(packageBody.items.find((x: { key: string }) => x.key === "form_328_00").status).toBe("draft");
       const replayed = await ingest(new Request("http://localhost/api/documents", { method: "POST", headers: { "content-type": "application/json" },
@@ -123,6 +126,14 @@ describe("document intake", () => {
       contractPath = (await uploaded.json()).document.stored_path;
       const updatedPackage = await getPackage(new Request("http://localhost/api/orders/PO-DOC/package"), { params: Promise.resolve({ id: "PO-DOC" }) });
       expect((await updatedPackage.json()).items.find((x: { key: string }) => x.key === "contract").status).toBe("present");
+      const changed = await patchSupplier(new Request("http://localhost/api/suppliers/IEK", { method: "PATCH", body: JSON.stringify({ route: "import" }) }),
+        { params: Promise.resolve({ id: "IEK" }) });
+      expect(changed.status).toBe(200);
+      const imported = await getPackage(new Request("http://localhost/api/orders/PO-DOC/package"), { params: Promise.resolve({ id: "PO-DOC" }) });
+      const importBody = await imported.json();
+      expect(importBody.route).toBe("import");
+      expect(importBody.route_note_ru).toBeNull();
+      expect(importBody.items.find((x: { key: string }) => x.key === "dt_draft").status).toBe("draft");
     } finally {
       unlinkSync(join(process.cwd(), body.document.stored_path));
       if (receiptPath) unlinkSync(join(process.cwd(), receiptPath));

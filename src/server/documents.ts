@@ -4,7 +4,7 @@ import { orgId } from "@/server/context";
 import { startRun, recordAction, finishRun } from "@/server/ledger";
 import { draftsForPackage, matchDocumentToOrder, packageForRoute, type ExtractedDocument, type OrderLine, type SupplyRoute } from "@/domain/documents";
 
-type RawDocument = { id: string; po_id: string | null; supplier_id: string | null; kind: string; source: string; package_key: string | null; file_name: string | null; mime: string | null;
+type RawDocument = { id: string; po_id: string | null; supplier_id: string | null; kind: string; source: string; package_key: string | null; size_bytes: number | null; file_name: string | null; mime: string | null;
   sha256: string | null; stored_path: string | null; extracted: string; extraction_mode: string | null; match: string; state: string; created_at: string; version: number };
 export function documentById(id: string) {
   const row = db().prepare("SELECT * FROM document WHERE id=?").get(id) as RawDocument | undefined;
@@ -30,7 +30,7 @@ export function inferOrder(extracted: ExtractedDocument): { po_id: string; suppl
   return ranked[0]?.match > 0 ? { po_id: ranked[0].id, supplier_id: ranked[0].supplier_id } : null;
 }
 export function insertDocument(input: { po_id: string | null; supplier_id: string | null; kind: string; source: "upload" | "fixture" | "world_event";
-  file_name: string; mime: string; sha256: string; stored_path: string; extracted: ExtractedDocument; extraction_mode: string; package_key: string | null }) {
+  file_name: string; mime: string; sha256: string; stored_path: string; size_bytes: number; extracted: ExtractedDocument; extraction_mode: string; package_key: string | null }) {
   const receipt = input.po_id && input.kind !== "receipt" ? documentsForOrder(input.po_id).find(x => x.kind === "receipt" && x.extracted.lines.length) : null;
   const match = input.po_id && input.extracted.lines.length && ["invoice", "delivery_note", "receipt"].includes(input.kind)
     ? matchDocumentToOrder(input.extracted, orderLines(input.po_id), receipt ? receipt.extracted.lines.map(x => ({ code_1c: x.code_1c, article: x.article, name: x.name, qty: x.qty })) : undefined) : null;
@@ -38,9 +38,9 @@ export function insertDocument(input: { po_id: string | null; supplier_id: strin
   const id = `DOC-${randomUUID()}`;
   const created_at = new Date().toISOString();
   withTx(tx => {
-    tx.prepare(`INSERT INTO document(id,po_id,supplier_id,kind,source,file_name,mime,sha256,stored_path,extracted,extraction_mode,match,state,created_at,package_key)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,input.po_id,input.supplier_id,input.kind,input.source,input.file_name,input.mime,input.sha256,input.stored_path,
-        JSON.stringify(input.extracted),input.extraction_mode,JSON.stringify(match || {}),state,created_at,input.package_key);
+    tx.prepare(`INSERT INTO document(id,po_id,supplier_id,kind,source,file_name,mime,sha256,stored_path,extracted,extraction_mode,match,state,created_at,package_key,size_bytes)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,input.po_id,input.supplier_id,input.kind,input.source,input.file_name,input.mime,input.sha256,input.stored_path,
+        JSON.stringify(input.extracted),input.extraction_mode,JSON.stringify(match || {}),state,created_at,input.package_key,input.size_bytes);
     if (input.kind === "receipt" && input.po_id && input.extracted.lines.length) {
       const prior = tx.prepare("SELECT id,extracted,state FROM document WHERE po_id=? AND kind='invoice' AND id<>?").all(input.po_id,id) as
         { id: string; extracted: string; state: string }[];
@@ -66,7 +66,7 @@ export function routeForSupplier(supplier_id: string): { route: SupplyRoute; rou
   const supplier = db().prepare("SELECT route FROM supplier WHERE id=?").get(supplier_id) as { route: string | null } | undefined;
   if (!supplier) return null;
   if (["domestic", "eaeu", "import"].includes(supplier.route || "")) return { route: supplier.route as SupplyRoute, route_note_ru: null };
-  return { route: "eaeu", route_note_ru: "Маршрут задан по умолчанию, уточните у менеджера" };
+  return { route: "eaeu", route_note_ru: "маршрут задан по умолчанию, уточните у менеджера" };
 }
 export function packageForOrder(po_id: string) {
   const po = db().prepare(`SELECT p.id,p.supplier_id,s.name AS supplier_name,o.name AS buyer_name

@@ -70,7 +70,8 @@ export async function POST(request: Request): Promise<Response> {
   const stored_path = join(process.cwd(), relative);
   try {
     writeFileSync(stored_path, buffer, { flag: "wx", mode: 0o600 });
-    const document = insertDocument({ po_id, supplier_id, kind, source, file_name: name, mime, sha256, stored_path: relative, extracted, extraction_mode, package_key });
+    const document = insertDocument({ po_id, supplier_id, kind, source, file_name: name, mime, sha256, stored_path: relative,
+      size_bytes: buffer.length, extracted, extraction_mode, package_key });
     return Response.json({ ok: true, document, state_version: stateVersion() }, { status: 201 });
   } catch {
     try { unlinkSync(stored_path); } catch { /* no file to clean */ }

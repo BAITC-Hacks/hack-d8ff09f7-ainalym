@@ -46,6 +46,6 @@ CREATE TABLE IF NOT EXISTS decision_record (id TEXT PRIMARY KEY, question_id TEX
 CREATE TABLE IF NOT EXISTS ledger_peer_record (id TEXT PRIMARY KEY, peer TEXT NOT NULL, external_identity TEXT NOT NULL, kind TEXT, payload TEXT NOT NULL DEFAULT '{}', version INTEGER NOT NULL DEFAULT 1, state TEXT NOT NULL, as_of TEXT NOT NULL, UNIQUE (peer, external_identity));
 CREATE TABLE IF NOT EXISTS state_version (n INTEGER NOT NULL);
 INSERT INTO state_version (n) SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM state_version);
-CREATE TABLE IF NOT EXISTS document (id TEXT PRIMARY KEY, po_id TEXT, supplier_id TEXT, kind TEXT NOT NULL, source TEXT NOT NULL, file_name TEXT, mime TEXT, sha256 TEXT, stored_path TEXT, extracted TEXT NOT NULL DEFAULT '{}', extraction_mode TEXT, match TEXT NOT NULL DEFAULT '{}', state TEXT NOT NULL DEFAULT 'received', created_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, package_key TEXT);
+CREATE TABLE IF NOT EXISTS document (id TEXT PRIMARY KEY, po_id TEXT, supplier_id TEXT, kind TEXT NOT NULL, source TEXT NOT NULL, file_name TEXT, mime TEXT, sha256 TEXT, stored_path TEXT, extracted TEXT NOT NULL DEFAULT '{}', extraction_mode TEXT, match TEXT NOT NULL DEFAULT '{}', state TEXT NOT NULL DEFAULT 'received', created_at TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, package_key TEXT, size_bytes INTEGER);
 CREATE INDEX IF NOT EXISTS document_po_created ON document(po_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS document_sha ON document(sha256);
