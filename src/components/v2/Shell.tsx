@@ -16,7 +16,7 @@ const NAV = [
   { href: "/money", label: "Деньги", icon: Wallet, count: null },
   { href: "/world", label: "Лента", icon: Activity, count: null },
   { href: "/settings", label: "Настройки", icon: Settings2, count: null },
-  { href: "/assistant", label: "Помощник", icon: AudioLines, count: null },
+  { href: "/assistant", label: "ИИ-Помощник", icon: AudioLines, count: null },
 ];
 
 type Today = { queue_count: number; pulse?: { stockout_risk?: { count?: number } } };

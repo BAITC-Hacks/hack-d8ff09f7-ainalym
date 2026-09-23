@@ -1,0 +1,9 @@
+/* Typing-style reveal for assistant answers and the follow-up chips that land at the end of it. */
+.word { display: inline; opacity: 0; animation: reveal 140ms ease-out forwards; }
+.followups { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; opacity: 0; animation: reveal 220ms ease-out forwards; }
+.followup { min-height: 32px; padding: 0 12px; border: 1px solid var(--v2-line-strong, #d6d5cf); border-radius: 999px; background: var(--v2-card, #fff); color: var(--v2-ink, #141413); font: 500 13px/30px var(--v2-font, inherit); cursor: pointer; white-space: nowrap; transition: background 120ms ease, border-color 120ms ease; }
+.followup:hover { background: var(--v2-well, #ecebe6); border-color: var(--v2-ink, #141413); }
+.followup:disabled { opacity: .55; cursor: default; }
+.followup:focus-visible { outline: 2px solid var(--ring, #141413); outline-offset: 2px; }
+@keyframes reveal { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .word, .followups { animation: none; opacity: 1; } }

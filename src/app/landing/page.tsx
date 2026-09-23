@@ -25,7 +25,7 @@ const HONEST = [
 ];
 
 const LOOP = [
-  { icon: Eye, title: "Замечает", text: "Помощник следит за остатками, продажами и ответами поставщиков и видит риск раньше, чем он станет пустой полкой." },
+  { icon: Eye, title: "Замечает", text: "ИИ-Помощник следит за остатками, продажами и ответами поставщиков и видит риск раньше, чем он станет пустой полкой." },
   { icon: Sparkles, title: "Предлагает", text: "Готовит решение с объяснением: что заказать, у кого и к какому сроку." },
   { icon: UserCheck, title: "Вы решаете", text: "Утвердить, поправить или отклонить. Каждое решение остаётся в журнале." },
 ];
@@ -48,7 +48,7 @@ export default function LandingPage() {
         </a>
         <nav className={styles.navLinks} aria-label="Разделы">
           <a className={styles.navLink} href="#how">Как это работает</a>
-          <a className={styles.navLink} href="#loop">Помощник</a>
+          <a className={styles.navLink} href="#loop">ИИ-Помощник</a>
           <a className={styles.navCta} href={DEMO_HREF}>Открыть демо</a>
         </nav>
       </header>
@@ -113,8 +113,8 @@ export default function LandingPage() {
 
         <section id="loop" className={styles.section} aria-labelledby="loop-title">
           <div className={styles.sectionHead}>
-            <p className={styles.kicker}>Помощник и человек</p>
-            <h2 id="loop-title" className={styles.sectionTitle}>Помощник предлагает. Решает человек.</h2>
+            <p className={styles.kicker}>ИИ-Помощник и человек</p>
+            <h2 id="loop-title" className={styles.sectionTitle}>ИИ-Помощник предлагает. Решает человек.</h2>
           </div>
           <ol className={styles.loop}>
             {LOOP.map(({ icon: Icon, title, text }) => (

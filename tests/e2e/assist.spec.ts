@@ -18,7 +18,7 @@ test("money: ⌘J opens the dock, a chip answers, «Открыть отдель�
   await expect(page.getByRole("button", { name: /Спросить помощника/ })).toBeVisible();
   await page.screenshot({ path: `${OUT}/01_money_closed.png` });
   await page.keyboard.press("Control+j");
-  const dock = page.getByRole("dialog", { name: "Помощник" });
+  const dock = page.getByRole("dialog", { name: "ИИ-Помощник" });
   await expect(dock).toBeVisible();
   await expect(dock.getByText("Деньги", { exact: true })).toBeVisible();
   await page.screenshot({ path: `${OUT}/02_money_dock_open.png` });
@@ -36,7 +36,7 @@ test("money: ⌘J opens the dock, a chip answers, «Открыть отдель�
   await popup.waitForLoadState();
   expect(popup.url()).toContain(`${PREFIX}/assistant?ctx=`);
   await expect(dock).toBeHidden();
-  await popup.getByRole("region", { name: "Помощник" }).waitFor({ state: "attached", timeout: 60_000 });
+  await popup.getByRole("region", { name: "ИИ-Помощник" }).waitFor({ state: "attached", timeout: 60_000 });
   await popup.setViewportSize({ width: 480, height: 760 });
   await expect(popup.getByRole("article", { name: "Что заплатить на этой неделе?" })).toBeVisible();
   await popup.screenshot({ path: `${OUT}/04_popup_page_mode.png` });
@@ -50,7 +50,7 @@ test("money: ⌘J opens the dock, a chip answers, «Открыть отдель�
 test("sku: both chips get data-backed answers with links onto the shell", async ({ page }) => {
   await go(page, `${PREFIX}/skus/${SKU}`);
   await page.getByRole("button", { name: /Спросить помощника/ }).click();
-  const dock = page.getByRole("dialog", { name: "Помощник" });
+  const dock = page.getByRole("dialog", { name: "ИИ-Помощник" });
   await expect(dock.getByText(`Позиция ${SKU}`, { exact: true })).toBeVisible();
   await dock.getByRole("button", { name: "Почему столько?" }).click();
   await expect(dock.getByRole("article", { name: "Почему столько?" })).toBeVisible({ timeout: 20_000 });
@@ -67,9 +67,9 @@ test("assistant page: chip → inline card, typed «почему 130200122» →
   const OUT2 = "docs/evidence/v2/assist2";
   mkdirSync(OUT2, { recursive: true });
   await go(page, `${PREFIX}/assistant`);
-  const surface = page.getByRole("region", { name: "Помощник" });
-  await expect(surface.getByRole("heading", { name: "Помощник", level: 1 })).toBeVisible();
-  await expect(page.getByRole("dialog", { name: "Помощник" })).toHaveCount(0);
+  const surface = page.getByRole("region", { name: "ИИ-Помощник" });
+  await expect(surface.getByRole("heading", { name: "ИИ-Помощник", level: 1 })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "ИИ-Помощник" })).toHaveCount(0);
   const mic = surface.getByRole("button", { name: "Микрофон вкл/выкл" });
   await expect(mic).toBeVisible();
   await expect(mic).toHaveAttribute("aria-pressed", "false");
@@ -107,7 +107,7 @@ test("assistant page: chip → inline card, typed «почему 130200122» →
   await page.setViewportSize({ width: 1440, height: 900 });
   await go(page, `${PREFIX}/money`);
   await page.keyboard.press("Control+j");
-  const dock = page.getByRole("dialog", { name: "Помощник" });
+  const dock = page.getByRole("dialog", { name: "ИИ-Помощник" });
   await expect(dock).toBeVisible();
   await expect(dock.getByRole("article", { name: "почему 130200122" })).toBeVisible();
   await page.screenshot({ path: `${OUT2}/04_dock_shared_thread.png` });
@@ -119,9 +119,9 @@ test("dock at 390: ⌘J opens an opaque chat sheet, a chip answers, a typed ques
   await page.setViewportSize({ width: 390, height: 844 });
   await go(page, `${PREFIX}/money`);
   await page.keyboard.press("Control+j");
-  const dock = page.getByRole("dialog", { name: "Помощник" });
+  const dock = page.getByRole("dialog", { name: "ИИ-Помощник" });
   await expect(dock).toBeVisible();
-  await expect(dock.getByRole("heading", { name: "Помощник" })).toBeVisible();
+  await expect(dock.getByRole("heading", { name: "ИИ-Помощник" })).toBeVisible();
   expect(await dock.evaluate(node => getComputedStyle(node).backgroundColor)).not.toMatch(/rgba\(\d+, \d+, \d+, 0\)|transparent/);
   await page.screenshot({ path: `${OUT2}/06_dock_390_open.png` });
   await dock.getByRole("button", { name: "Что срочно?" }).click();

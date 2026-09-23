@@ -3,13 +3,14 @@ import { moneyView } from "../domain/cashflow";
 import { orderById } from "../domain/orders";
 import { queueView } from "../domain/views";
 import { resolveSkuCode as lookupSku } from "./sku_lookup";
+import { skuImageUrl } from "./sku_images";
 import type { AssistantContext } from "../components/assistant/context";
 
 /** Data-backed answers for the assistant, built from saved recommendations and orders. No AI key needed. */
 export const CANNOT_ANSWER = "Не могу ответить по этим данным. Попробуйте открыть карточку товара.";
-export type AnswerItem = { id: string; title: string; href?: string; meta?: string };
-export type Answer = { ok: boolean; kind: AnswerKind; reply_ru: string; items?: AnswerItem[] };
-export type AnswerKind = "pay_week" | "why_order" | "urgent" | "why_qty" | "what_if_transit" | "needs_me" | "changed" | "unknown";
+export type AnswerItem = { id: string; title: string; href?: string; meta?: string; image?: string | null; code?: string };
+export type Answer = { ok: boolean; kind: AnswerKind; reply_ru: string; items?: AnswerItem[]; followups?: string[] };
+export type AnswerKind = "pay_week" | "why_order" | "urgent" | "why_qty" | "what_if_transit" | "needs_me" | "changed" | "clarify" | "unknown";
 export type Ask = { text: string; context: AssistantContext; base?: string; org_id: string; asOf?: Date };
 
 type Rec = { id: string; run_id: string; code_1c: string; supplier_id: string; qty_recommended: number; qty_adjusted: number | null; urgency: string | null; rationale_ru: string | null; components: string | null; proposal_id: string | null };
@@ -64,7 +65,7 @@ function whyQty(code: string, base: string): Answer {
   const rec = latestRec(code);
   const name = sku.name;
   const unit = sku.unit ?? "шт";
-  const card: AnswerItem = { id: "card", title: `Открыть карточку ${code}`, href: `${base}/skus/${encodeURIComponent(code)}` };
+  const card: AnswerItem = { id: "card", title: name, code, image: skuImageUrl({ code_1c: code, supplier_id: sku.supplier_id }), href: `${base}/skus/${encodeURIComponent(code)}` };
   if (!rec) return { ok: true, kind: "why_qty", reply_ru: `Для позиции «${name}» расчёт ещё не сохранён. Запустите расчёт в разделе «Пополнение» — и я объясню количество.`, items: [{ id: "replenishment", title: "Открыть «Пополнение»", href: `${base}/replenishment` }, card] };
   const c = components(rec);
   const qty = rec.qty_adjusted ?? rec.qty_recommended;
@@ -130,9 +131,9 @@ function urgent(context: AssistantContext, base: string): Answer {
     codes = new Set(order ? (order.lines as unknown as { code_1c: string }[]).map(line => String(line.code_1c)) : []);
     if (order && !supplier) supplier = String(order.supplier_id);
   }
-  const rows = db().prepare(`SELECT r.code_1c, r.qty_recommended, r.qty_adjusted, r.urgency, s.name, s.unit FROM recommendation r JOIN sku s ON s.code_1c = r.code_1c
+  const rows = db().prepare(`SELECT r.code_1c, r.supplier_id, r.qty_recommended, r.qty_adjusted, r.urgency, s.name, s.unit FROM recommendation r JOIN sku s ON s.code_1c = r.code_1c
     WHERE r.rowid IN (SELECT MAX(rowid) FROM recommendation GROUP BY code_1c) AND r.urgency IN ('critical','soon')${supplier ? " AND r.supplier_id = ?" : ""}
-    ORDER BY CASE r.urgency WHEN 'critical' THEN 0 ELSE 1 END, r.qty_recommended DESC LIMIT 200`).all(...(supplier ? [supplier] : [])) as { code_1c: string; qty_recommended: number; qty_adjusted: number | null; urgency: string; name: string; unit: string | null }[];
+    ORDER BY CASE r.urgency WHEN 'critical' THEN 0 ELSE 1 END, r.qty_recommended DESC LIMIT 200`).all(...(supplier ? [supplier] : [])) as { code_1c: string; supplier_id: string; qty_recommended: number; qty_adjusted: number | null; urgency: string; name: string; unit: string | null }[];
   const hits = rows.filter(row => !codes || codes.has(row.code_1c));
   const scope = po_id ? "В этом заказе" : supplier ? `У поставщика ${SUPPLIER[supplier] ?? supplier}` : "По складу";
   if (!hits.length) return { ok: true, kind: "urgent", reply_ru: `${scope} срочных позиций сейчас нет — всё в плановом режиме.`, items: [] };
@@ -140,7 +141,7 @@ function urgent(context: AssistantContext, base: string): Answer {
   const soon = hits.length - critical;
   const reply = `${scope} срочно: ${critical ? `${critical} ${plural(critical, "критичная", "критичные", "критичных")}` : ""}${critical && soon ? ", " : ""}${soon ? `${soon} — скоро` : ""}. Сначала закройте критичные: по ним запас закончится раньше, чем придёт поставка.`;
   const items: AnswerItem[] = hits.slice(0, 8).map(row => ({
-    id: row.code_1c, title: row.name, href: `${base}/skus/${encodeURIComponent(row.code_1c)}`,
+    id: row.code_1c, title: row.name, code: row.code_1c, image: skuImageUrl({ code_1c: row.code_1c, supplier_id: row.supplier_id }), href: `${base}/skus/${encodeURIComponent(row.code_1c)}`,
     meta: `${nf.format(row.qty_adjusted ?? row.qty_recommended)} ${row.unit ?? "шт"} · ${URGENCY[row.urgency] ?? row.urgency}`,
   }));
   return { ok: true, kind: "urgent", reply_ru: reply, items };
@@ -188,7 +189,40 @@ function changed(orgId: string): Answer {
   return { ok: true, kind: "changed", reply_ru: `Последние изменения: ${rows.map(row => row.summary_ru).join("; ")}.`, items: [] };
 }
 
+/** High-stakes or under-specified requests get one short clarifying question before any action or full answer. */
+export function clarifyingQuestion(text: string, context: AssistantContext): string | null {
+  const t = text.toLowerCase();
+  const { code_1c, po_id, supplier_id } = context.entity;
+  if (/утверд|одобр|подтверд|отправ|оплат(и|ить)\b|заплат(и|ить)\b|перевед/.test(t) && !po_id) return "Утверждение, оплата и отправка остаются за вами. Какой заказ вы имеете в виду — назовите поставщика или номер заказа?";
+  if (/закаж|заказать|оформи|подготов(ь|ить) заказ/.test(t) && !code_1c && !supplier_id && !po_id) return "Подготовлю черновик заказа, ничего не отправляя. По какому поставщику — IEK или Systeme Electric — или по одному товару?";
+  if (/закаж|заказать/.test(t) && code_1c && !/\d+\s*(шт|ед|уп)/.test(t) && !/сколько|почему/.test(t)) return "Сколько единиц заказать — взять рекомендованное количество или указать своё?";
+  return null;
+}
+
+/** Deterministic next-step offers for the rules answers — 1–2 chips tied to what the answer showed. */
+export function followUpsFor(answer: Answer, context: AssistantContext): string[] {
+  const { code_1c, po_id } = context.entity;
+  const first = answer.items?.[0];
+  switch (answer.kind) {
+    case "urgent": return first && /^\d{7,12}_?$/.test(first.id) ? [`Почему столько по коду ${first.id}?`, "Что нужно от меня?"] : ["Что заплатить на этой неделе?", "Что изменилось?"];
+    case "pay_week": return ["Что нужно от меня?", "Что срочно?"];
+    case "needs_me": return answer.items?.length ? ["Что срочно?", "Что заплатить на этой неделе?"] : ["Что срочно?", "Что изменилось?"];
+    case "why_qty": return code_1c ? [`Что если в пути +10 по коду ${code_1c}?`, "Что срочно?"] : ["Что срочно?"];
+    case "what_if_transit": return code_1c ? [`Почему столько по коду ${code_1c}?`, "Что нужно от меня?"] : ["Что нужно от меня?"];
+    case "why_order": return po_id ? ["Что срочно в этом заказе?", "Что заплатить на этой неделе?"] : ["Что заплатить на этой неделе?"];
+    case "changed": return ["Что нужно от меня?", "Что срочно?"];
+    default: return ["Что срочно?", "Что нужно от меня?"];
+  }
+}
+
 export async function answerInContext(ask: Ask): Promise<Answer> {
+  const question = clarifyingQuestion(ask.text, ask.context);
+  if (question) return { ok: true, kind: "clarify", reply_ru: question, items: [], followups: ["Что нужно от меня?", "Что срочно?"] };
+  const answer = await answerCore(ask);
+  return { ...answer, followups: followUpsFor(answer, ask.context).slice(0, 2) };
+}
+
+async function answerCore(ask: Ask): Promise<Answer> {
   // The shell is served at /, so the default prefix is ""; an explicit "/v2" style prefix is still honoured.
   const base = typeof ask.base === "string" && /^(\/[a-z0-9_-]*)?$/i.test(ask.base) ? ask.base.replace(/\/$/, "") : "";
   const mentioned = mentionedSku(ask.text, ask.org_id);

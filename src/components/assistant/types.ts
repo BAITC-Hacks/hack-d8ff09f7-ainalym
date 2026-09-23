@@ -11,11 +11,13 @@ export const TOOLS: { name: ToolName; title: string; key: string }[] = [
 export type AssistantResult = {
   ok?: boolean; reply_ru?: string; tool?: ToolName; result?: AssistantResult;
   labels?: Record<string, unknown>; axes?: TruthAxes; state_version?: number; replayed?: boolean;
-  items?: { id: string; title: string; href?: string; meta?: string }[];
+  items?: { id: string; title: string; href?: string; meta?: string; image?: string | null; code?: string }[];
   summary_ru?: string; changes?: { object: string; id: string; field: string; before: unknown; after: unknown }[];
   run_id?: string; recommended?: number; top?: { code_1c: string; qty: number; urgency: string }[];
   code_1c?: string; rationale_ru?: string | null; components?: Record<string, unknown>;
   outliers_excluded?: unknown[]; stockout_months?: unknown[];
+  /** 1–2 next-step offers tied to the data; the shell renders them as tappable chips under the answer. */
+  followups?: string[];
 };
 
 // L5 sends canonical EN labels; the shell consumes the §5 enum values.

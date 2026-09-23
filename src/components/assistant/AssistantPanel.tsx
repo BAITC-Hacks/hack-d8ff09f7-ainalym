@@ -80,11 +80,11 @@ export function AssistantPanel({ scope = DEFAULT_SCOPE, onClose, variant = "pane
     return () => document.removeEventListener("keydown", keydown);
   }, [activeVoice, id, onClose, variant, voice]);
 
-  return <section ref={root} className={`${styles.panel} ${variant === "page" ? styles.pagePanel : ""}`} aria-label="Помощник по пополнению склада">
-    <header className={styles.header}><div><h2>Помощник</h2><p className={styles.meta}>{scope.code_1c ? `Код ${scope.code_1c}` : scope.supplier_id ? `Поставщик ${scope.supplier_id}` : "По всем поставщикам"}</p></div>{onClose ? <Button variant="quiet" aria-label="Закрыть помощника" onClick={onClose}><X size={18} /></Button> : <Link className={styles.closeLink} href="/today" aria-label="Вернуться на Сегодня"><X size={18} /></Link>}</header>
+  return <section ref={root} className={`${styles.panel} ${variant === "page" ? styles.pagePanel : ""}`} aria-label="ИИ-Помощник по пополнению склада">
+    <header className={styles.header}><div><h2>ИИ-Помощник</h2><p className={styles.meta}>{scope.code_1c ? `Код ${scope.code_1c}` : scope.supplier_id ? `Поставщик ${scope.supplier_id}` : "По всем поставщикам"}</p></div>{onClose ? <Button variant="quiet" aria-label="Закрыть помощника" onClick={onClose}><X size={18} /></Button> : <Link className={styles.closeLink} href="/today" aria-label="Вернуться на Сегодня"><X size={18} /></Link>}</header>
     <VoiceStateStrip state={voiceState} muted={muted} />
     <div className={styles.conversation} ref={scroll} onScroll={() => { const node = scroll.current; if (node) { follow.current = node.scrollHeight - node.scrollTop - node.clientHeight < 48; if (follow.current) setUnread(false); } }}>
-      <div className={styles.intro}><p>Решения, изменения и расчёт заказа — из данных вашего склада.</p><p className={styles.meta}>Помощник готовит рекомендации. Вы утверждаете заказ.</p></div>
+      <div className={styles.intro}><p>Решения, изменения и расчёт заказа — из данных вашего склада.</p><p className={styles.meta}>ИИ-Помощник готовит рекомендации. Вы утверждаете заказ.</p></div>
       <Captions lines={voice.captions} />
       <div className={styles.results}>{entries.map(entry => <ResultCard key={entry.id} title={entry.title} response={entry.response} />)}</div>
     </div>

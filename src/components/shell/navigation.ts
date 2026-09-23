@@ -6,5 +6,5 @@ export const navigation = [
   { href: "/skus", label: "Товары", icon: Boxes, key: "s", unavailable: "Каталог товаров пока недоступен. Откройте товар из расчёта пополнения." },
   { href: "/money", label: "Деньги", icon: Wallet, key: "m" },
   { href: "/connections", label: "Связи", icon: Workflow, key: "c" },
-  { href: "/assistant", label: "Помощник", icon: AudioLines, key: "a" },
+  { href: "/assistant", label: "ИИ-Помощник", icon: AudioLines, key: "a" },
 ] as const;

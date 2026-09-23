@@ -4,6 +4,8 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowUp, ExternalLink, Mic, MicOff, Sparkles, Volume2, X } from "lucide-react";
 import { ResultCard } from "./ResultCard";
+import { FollowUps, revealMs } from "./Reveal";
+import { followUpsOf } from "./AssistantSurface";
 import { isRenderSpec, StructuredCard } from "./StructuredCard";
 import { VoiceWave } from "./VoiceWave";
 import { useAssistantVoice } from "./useAssistantVoice";
@@ -110,10 +112,10 @@ export function AssistantDock({ base: baseProp }: { base?: string }) {
     </button>, navHost) : null;
   return <>
     {trigger}
-    {open && <div className="v2" style={{ display: "contents" }}><aside id={`${id}-dock`} role="dialog" aria-label="Помощник" aria-busy={busy} className={styles.sheet}>
+    {open && <div className="v2" style={{ display: "contents" }}><aside id={`${id}-dock`} role="dialog" aria-label="ИИ-Помощник" aria-busy={busy} className={styles.sheet}>
       <header className={styles.head}>
         <Sparkles size={16} aria-hidden="true" className={styles.spark} />
-        <h2 className={styles.title}>Помощник</h2>
+        <h2 className={styles.title}>ИИ-Помощник</h2>
         <span className={styles.scope} title={title}>{title}</span>
         <div className={styles.headActions}>
           <button type="button" className={styles.iconBtn} onClick={openSeparately}><ExternalLink size={14} aria-hidden="true" />Открыть отдельно</button>
@@ -126,9 +128,10 @@ export function AssistantDock({ base: baseProp }: { base?: string }) {
           ? <div key={entry.id} className={`${styles.msg} ${entry.say.who === "user" ? styles.msgUser : styles.msgBot}`}><p className={styles.bubble}>{entry.say.text}</p></div>
           : <div key={entry.id} className={styles.exchange}>
               <div className={`${styles.msg} ${styles.msgUser}`}><p className={styles.bubble}>{entry.question}</p></div>
-              <div className={`${styles.msg} ${styles.msgBot}`}><div className={styles.answer}>{isRenderSpec(entry.render) ? <StructuredCard title={entry.question ?? ""} render={entry.render} base={base} /> : <ResultCard title={entry.question ?? ""} response={entry.response ?? { ok: false, reply_ru: CANNOT_ANSWER }} plain base={base} hideTitle />}</div></div>
+              <div className={`${styles.msg} ${styles.msgBot}`}><div className={styles.answer}>{isRenderSpec(entry.render) ? <StructuredCard title={entry.question ?? ""} render={entry.render} base={base} /> : <ResultCard title={entry.question ?? ""} response={entry.response ?? { ok: false, reply_ru: CANNOT_ANSWER }} plain base={base} hideTitle reveal={Date.now() - entry.at < 4000} />}
+                {entry === entries[entries.length - 1] && !busy && <FollowUps items={followUpsOf(entry)} delayMs={Date.now() - entry.at < 4000 ? revealMs(entry.response?.reply_ru ?? "") + 120 : 0} disabled={busy} onPick={item => void ask(item)} />}</div></div>
             </div>)}
-        {busy && <div className={`${styles.msg} ${styles.msgBot}`}><p className={`${styles.bubble} ${styles.typing}`} role="status" aria-label="Помощник готовит ответ"><i /><i /><i /><span>Смотрю данные…</span></p></div>}
+        {busy && <div className={`${styles.msg} ${styles.msgBot}`}><p className={`${styles.bubble} ${styles.typing}`} role="status" aria-label="ИИ-Помощник готовит ответ"><i /><i /><i /><span>Смотрю данные…</span></p></div>}
       </div>
       <div className={styles.foot}>
         {live && <div className={styles.live}><VoiceWave local={voice.local} remote={voice.remote} state={voice.mic === "idle" ? "listening" : voice.mic} size="mini" /><span role="status">{voice.label}</span><button type="button" className={styles.linkBtn} onClick={voice.stop}>Завершить</button>{voice.audioBlocked && voice.enableAudio && <button type="button" className={styles.linkBtn} onClick={voice.enableAudio}><Volume2 size={12} aria-hidden="true" /> Включить звук</button>}</div>}
