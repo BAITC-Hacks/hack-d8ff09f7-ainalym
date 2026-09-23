@@ -33,7 +33,11 @@ export async function runScheduledChecks(now: string | Date = new Date(), ctx: {
   const staleCodes = events.filter((event) => {
     const latestRun = database.prepare(`SELECT c.finished_at FROM recommendation r JOIN calc_run c ON c.id=r.run_id
       WHERE r.code_1c=? ORDER BY c.finished_at DESC LIMIT 1`).get(event.code_1c) as { finished_at: string | null } | undefined;
-    return !latestRun?.finished_at || event.latest_at > latestRun.finished_at;
+    const attempted = database.prepare(`SELECT finished_at FROM calc_run c
+      WHERE EXISTS (SELECT 1 FROM json_each(c.scope,'$.codes') WHERE value=?) ORDER BY finished_at DESC LIMIT 1`)
+      .get(event.code_1c) as { finished_at: string | null } | undefined;
+    const latest = [latestRun?.finished_at, attempted?.finished_at].filter((value): value is string => !!value).sort().at(-1);
+    return !latest || event.latest_at > latest;
   }).map((event) => event.code_1c);
   if (!followups.length && !crossing.length && !staleCodes.length) return { runs: [], processed: 0, proposals: [], affected: [] };
 

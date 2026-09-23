@@ -1,0 +1,16 @@
+# MERGE-2 closeout
+- Base: `main` 846bfb0 on `lane/merge2`; merged observed closeout tips `lane/skeleton` c7ff916, `lane/domain_a` 7295ad8, `lane/domain_b` fd4e11f in that order.
+- `src/app/api/money/route.ts`: L1 had `handle`/`ok` contract responses; L2b had domain cashflow and `org_id` selection. Kept the domain view and query with L1 status/error, truth axes, and state version envelope.
+- `src/app/api/skus/route.ts`: L1 had typed query parsing and response envelope; L2b had joined domain SKU listing and `skus` alias. Kept the domain listing, alias, typed validation, and envelope.
+- `src/db/client.ts`: L1 rewrote a configured legacy filename; main preserved mounted paths. Kept exact `DATABASE_PATH` plus L1's additive on-hand migration.
+- `src/domain/engine.ts`: INTEG-1 had inactive need 0, `max(20,min(3×median month,5×p95 doc))`, and fresh SKU on-hand; L2a added source/staleness checks and review evidence. Kept all, requiring a stock source and preferring a dated fresh balance.
+- `src/domain/money.ts`: INTEG-1 supplied decimal-safe `formatAmount`; L2a supplied exact money helpers. Kept both.
+- `scripts/scenario.mjs`: INTEG-1 covered inactive SKUs and missing sources; L2b added active M1, M5-full, and `--via-api`. Kept all; missing-source case clears both stock sources.
+- `src/domain/recompute.ts` and `src/ai/worker.ts`: L2b persisted affected-only runs; the worker expected computed results and wrote another run. Kept one persisted scoped run and returned its results and proposal IDs to the worker.
+- `src/domain/cashflow.ts`: main used exact formatted amounts; L2b distinguished unknown-cost commitments and empty opening cash. Kept both.
+- `tests/ai/worker_integration.test.ts`: fixed dated fixture no longer exercised the current calculation window; kept the two-event assertion with rolling months.
+- Skeleton check: `npm run etl && npm run check` GREEN — passed=163 failed=0 skipped=3 externally-unverified=0.
+- Domain A check: `npm run etl && npm run check` GREEN — passed=188 failed=0 skipped=3 externally-unverified=0.
+- Domain B final check: `npm run etl && npm run check` GREEN — passed=191 failed=0 skipped=3 externally-unverified=0.
+- Final `npm run build` passed; `README.md` untouched; no schema rename, secret, force-push, or write to `main`/other worktrees.
+- Tip: `lane/merge2` merge commit containing this closeout. Gate: GREEN (three declared live-voice skips remain).
