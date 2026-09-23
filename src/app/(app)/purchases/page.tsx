@@ -1,2 +1,4 @@
 import { redirect } from "next/navigation";
-export default function Page() { redirect("/replenishment"); }
+export default function Page() {
+  redirect("/replenishment");
+}

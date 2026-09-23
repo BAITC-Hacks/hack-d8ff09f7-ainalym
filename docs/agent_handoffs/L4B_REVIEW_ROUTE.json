@@ -1,0 +1,28 @@
+{
+  "all_route_down_conditions_met": false,
+  "capacity_state": "one short reviewer, one primary; no concurrent browser or DB writes",
+  "class": 2,
+  "context_mode": "relevant_inherited",
+  "critical_triggers": [],
+  "independence_required": true,
+  "orchestrator_lane": "gpt-6-sol",
+  "orchestrator_scope": "accepted_delivery_orchestration",
+  "primary_lane": "gpt-6-sol",
+  "reasoning_effort": "xhigh",
+  "review_lane": "fresh_gpt-5.6-sol_xhigh",
+  "schema_version": 1,
+  "task_class": "difficult",
+  "task_fingerprint": "32a9498fc95ccfd07f1bb1bf2bddc8d1aa198c1d8d276cd7f220e909114a5562",
+  "task_id": "L4B-R1",
+  "title": "Independent implementation review of version-bound replenishment decision UI",
+  "venture": "ainalym",
+  "venture_triggers": [],
+  "verification": [
+    "npm run check -- ui",
+    "npx tsc --noEmit",
+    "trace version-bound API writes"
+  ],
+  "why_routed": [
+    "explicit load-bearing class-2 work requires xhigh depth and a fresh gate"
+  ]
+}

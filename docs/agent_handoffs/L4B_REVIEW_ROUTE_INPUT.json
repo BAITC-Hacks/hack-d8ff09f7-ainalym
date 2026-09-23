@@ -1,0 +1,1 @@
+{"task_id":"L4B-R1","title":"Independent implementation review of version-bound replenishment decision UI","venture":"ainalym","load_bearing":true,"code_judgment":true,"verification":["npm run check -- ui","npx tsc --noEmit","trace version-bound API writes"],"capacity_state":"one short reviewer, one primary; no concurrent browser or DB writes"}
