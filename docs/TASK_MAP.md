@@ -2,37 +2,40 @@
 
 Единственный источник статусов для README. Статус ставится только по коду на `main` и чекпоинтам/закрытиям в `docs/agent_handoffs/*`. Обновляется после каждого слияния (L7).
 
-Наблюдение: **2026-09-23 09:17Z**, `main` @ `99e3138` (L2b orders/money/events/skus · L9 ETL · L1 check/health/reset/repos · L2a engine/apply/tasks · L3 AI providers/decisions/drafts/worker · L4a shell · L8 demo guard/deploy).
+Наблюдение: **2026-09-23 09:30Z**, `main` @ `846bfb0` (L9 ETL · L1 check/health/reset · L2a engine · L2b orders/money/events/skus · INTEG-1 · L3 AI · L4a shell/today/money · L6 world/peers · L8 demo).
 
-Статусы: `GREEN` — проверено командой в это время · `PARTIAL` — есть код, проверки нет, неполная или только на тестовых данных · `RED` — проверка падает · `PENDING` — кода нет на `main`.
+Статусы: `GREEN` — проверено командой в это время · `PARTIAL` — есть код, проверки нет или неполная · `RED` — проверка падает · `PENDING` — кода нет на `main`.
 
 | # | Требование | Файл / маршрут | Команда проверки | Статус · UTC |
 |---|---|---|---|---|
-| M1 | Базовая потребность по всем источникам; изменение товара в пути меняет результат | `src/domain/engine.ts` `computeNeed` · `src/domain/apply.ts` `runCalculation` · (`POST /api/calc/run` — PENDING) | `npm run check` → `reduces need when in-transit supply rises`, `refuses a missing stock source`, `records all inputs and arithmetic in components` | PARTIAL · 09:00Z (PASS на тестовых данных; на данных партнёра — `scripts/scenario.mjs` нет) |
-| M2 | Сезонность и устойчивый рост в прогнозе | `src/domain/engine.ts` | `npm run check` → `raises the forecast into the SKU's seasonal peak` | PARTIAL · 09:00Z (тестовые данные) |
-| M3 | Оценка и компенсация упущенного спроса (stockout) | `src/domain/engine.ts` | `npm run check` → `compensates a censored stockout month` | PARTIAL · 09:00Z (тестовые данные) |
-| M4 | Выявление и исключение разовых крупных заказов | `src/domain/engine.ts` · (`POST /api/world/compose` — PENDING) | `npm run check` → `excludes an injected one-off document from regular demand` | PARTIAL · 09:00Z (тестовые данные) |
-| M5 | Список по поставщикам + обоснование по строке + экспорт «Код 1с» | `src/domain/apply.ts` (предложения `supplier_order` по поставщику, строки с `rationale_ru`) · (`/api/recommendations`, `/api/orders`, export — PENDING) | `npm run check` → `calculation to supplier approval persists the forecast, recommendation, proposal and review task` | PARTIAL · 09:00Z (маршрутов и экспорта нет) |
-| D1 | Загрузка данных партнёра в SQLite, счётчики | `scripts/etl/*.mjs` → `data/partner.db` | `npm run etl` → sku 3909, sales_line 248915, in_transit 313, stockout months 1596 | GREEN · 08:53Z |
-| D2 | Схема БД, клиент, репозитории | `src/db/schema.sql` (26 таблиц) · `src/db/client.ts` · `src/db/repo/` | `grep -c "CREATE TABLE" src/db/schema.sql` → 26 | GREEN · 08:45Z |
-| D3 | Данные партнёра в репозитории | `fixtures/partner/{IEK,SE}/*.xlsx` (12) · `fixtures/PROVENANCE.md` | `ls fixtures/partner/*/*.xlsx \| wc -l` → 12 | GREEN · 08:45Z |
-| D4 | Лента событий-фикстур и эталоны проверок | `fixtures/world_events.jsonl` (45) · `tests/fixtures/eval/replenishment_expectations.json` | `wc -l fixtures/world_events.jsonl` → 45 | GREEN · 08:55Z |
-| Q1 | Очередь решений: утверждение по версии, без автоотправки | `src/domain/apply.ts` (предложения `needs_review`, устаревание) · `POST /api/orders/:id/approve` · (`/api/proposals`, `/api/queue` — PENDING) | `npm run check` → `marks an unapproved proposal stale when a newer run supersedes it` | PARTIAL · 09:00Z |
-| Q2 | Воркер агентов + журнал | `src/ai/worker.ts` · `src/server/ledger.ts` · (`/api/agent/*` — PENDING) | — (тестов воркера нет) | PARTIAL · 09:01Z |
-| T1 | Задачи и плановые проверки | `src/domain/tasks.ts` · `schedule.ts` | `npm run check` → `task state and scheduled checks …` (4) | GREEN · 09:00Z |
-| A1 | Типизированные решения: jev/openai/rules/replay, каталог 5 вопросов | `src/ai/provider.ts` · `src/ai/*` · `POST/GET /api/decisions` | `npm run check` → `typed decision service …` (3), `live provider smoke …` (4, с ключами) | GREEN · 09:00Z (живые проверки — с ключами L7) |
-| A2 | Черновики письма поставщику и сводки расчёта (не отправляются) | `src/ai/drafting.ts` · `POST /api/drafts` · `GET /api/artifacts/:id` | — (нужен `OPENAI_API_KEY`) | PARTIAL · 09:01Z |
-| F1 | Деньги и обязательства | `src/domain/money.ts` · `obligations.ts` · `cashflow.ts` · `GET /api/money` · `POST /api/orders/:id/approve` | `npm run check` → `purchase approvals and obligations …`, `money derived from ledger rows …` | RED · 09:16Z (`keeps floating point coercion out of domain source` падает на `cashflow.ts`) |
-| W1 | Лента событий: применение и пересчёт затронутых | `src/domain/events.ts` · `recompute.ts` · (`/api/world/*` — PENDING) | `npm run check` → `world events and SKU drilldown …` | RED · 09:16Z (`recomputes exactly the requested codes` — `sales source missing for SE-1`) |
-| S1 | Карточка артикула | `src/domain/skus.ts` · `GET /api/skus[/:code]` | `npm run check` → `returns a SKU with its series, forecast and timeline` | PARTIAL · 09:16Z |
-| V1 | Голос и текстовый ассистент | `src/voice/*` (заглушки) · `/api/voice/*` · `/api/assistant/message` | ручная проверка (микрофон) | PENDING · 09:01Z |
-| U0 | Оболочка интерфейса: навигация, метки режимов, Inter | `src/components/shell/*` · `src/components/labels/*` · `src/app/(app)/layout.tsx` · `public/fonts/` | `npm run dev` → `/` ведёт на `/today` | PARTIAL · 09:01Z (в браузере L7 не проверял) |
-| U1 | Экраны: пульс, рекомендации, карточка, заказы | `src/app/(app)/**` | `npm run dev` | PENDING · 09:01Z («Сегодня» — заготовка) |
-| C1 | Сборка и типы | весь проект | `npx next typegen && npx tsc --noEmit` | GREEN · 08:43Z |
-| C2 | Сводная проверка | `scripts/check.mjs` | `npm run check` → `check: passed=55 failed=2 skipped=0 externally-unverified=0` | RED · 09:16Z (см. F1, W1; исправление — INTEG-1) |
-| C3 | Чистый клон | `scripts/clean_clone_check.sh` | `bash scripts/clean_clone_check.sh <remote>` | PENDING · 09:01Z (механика проверена 08:55Z на локальном клоне; на GitHub не запускался) |
-| C4 | Здоровье приложения | `src/app/api/health/route.ts` | `npm run check` → `skeleton GET /api/health …` | GREEN · 09:00Z |
-| C5 | Пересборка демо-базы | `scripts/demo_reset.mjs` | `npm run demo:reset` → `"ok":true`, world_event 45 | GREEN · 08:55Z |
-| H1 | Хостинг-демо: код доступа, лимиты, контейнер | `src/middleware.ts` · `src/server/demo_guard.ts` · `scripts/deploy/*` | `GET <URL из формы платформы>/api/health` → 200 | PARTIAL · 09:14Z (первый деплой отвечает 200 по данным корня; L7 не проверял) |
-| R1 | README: методика, алгоритм выбросов, запуск (ТЗ п. 10) | `README.md` §4, §7 | чтение | GREEN (v1.4) · 09:01Z |
-| R2 | Режим без ключей «Правила без LLM» | `AI_PROVIDER` auto → `rules` · `src/ai/provider.ts` | чистый клон без ключей → `npm run check` | PENDING · 09:01Z |
+| M1 | Потребность по всем источникам; товар в пути меняет результат; нет источника → отказ | `src/domain/engine.ts` · `src/domain/apply.ts` | `node scripts/scenario.mjs` → `[PASS] M1`, `[PASS] M1-source` | GREEN · 09:26Z |
+| M2 | Сезонность и рост | `src/domain/engine.ts` | `node scripts/scenario.mjs` → `[PASS] M2 (max/min=22.95)`, `[PASS] M2-peak` | GREEN · 09:26Z |
+| M3 | Компенсация упущенного спроса | `src/domain/engine.ts` · `scripts/etl/derive.mjs` | `node scripts/scenario.mjs` → `[PASS] M3 (raw=853.218, adjusted=1479.83)` | GREEN · 09:26Z |
+| M4 | Исключение разовых крупных заказов | `src/domain/engine.ts` (порог max(20, min(3×медиана, 5×p95))) · `POST /api/world/compose` | `node scripts/scenario.mjs` → `[PASS] M4 (change=0.00%, excluded=true)`; `npm run check` → `partner event replay …` | GREEN · 09:26Z |
+| M5 | Список по поставщикам + обоснование + экспорт «Код 1с» | `src/domain/apply.ts` · `GET /api/orders` · `GET /api/peers/onec-export/:po_id` | `node scripts/scenario.mjs` → `[PASS] M5-full`, `[PASS] M5 (rows=724)` | GREEN · 09:26Z (экран рекомендаций — PENDING) |
+| D1 | Загрузка данных партнёра, текущий остаток 22.09 | `scripts/etl/*.mjs` → `data/partner.db` | `npm run etl` → sku 3909, sales_line 248915, in_transit 313, stockout months 1591 | GREEN · 09:25Z |
+| D2 | Схема БД, клиент, репозитории | `src/db/schema.sql` · `src/db/client.ts` · `src/db/repo/` | `npm run check` | GREEN · 09:27Z |
+| D3 | Данные партнёра и происхождение | `fixtures/partner/{IEK,SE}/*.xlsx` (12) · `fixtures/PROVENANCE.md` | `ls fixtures/partner/*/*.xlsx \| wc -l` → 12 | GREEN · 08:45Z |
+| D4 | События-фикстуры и эталоны | `fixtures/world_events.jsonl` (45) · `tests/fixtures/eval/replenishment_expectations.json` | `node scripts/scenario.mjs` → `[PASS] World (applied=45/45)` | GREEN · 09:26Z |
+| Q1 | Утверждение по версии, без автоотправки | `src/domain/orders.ts` · `POST /api/orders/:id/approve` · `/supplier/:po_id` | `npm run check` → `purchase approvals and obligations …` | GREEN · 09:27Z |
+| Q2 | Очередь решений (`/api/queue`, `/api/proposals`) и экран «Проверка» | — | — | PENDING · 09:30Z |
+| Q3 | Воркер агентов, разбор пограничных документов | `src/ai/worker.ts` · `src/ai/interpret.ts` | `npm run check` → `worker …` | GREEN · 09:27Z |
+| Q4 | Журнал агентов (`/api/agent/*`) | `src/server/ledger.ts` | — | PENDING · 09:30Z (заглушка по L3/L6) |
+| T1 | Задачи и плановые проверки | `src/domain/tasks.ts` · `schedule.ts` | `npm run check` → `task state and scheduled checks …` | GREEN · 09:27Z |
+| A1 | Типизированные решения jev/openai/rules/replay | `src/ai/provider.ts` · `/api/decisions` | `npm run check` → `typed decision service …`, `live provider smoke …` | GREEN · 09:27Z (живые — с ключами L7) |
+| A2 | Черновики письма поставщику и сводки расчёта | `src/ai/drafting.ts` · `/api/drafts` · `/api/artifacts/:id` | `npm run check` → `drafting …`; живой — отдельно | PARTIAL · 09:27Z (живой черновик пропущен в общем прогоне) |
+| F1 | Деньги и обязательства 30/70 | `src/domain/obligations.ts` · `cashflow.ts` · `GET /api/money` | `node scripts/scenario.mjs` → `[PASS] Money` | GREEN · 09:26Z |
+| W1 | Лента событий: воспроизведение, ввод жюри, однократность | `src/domain/events.ts` · `/api/world/feed` · `/api/world/play` · `/api/world/compose` | `node scripts/scenario.mjs` → `[PASS] World` | GREEN · 09:26Z |
+| P1 | Экспорт для 1С и канал поставщика (симулятор) | `/api/peers/onec-export/*` · `/supplier/:po_id` · `/api/supplier/:po_id/reply` · `/peers` | `npm run check` (peers) · `docs/evidence/peers/*` | GREEN · 09:27Z |
+| S1 | Карточка артикула | `src/domain/skus.ts` · `GET /api/skus[/:code]` | `npm run check` → `returns a SKU with its series, forecast and timeline` | GREEN · 09:27Z (экран «Товары» — PENDING) |
+| V1 | Голос и текстовый ассистент | `src/voice/*` (заглушки) | — | PENDING · 09:30Z |
+| U0 | Оболочка интерфейса | `src/components/shell/*` · `src/components/labels/*` | L4a: UI passed=26 | PARTIAL · 09:30Z (L7 в браузере не проверял) |
+| U1 | Экраны «Сегодня», «Деньги» | `src/app/(app)/today` · `src/app/(app)/money` | `docs/evidence/ui/*.png` | PARTIAL · 09:30Z (L4a: заполненный вид не проверен) |
+| U2 | Экраны «Закупки», «Проверка», «Товары», «Помощник» | — | — | PENDING · 09:30Z |
+| C1 | Сборка и типы | весь проект | `npm run build` (INTEG-1) | GREEN · 09:2xZ (по закрытию INTEG-1) |
+| C2 | Сводная проверка | `scripts/check.mjs` | `npm run check` → `check: passed=138 failed=0 skipped=1 externally-unverified=0` | GREEN · 09:27Z (с ключами) |
+| C3 | Чистый клон | `scripts/clean_clone_check.sh` | `bash scripts/clean_clone_check.sh <remote>` | PENDING · 09:30Z (запуск ≈12:10Z) |
+| C5 | Пересборка демо-базы | `scripts/demo_reset.mjs` | `npm run demo:reset` | GREEN · 08:55Z |
+| H1 | Хостинг-демо: код доступа, лимиты | `src/middleware.ts` · `src/server/demo_guard.ts` · `scripts/deploy/*` | `GET <URL>/api/health` → 200 | PARTIAL · 09:14Z (по данным корня) |
+| R1 | README: методика, выбросы, запуск (ТЗ п. 10) | `README.md` §4, §7, §8 | чтение | GREEN (v1.6) · 09:30Z |
+| R2 | Без ключей — «Правила без LLM» | `AI_PROVIDER` auto → `rules` | чистый клон без ключей → `npm run check` | PENDING · 09:30Z |
