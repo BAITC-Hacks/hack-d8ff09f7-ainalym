@@ -170,6 +170,17 @@ describe("provider and decision guardrails", () => {
     expect((await decideChoice(terms, { text: "预付" }, "rules")).answer).toBe("prepayment");
   });
 
+  it("caches by subject version and invalidates after a SKU update", async () => {
+    process.env.AI_PROVIDER = "rules";
+    const context = { name: "Автоматический выключатель" };
+    const first = await decide("category_hint", "AI-TEST-SKU", context);
+    const cached = await decide("category_hint", "AI-TEST-SKU", context);
+    expect(cached.id).toBe(first.id);
+    db().prepare("UPDATE sku SET version=version+1 WHERE code_1c='AI-TEST-SKU'").run();
+    const fresh = await decide("category_hint", "AI-TEST-SKU", context);
+    expect(fresh.id).not.toBe(first.id);
+  });
+
   it("OpenAI preserves unknown and errors separately", async () => {
     process.env.OPENAI_API_KEY = "test-only-key";
     generated.mockResolvedValueOnce({ object: { answer: "unknown", distribution: { one_off: 0.1, regular: 0.1, unknown: 0.8 } }, response: { modelId: "test-model" } });

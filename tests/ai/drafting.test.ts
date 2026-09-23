@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { db, resetInstance } from "../../src/db/client";
 import { DraftProviderUnavailable, prepareSupplierEmail, readArtifact } from "../../src/ai/drafting";
+import { GET as getArtifact } from "../../src/app/api/artifacts/[id]/route";
+import { GET as downloadArtifact } from "../../src/app/api/artifacts/[id]/download/route";
 
 const generated = vi.hoisted(() => vi.fn());
 vi.mock("ai", () => ({ generateObject: generated }));
@@ -47,5 +49,19 @@ describe("supplier draft", () => {
     expect(artifact.markdown).toContain("12 шт");
     expect(artifact.markdown).not.toContain("Заказ отправлен");
     expect(readArtifact(artifact.id)?.markdown).toBe(artifact.markdown);
+    const params = { params: Promise.resolve({ id: artifact.id }) };
+    expect((await getArtifact(new Request("http://localhost"), params)).status).toBe(200);
+    const download = await downloadArtifact(new Request("http://localhost"), params);
+    expect(download.headers.get("content-type")).toContain("text/markdown");
+    expect(await download.text()).toBe(artifact.markdown);
+  });
+
+  it("removes invented quantities from generated prose", async () => {
+    process.env.OPENAI_API_KEY = "test-only-key";
+    generated.mockResolvedValueOnce({ object: { greeting_ru: "Просим 9999 штук.", closing_ru: "Спасибо." }, response: { modelId: "test-model" } });
+    const artifact = await prepareSupplierEmail("PO-APPROVED");
+    expect(artifact.consistency).toBe("revised");
+    expect(artifact.markdown).not.toContain("9999");
+    expect(artifact.markdown).toContain("12 шт");
   });
 });

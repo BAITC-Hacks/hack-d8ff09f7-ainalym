@@ -79,6 +79,7 @@ function fromRow(row: Record<string, unknown>): DecisionRecord {
     mode: row.mode as DecisionRecord["mode"],
     evidence_versions: JSON.parse(String(row.evidence_versions || "{}")), rubric_version: String(row.rubric_version || ""),
     cache_key: String(row.cache_key || ""), at: String(row.at),
+    label: row.mode === "rules" ? "Правила без LLM" : row.mode === "replay" ? "Replay · recorded decision" : undefined,
   };
 }
 

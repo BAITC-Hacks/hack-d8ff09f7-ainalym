@@ -19,7 +19,7 @@ function seed(id: string, seq: number, kind = "stock_snapshot") {
 
 beforeAll(() => { resetInstance(); });
 beforeEach(() => {
-  db().exec("DELETE FROM world_event; DELETE FROM task");
+  db().exec("DELETE FROM world_event; DELETE FROM task; DELETE FROM proposal; DELETE FROM decision_record");
   mocks.apply.mockReset();
   mocks.start.mockClear();
   mocks.record.mockClear();
@@ -60,5 +60,32 @@ describe("world event worker", () => {
     expect(first.runs).toHaveLength(1);
     expect(mocks.record.mock.calls.some(([, action]) => action.kind === "escalation")).toBe(true);
     expect((await tick()).runs).toHaveLength(0);
+  });
+
+  it("drains an event added while the tick is running", async () => {
+    seed("WE-FIRST", 1);
+    mocks.apply.mockImplementationOnce(async () => {
+      seed("WE-LATER", 2);
+      return { applied: true, affected_codes: [], actions: [], escalations: [] };
+    });
+    expect((await tick()).processed).toBe(2);
+    expect(mocks.apply.mock.calls.map(([row]) => row.id)).toEqual(["WE-FIRST", "WE-LATER"]);
+  });
+
+  it("prepares an outlier review proposal for a borderline document", async () => {
+    const previous = process.env.AI_PROVIDER;
+    process.env.AI_PROVIDER = "rules";
+    try {
+      db().prepare(`INSERT INTO world_event(id,org_id,seq,kind,source_id,text,payload,state)
+        VALUES ('WE-BORDER','OWN',1,'judge_message','BORDER','Разовый заказ',?,'pending')`)
+        .run(JSON.stringify({ qty: 100, threshold: 100, doc_no: "DOC-BORDER" }));
+      const result = await processEvent("WE-BORDER");
+      expect(result.reason).toBeUndefined();
+      const proposal = db().prepare("SELECT kind,state,payload FROM proposal WHERE subject_id='DOC-BORDER'")
+        .get() as { kind: string; state: string; payload: string } | undefined;
+      expect(proposal).toMatchObject({ kind: "outlier_review", state: "needs_review" });
+      expect(JSON.parse(proposal!.payload).answer).toBe("one_off");
+      expect(mocks.record.mock.calls.some(([, action]) => action.kind === "escalation")).toBe(true);
+    } finally { if (previous === undefined) delete process.env.AI_PROVIDER; else process.env.AI_PROVIDER = previous; }
   });
 });

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { generateObject } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
-import { db } from "../db/client";
+import { db, withTx, bumpStateVersion } from "../db/client";
 import { recordAction } from "../server/ledger";
 
 export type ArtifactKind = "supplier_email" | "run_summary";
@@ -36,6 +36,7 @@ function saveArtifact(artifact: Artifact): Artifact {
   writeFileSync(`${stem}.${nonce}.md.tmp`, artifact.markdown, { mode: 0o600 });
   renameSync(`${stem}.${nonce}.json.tmp`, `${stem}.json`);
   renameSync(`${stem}.${nonce}.md.tmp`, `${stem}.md`);
+  withTx(tx => { bumpStateVersion(tx); });
   return artifact;
 }
 
@@ -64,6 +65,10 @@ function consistent(markdown: string, exactLines: { code: string; qty: number }[
   return exactLines.every(line => markdown.includes(line.code) && markdown.includes(`${line.qty} шт`));
 }
 
+function unsafeGeneratedText(text: string): boolean {
+  return /\d|отправ|оплачен|выполнен|согласован|подписан|принят поставщиком|подтвержд[её]н поставщиком/i.test(text);
+}
+
 export async function prepareSupplierEmail(po_id: string): Promise<Artifact> {
   const d = db();
   const po = d.prepare("SELECT p.id,p.supplier_id,p.state,p.eta,p.run_id,s.name AS supplier_name FROM purchase_order p JOIN supplier s ON s.id=p.supplier_id WHERE p.id=?")
@@ -88,7 +93,8 @@ export async function prepareSupplierEmail(po_id: string): Promise<Artifact> {
   ].join("\n");
   let markdown = render(generated.object.greeting_ru, generated.object.closing_ru);
   let consistency: Artifact["consistency"] = "passed";
-  if (!consistent(markdown, lines.map(line => ({ code: line.code_1c, qty: line.qty })))) {
+  if (unsafeGeneratedText(`${generated.object.greeting_ru} ${generated.object.closing_ru}`) ||
+      !consistent(markdown, lines.map(line => ({ code: line.code_1c, qty: line.qty })))) {
     markdown = render(`Здравствуйте, ${po.supplier_name}.`, "С уважением, отдел закупок.");
     consistency = "revised";
   }
@@ -129,7 +135,7 @@ export async function prepareRunSummary(run_id: string): Promise<Artifact> {
   ].join("\n");
   let markdown = render(generated.object.intro_ru);
   let consistency: Artifact["consistency"] = "passed";
-  if (!consistent(markdown, [])) {
+  if (unsafeGeneratedText(generated.object.intro_ru) || !consistent(markdown, [])) {
     markdown = render("Подготовлена сводка расчёта для проверки менеджером.");
     consistency = "revised";
   }

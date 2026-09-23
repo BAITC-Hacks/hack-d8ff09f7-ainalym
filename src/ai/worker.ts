@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { db, bumpStateVersion, withTx } from "../db/client";
 import { applyWorldEvent } from "../domain/events";
-import { computeNeed, type EngineParams } from "../domain/engine";
-import { paramsForSupplier } from "../domain/params";
+import { recomputeAffected as domainRecompute } from "../domain/recompute";
 import { applyRecommendations } from "../domain/apply";
 import { startRun, recordAction, finishRun } from "../server/ledger";
 import { decide } from "./decisions";
@@ -50,6 +49,29 @@ async function recordDecision(runId: string, eventId: string, question: string, 
   if (result.result_state === "provider_error") throw new Error(`provider_error:${question}`);
 }
 
+async function proposeOutlierReview(row: EventRow, runId: string, subject: string, answer: string | null, decisionId: string): Promise<void> {
+  const existing = db().prepare("SELECT id FROM proposal WHERE kind='outlier_review' AND subject_id=? AND state='needs_review' LIMIT 1")
+    .get(subject) as { id: string } | undefined;
+  const proposalId = existing?.id || `PR-${randomUUID()}`;
+  if (!existing) withTx(tx => {
+    const version = row.code_1c ? (tx.prepare("SELECT version FROM sku WHERE code_1c=?").get(row.code_1c) as { version: number } | undefined)?.version : undefined;
+    tx.prepare(`INSERT INTO proposal(id,kind,subject_type,subject_id,subject_version,payload,affects,state,rationale_ru,sources,created_at)
+      VALUES (?,'outlier_review','sales_document',?,?,?,?, 'needs_review',?,?,?)`).run(
+        proposalId, subject, version ?? null, JSON.stringify({ answer, decision_record_id: decisionId, doc_no: subject, code_1c: row.code_1c }),
+        JSON.stringify(row.code_1c ? [row.code_1c] : []),
+        `Пограничный разовый заказ ${subject}: решение AI — ${answer ?? "не определено"}. Подтвердите исключение или сохранение.`,
+        JSON.stringify([row.id, decisionId]), new Date().toISOString(),
+      );
+    bumpStateVersion(tx);
+  });
+  await recordAction(runId, {
+    kind: "escalation", subject_ref: proposalId, world_event_id: row.id, code_1c: row.code_1c || undefined,
+    summary_ru: `Требуется решение по разовому документу ${subject}`,
+    sources: [row.id, decisionId, proposalId], autonomy: "escalated", result: "needs_owner",
+    idempotency_key: `${row.id}:outlier_review:${subject}`,
+  });
+}
+
 async function maybeSemanticDecisions(row: EventRow, payload: Record<string, unknown>, runId: string): Promise<void> {
   const text = row.text || String(payload.text || "");
   if (row.kind === "supplier_reply" && text) {
@@ -71,6 +93,9 @@ async function maybeSemanticDecisions(row: EventRow, payload: Record<string, unk
         idempotency_key: `${row.id}:decision:one_off_order`,
       });
       if (judgment.result_state === "provider_error") throw new Error("provider_error:one_off_order");
+      if (judgment.decision_record_id) await proposeOutlierReview(
+        row, runId, String(payload.doc_no || row.source_id), judgment.answer, judgment.decision_record_id,
+      );
     }
   }
   if (payload.urgency_reason && row.code_1c) {
@@ -82,12 +107,13 @@ async function recomputeAffected(row: EventRow, codes: string[], runId: string):
   const unique = [...new Set(codes.filter(Boolean))];
   if (!unique.length) return null;
   const d = db();
-  const computed: { code: string; supplier: string; result: Awaited<ReturnType<typeof computeNeed>> }[] = [];
-  for (const code of unique) {
+  const recomputed = await domainRecompute(unique);
+  if (recomputed.affected_codes.length !== unique.length) throw new Error("affected_sku_missing");
+  const computed: { code: string; supplier: string; result: typeof recomputed.results[string] }[] = [];
+  for (const code of recomputed.affected_codes) {
     const supplier = d.prepare("SELECT supplier_id FROM sku WHERE code_1c=?").get(code) as { supplier_id: string } | undefined;
     if (!supplier) throw new Error(`sku_not_found:${code}`);
-    const params: EngineParams = paramsForSupplier(supplier.supplier_id, d);
-    const result = await computeNeed(code, params, { as_of: row.at || undefined });
+    const result = recomputed.results[code];
     if (!result.forecast) throw new Error(`engine_unavailable:${code}`);
     computed.push({ code, supplier: supplier.supplier_id, result });
   }
@@ -217,13 +243,15 @@ export async function runScheduledChecks(now: Date = new Date()): Promise<string
 export function tick(): Promise<TickResult> {
   if (ticking) return ticking;
   ticking = (async () => {
-    const pending = db().prepare("SELECT id FROM world_event WHERE state='pending' AND run_id IS NULL ORDER BY seq,id").all() as { id: string }[];
     const runs: string[] = [];
     let processed = 0;
-    for (const event of pending) {
+    while (true) {
+      const event = db().prepare("SELECT id FROM world_event WHERE state='pending' AND run_id IS NULL ORDER BY seq,id LIMIT 1").get() as { id: string } | undefined;
+      if (!event) break;
       const result = await processEvent(event.id);
       if (result.run_id) runs.push(result.run_id);
       if (!result.reason) processed++;
+      if (result.reason === "claimed_by_another_worker") break;
     }
     runs.push(...await runScheduledChecks(new Date()));
     return { runs, processed };

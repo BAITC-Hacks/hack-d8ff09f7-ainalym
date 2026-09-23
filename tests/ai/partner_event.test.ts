@@ -17,10 +17,11 @@ beforeAll(() => {
   if (loaded.status !== 0) throw new Error(`partner ETL failed: ${loaded.stderr}`);
   resetInstance();
   process.env.DATABASE_PATH = path;
-  const event = readFileSync("fixtures/world_events.jsonl", "utf8").split("\n")
-    .filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>).find(row => row.id === "WE-043");
-  if (!event) throw new Error("WE-043 fixture missing");
-  db().prepare(`INSERT INTO world_event(id,org_id,seq,kind,code_1c,source_id,at,text,payload,state)
+  const events = readFileSync("fixtures/world_events.jsonl", "utf8").split("\n")
+    .filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>)
+    .filter(row => ["WE-043", "WE-044", "WE-045"].includes(String(row.id)));
+  if (events.length !== 3) throw new Error("Judge event fixtures missing");
+  for (const event of events) db().prepare(`INSERT INTO world_event(id,org_id,seq,kind,code_1c,source_id,at,text,payload,state)
     VALUES (?,?,?,?,?,?,?,?,?,'pending')`).run(String(event.id), String(event.org_id), Number(event.seq), String(event.kind),
       event.code_1c == null ? null : String(event.code_1c), String(event.source_id), String(event.at),
       event.text == null ? null : String(event.text), JSON.stringify(event.payload));
@@ -43,5 +44,22 @@ describe("partner event replay", () => {
     const components = JSON.parse(row!.components) as { outliers_excluded?: { doc_no: string }[]; outlier_threshold?: number };
     expect(components.outliers_excluded?.some(doc => doc.doc_no === "JUDGE-ONEOFF-5000"),
       `outlier_threshold=${components.outlier_threshold}; excluded=${components.outliers_excluded?.length || 0}`).toBe(true);
+  }, 35_000);
+
+  it("applies the +100 in-transit judge event to the affected SKU", async () => {
+    const total = () => Number((db().prepare("SELECT COALESCE(SUM(CAST(qty AS REAL)),0) AS qty FROM in_transit WHERE code_1c='010500006_'").get() as { qty: number }).qty);
+    const before = total();
+    const result = await processEvent("WE-044");
+    expect(result.reason).toBeUndefined();
+    expect(total() - before).toBe(100);
+    expect((db().prepare("SELECT state FROM world_event WHERE id='WE-044'").get() as { state: string }).state).toBe("processed");
+    expect(db().prepare("SELECT 1 FROM recommendation WHERE code_1c='010500006_' ORDER BY rowid DESC LIMIT 1").get()).toBeTruthy();
+  }, 35_000);
+
+  it("applies the SE price judge event and recomputes its SKU", async () => {
+    const result = await processEvent("WE-045");
+    expect(result.reason).toBeUndefined();
+    expect((db().prepare("SELECT unit_cost FROM sku WHERE code_1c='130300027_'").get() as { unit_cost: string }).unit_cost).toBe("360.00");
+    expect(db().prepare("SELECT 1 FROM recommendation WHERE code_1c='130300027_' ORDER BY rowid DESC LIMIT 1").get()).toBeTruthy();
   }, 35_000);
 });
