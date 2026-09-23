@@ -12,16 +12,16 @@ Replay table: `fixtures/replay_decisions.json` has six case recordings: one-off 
 
 Guardrails: mocked 429/timeout → `provider_error`/503; direct provider error falls back to Gateway; unknown/insufficient/unsupported stay distinct; foreign-org references are removed before model input; image-only facts avoid a model call; Chinese `预付` is retained; a SKU version change discards a stale answer. Worker tests cover sequence, concurrent insertion during tick, idempotency, failure ledger call, scheduled checks, and borderline outlier review.
 
-Gate output: `npm run check -- ai` → `passed=33 failed=1 skipped=1 externally-unverified=0`; failure: `partner event replay excludes the injected one-off` → `outlier_threshold=43506; excluded=0`. Default skipped test is the opt-in live draft smoke, run separately → 1/1. `npx tsc --noEmit` → exit 0. `npm run build` → exit 0 (Next middleware deprecation warning is from another lane). Live provider smoke → 4/4.
+Gate output: `RUN_AI_DRAFT_LIVE=1 npm run check -- ai` → `passed=35 failed=0 skipped=0 externally-unverified=0`; default `npm run check -- ai` → `passed=34 failed=0 skipped=1` (opt-in live draft). `npx tsc --noEmit` → exit 0. `npm run build` → exit 0 (Next middleware deprecation warning is from another lane). Live provider smoke → 4/4. Drafting timeout was raised to 20 s after a concurrent live-gate timeout; the rerun passed.
 
-Partner replay: WE-043 reaches processed state and produces a supplier proposal, but L2a's current threshold does not exclude the 5,000-unit judge document. WE-044 adds 100 in transit and recomputes its SKU; WE-045 updates SE cost to 360.00 and recomputes. `tests/ai/partner_event.test.ts` keeps the M4 failure reproducible.
+Partner replay: WE-043 reaches processed state, excludes the 5,000-unit judge document, and produces a supplier proposal after the integrated ETL/engine changes. WE-044 adds 100 in transit and recomputes its SKU; WE-045 updates SE cost to 360.00 and recomputes. `tests/ai/partner_event.test.ts` keeps all three checks reproducible.
 
 Dependencies added by L3: none. `npm install` was rerun after L9 added `xlsx` to the shared lockfile.
 
-Unverified: L1's ledger implementation has not merged into this worktree; unit worker tests mock its seam, and the partner replay currently uses the stub. Re-run ledger rows/provider metadata after L1 merge. The M4 policy/partner-data mismatch requires L2a or owner resolution before acceptance.
+Unverified: L1's ledger implementation has not merged into this worktree; unit worker tests mock its seam, and the partner replay currently uses the stub. Re-run ledger rows/provider metadata after L1 merge.
 
 Protected surfaces: no UI files, main branch, history rewrite, evaluation-fixture import, or schema file edited. Runtime migration adds only `decision_record.evidence_versions`, `rubric_version`, and `cache_key` plus an index.
 
-Gate: RED
+Gate: YELLOW
 
-tip: 4c2090b
+tip: a37ce46
