@@ -35,7 +35,7 @@
 .gapsTitle { margin: 0 0 4px; font: var(--v2-h2); }
 .gapsSub { margin: 0; font: var(--v2-meta); color: var(--v2-muted); }
 .gaps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.gaps li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--v2-line); }
+.gaps li { display: flex; align-items: center; justify-content: flex-start; gap: 20px; padding: 12px 0; border-top: 1px solid var(--v2-line); } /* owner 12:11Z: the button sits next to its row text, not at the far right */
 .gapText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .gapText b { font: var(--v2-body); font-weight: 500; }
 @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; gap: 32px; } }
