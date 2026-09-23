@@ -9,7 +9,7 @@ export async function GET(_request: Request, context: { params: Promise<{ code: 
   return handle(async () => {
     const { code } = await context.params;
     const sku = db().prepare("SELECT * FROM sku WHERE code_1c = ?").get(code);
-    if (!sku) throw new HttpError(404, "not_found", "SKU not found");
+    if (!sku) throw new HttpError(404, "not_found", "Артикул не найден");
     const product = await ektForSku(code);
     const ekt = product ? { id: product.id, url: product.product_url, price: product.price, currency: product.currency,
       stock_total: product.stock_total, stock_by_warehouse: product.stock_by_warehouse, availability: product.availability,

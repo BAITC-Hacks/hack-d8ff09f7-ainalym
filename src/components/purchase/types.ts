@@ -6,7 +6,7 @@ export type ResultAxes = TruthAxes & { axes?: TruthAxes; labels?: TruthAxes };
 export type Outlier = { id?: string; doc_no: string; at?: string; qty: Quantity; rule?: string; state?: string };
 export type Components = {
   base_rate?: Quantity; growth?: Quantity; horizon_days?: number; forecast_qty?: Quantity;
-  monthly_forecast?: Record<string, number>; safety?: Quantity; on_hand?: Quantity; in_transit?: Quantity;
+  monthly_forecast?: Record<string, number>; safety?: Quantity; on_hand?: Quantity; in_transit?: Quantity; approved_order_qty?: Quantity;
   stockout_uplift?: Quantity; stockout_months?: string[]; outliers_excluded?: Outlier[];
   raw_need?: Quantity; moq?: Quantity; days_of_cover?: Quantity; season_source?: string;
   source_months?: number; sales_lines?: number; stock_month?: string; transit_rows?: number;

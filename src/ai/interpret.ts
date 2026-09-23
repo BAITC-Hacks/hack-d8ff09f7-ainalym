@@ -109,20 +109,36 @@ export async function summarizeChanges(run_id: string): Promise<string> {
   const d = db();
   const run = d.prepare("SELECT id,agent_run_id FROM calc_run WHERE id=?").get(run_id) as { id: string; agent_run_id: string | null } | undefined;
   if (!run) return "Расчёт не найден.";
-  const previous = d.prepare("SELECT id FROM calc_run WHERE rowid < (SELECT rowid FROM calc_run WHERE id=?) ORDER BY rowid DESC LIMIT 1").get(run_id) as { id: string } | undefined;
-  if (!previous) return "Первый расчёт; сравнение пока недоступно.";
-  const total = (id: string) => (d.prepare("SELECT COALESCE(SUM(qty_recommended),0) AS qty FROM recommendation WHERE run_id=?").get(id) as { qty: number }).qty;
-  const before = total(previous.id);
-  const after = total(run_id);
-  const judgment = await decide("change_summary", run_id, { previous: { qty: before }, current: { qty: after } }, { fallback_to_rules: true });
-  if (run.agent_run_id) await recordAction(run.agent_run_id, {
-    kind: "decision", subject_ref: run_id,
-    summary_ru: `Изменение расчёта: ${judgment.answer ?? judgment.result_state}`,
-    rationale_ru: judgment.provider === "rules" ? "Изменение проверено по установленным правилам." : "Изменение проверено по расчётам.",
-    sources: [previous.id, run_id, judgment.id], provider: judgment.provider, model_version: judgment.model_version, task_class: judgment.task_class,
-    idempotency_key: `change_summary:${run_id}`,
-  });
-  if (judgment.result_state === "provider_error") throw new Error("provider_error:change_summary");
-  const direction = judgment.answer === "increased" ? "вырос" : judgment.answer === "decreased" ? "снизился" : judgment.answer === "unchanged" ? "не изменился" : "требует сравнения";
-  return `Общий рекомендуемый объём ${direction}: ${before} → ${after} шт. Источник: расчёты ${previous.id} и ${run_id}.`;
+  const current = d.prepare(`SELECT r.code_1c,r.supplier_id,r.qty_recommended,s.unit FROM recommendation r
+    JOIN sku s ON s.code_1c=r.code_1c WHERE r.run_id=?`).all(run_id) as { code_1c: string; supplier_id: string; qty_recommended: number; unit: string | null }[];
+  const previousQuery = d.prepare(`SELECT r.qty_recommended,r.run_id FROM recommendation r JOIN calc_run c ON c.id=r.run_id
+    WHERE r.code_1c=? AND r.supplier_id=? AND c.rowid<(SELECT rowid FROM calc_run WHERE id=?)
+    ORDER BY c.rowid DESC,r.rowid DESC LIMIT 1`);
+  const byUnit = new Map<string, { before: number; after: number; sources: Set<string> }>();
+  for (const row of current) {
+    const prior = previousQuery.get(row.code_1c, row.supplier_id, run_id) as { qty_recommended: number; run_id: string } | undefined;
+    if (!prior) continue;
+    const unit = row.unit?.trim() || "шт";
+    const group = byUnit.get(unit) ?? { before: 0, after: 0, sources: new Set<string>() };
+    group.before += prior.qty_recommended;
+    group.after += row.qty_recommended;
+    group.sources.add(prior.run_id);
+    byUnit.set(unit, group);
+  }
+  if (!byUnit.size) return "Первый расчёт для этих артикулов; сравнение пока недоступно.";
+  const summaries: string[] = [];
+  for (const [unit, group] of byUnit) {
+    const judgment = await decide("change_summary", `${run_id}:${unit}`, { previous: { qty: group.before }, current: { qty: group.after } }, { fallback_to_rules: true });
+    if (run.agent_run_id) await recordAction(run.agent_run_id, {
+      kind: "decision", subject_ref: run_id,
+      summary_ru: `Изменение расчёта (${unit}): ${judgment.answer ?? judgment.result_state}`,
+      rationale_ru: judgment.provider === "rules" ? "Изменение проверено по установленным правилам." : "Изменение проверено по расчётам.",
+      sources: [...group.sources, run_id, judgment.id], provider: judgment.provider, model_version: judgment.model_version, task_class: judgment.task_class,
+      idempotency_key: `change_summary:${run_id}:${unit}`,
+    });
+    if (judgment.result_state === "provider_error") throw new Error("provider_error:change_summary");
+    const direction = judgment.answer === "increased" ? "вырос" : judgment.answer === "decreased" ? "снизился" : judgment.answer === "unchanged" ? "не изменился" : "требует сравнения";
+    summaries.push(`Рекомендуемый объём ${direction}: ${group.before} → ${group.after} ${unit}.`);
+  }
+  return summaries.join(" ");
 }

@@ -46,7 +46,7 @@ export async function proposeParamChange(supplierId: string, changes: Partial<En
     .get(supplierId, JSON.stringify({ supplier_id: supplierId, changes })) as { id: string } | undefined;
   if (existing) return { id: existing.id, replayed: true };
   const id = `PR-${randomUUID()}`;
-  const rationale = `Изменение параметров ${supplierId}: ${JSON.stringify(changes)}. После подтверждения пересчитаются SKU этого поставщика.`;
+  const rationale = `Изменение параметров ${supplierId}: ${JSON.stringify(changes)}. После подтверждения пересчитаются артикулы этого поставщика.`;
   database.prepare(`INSERT INTO proposal (id,kind,subject_type,subject_id,subject_version,payload,affects,state,rationale_ru,sources,created_at)
     VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(id, "param_change", "supplier", supplierId, current.version,
     JSON.stringify({ supplier_id: supplierId, changes }), JSON.stringify([supplierId]), "needs_review", rationale,

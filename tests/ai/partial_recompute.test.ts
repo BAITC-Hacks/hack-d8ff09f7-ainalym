@@ -51,3 +51,20 @@ it("carries unchanged supplier lines with their rationale into a partial recompu
   expect(lines.find(line => line.code_1c === "SE-A")).toEqual(oldLines.find(line => line.code_1c === "SE-A"));
   expect(lines.find(line => line.code_1c === "SE-B")?.recommendation_id).not.toBe(oldLines.find(line => line.code_1c === "SE-B")?.recommendation_id);
 });
+
+it("reports partial completion when valid A and broken B share an event", async () => {
+  db().prepare("DELETE FROM stock_month WHERE code_1c='SE-B'").run();
+  db().prepare(`INSERT INTO world_event(id,org_id,kind,source_id,at,payload,state)
+    VALUES ('WE-MIXED','ORG-1','in_transit_update','TRANSIT-MIXED',?,?,'pending')`)
+    .run(asOf, JSON.stringify({ rows: [
+      { code_1c: "SE-A", po_ref: "MIX-A", qty: "1" },
+      { code_1c: "SE-B", po_ref: "MIX-B", qty: "1" },
+    ] }));
+  const result = await processEvent("WE-MIXED");
+  expect(result.reason).toBeUndefined();
+  expect(result.partial).toBe(true);
+  expect(result.unresolved).toEqual(["SE-B"]);
+  expect(db().prepare("SELECT state FROM world_event WHERE id='WE-MIXED'").get()).toEqual({ state: "processed" });
+  const calc = db().prepare("SELECT id FROM calc_run ORDER BY rowid DESC LIMIT 1").get() as { id: string };
+  expect(db().prepare("SELECT code_1c FROM recommendation WHERE run_id=?").all(calc.id)).toEqual([{ code_1c: "SE-A" }]);
+});
