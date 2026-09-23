@@ -1,0 +1,11 @@
+# MERGE-3 closeout
+- `lane/merge3` merged `lane/domain_a` final tip `1847bb5` from base `22b8ae6`; only the two expected files conflicted.
+- `src/domain/apply.ts`: MERGE-2 supplied the worker's shared run, world-event action key, and deferred run finish; L2a supplied the review-task ledger action. Kept all, including one persisted run per event and one sourced action for each created review task.
+- `src/domain/tasks.ts`: MERGE-2 allowed caller-provided task sources; L2a added a `task:<id>` fallback. Kept caller sources and the nonempty fallback for task creation; versioned transitions remain intact.
+- L2a's parameter and outlier decisions, scheduled checks, and task transitions landed; INTEG-1 engine source, fresh-stock, and one-off rules remain intact.
+- Files changed: `docs/agent_handoffs/L2A_CHECKPOINT.md`, `docs/agent_handoffs/L2A_DOMAIN_CORE_CLOSEOUT.md`, `src/domain/apply.ts`, `src/domain/params.ts`, `src/domain/schedule.ts`, `src/domain/tasks.ts`, `tests/domain/a_decisions.test.ts`, `tests/domain/a_ledger.test.ts`, and this closeout.
+- Check: `npm install && npm run etl && npm run check` GREEN; 3,909 SKUs; 213 passed, 0 failed, 12 declared skips, 6 externally unverified.
+- Build: `npm run build` passed; existing Next middleware deprecation and dynamic filesystem tracing warnings remain.
+- Evidence: merged ledger, worker, policy, schedule, task, scenario, and production build gates passed; live provider and microphone paths remain externally unverified.
+- Protected: no write to `main` or other worktrees; no fix reverted, secret added, or force-push.
+- Tip: merge commit `ff5b8f1` on `lane/merge3`; this closeout follows as a documentation commit. Gate: GREEN.
