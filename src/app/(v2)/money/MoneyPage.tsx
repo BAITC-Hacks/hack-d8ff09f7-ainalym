@@ -45,7 +45,7 @@ export function MoneyPage() {
     {error && <StaleBanner>Обновление не удалось — показываю последние известные данные.</StaleBanner>}
     <PageHead crumbs={[{ label: "Финансы" }]} title="Деньги" badges={<><Pill tone={cashKnown ? "good" : "warn"}>{cashKnown ? "остаток задан" : "остаток не задан"}</Pill><Pill tone={noCost ? "warn" : "good"}>{noCost ? `${fmtNum(noCost)} товаров без себестоимости` : "себестоимость полная"}</Pill></>}
       sub={<>Обязательства по утверждённым заказам · предоплата при утверждении, остаток к дате поставки · {AI[data.ai] ?? "Локальный режим"}</>} />
-    {gaps.length > 0 && <Card tone="info" className={styles.gapsCard}>
+    {gaps.length > 0 && <Card priority className={styles.gapsCard}>
       <div className={styles.gapsHead}><h2 className={styles.gapsTitle}>Что заполнить, чтобы видеть деньги полностью</h2><p className={styles.gapsSub}>Всё, что уже известно, показано ниже. Не хватает {gaps.length === 1 ? "одного" : "двух"}:</p></div>
       <ul className={styles.gaps}>{gaps.map(g => <li key={g.id}><span className={styles.gapText}><b>{g.text}</b><span className={styles.meta}>{g.why}</span></span><Fill href={g.href}>{g.label ?? "Заполнить"}</Fill></li>)}</ul>
     </Card>}
