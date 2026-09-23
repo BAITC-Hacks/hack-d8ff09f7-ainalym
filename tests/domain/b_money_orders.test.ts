@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { db, resetInstance } from "../../src/db/client";
 import { approveOrder, markOrderExported } from "../../src/domain/orders";
+import { runCalculation } from "../../src/domain/apply";
 import { syncOrderObligations } from "../../src/domain/obligations";
 import { moneyView } from "../../src/domain/cashflow";
 import { applyWorldEvent } from "../../src/domain/events";
@@ -32,6 +33,23 @@ beforeEach(() => {
 });
 
 describe("purchase approvals and obligations", () => {
+  it("subtracts an approved unreceived order on the next run", async () => {
+    q("UPDATE purchase_order SET eta='2025-02-10T00:00:00Z' WHERE id='PO-1'");
+    for (let month = 1; month <= 12; month++) {
+      const ym = `2024-${String(month).padStart(2, "0")}`;
+      q("INSERT INTO sales_month(code_1c,ym,qty_file) VALUES ('SE-1',?,'30')", ym);
+      q("INSERT INTO sales_line(code_1c,doc_no,at,qty) VALUES ('SE-1',?,?,'30')", `D-${ym}`, `${ym}-15`);
+    }
+    q("INSERT INTO stock_month(code_1c,ym,opening_qty) VALUES ('SE-1','2024-12','0')");
+    const before = await runCalculation({ codes: ["SE-1"] }, {}, { database: db(), as_of: "2025-01-01" });
+    const beforeQty = Number(one("SELECT qty_recommended qty FROM recommendation WHERE run_id=?", before.run_id)?.qty);
+    approveOrder("PO-1", 2);
+    const after = await runCalculation({ codes: ["SE-1"] }, {}, { database: db(), as_of: "2025-01-01" });
+    const rec = one("SELECT qty_recommended qty,rationale_ru,components FROM recommendation WHERE run_id=?", after.run_id)!;
+    expect(Number(rec.qty)).toBe(beforeQty - 10);
+    expect(rec.rationale_ru).toContain("утверждённый заказ 10 шт");
+    expect(JSON.parse(String(rec.components)).approved_order_qty).toBe(10);
+  });
   it("GET /api/orders/:id sums known line costs and counts unknown lines", async () => {
     q("INSERT INTO sku(code_1c,supplier_id,name,unit_cost,moq) VALUES ('SE-2','SE','Unpriced',NULL,1)");
     q("INSERT INTO purchase_order_line(po_id,code_1c,qty,unit_cost) VALUES ('PO-1','SE-2',2,NULL)");
@@ -171,6 +189,24 @@ describe("money derived from ledger rows", () => {
 
 describe("world events and SKU drilldown", () => {
   const event = (id: string, kind: string, code_1c: string, payload: object, text?: string) => ({ id, kind, code_1c, payload: JSON.stringify(payload), text });
+  it("keeps B once and drops zero-need A from the supplier basket after an event", async () => {
+    q("INSERT INTO sku(code_1c,supplier_id,name,unit_cost,moq) VALUES ('SE-2','SE','Second','2.00',1)");
+    for (const code of ["SE-1", "SE-2"]) {
+      for (let month = 1; month <= 12; month++) {
+        const ym = `2024-${String(month).padStart(2, "0")}`;
+        q("INSERT INTO sales_month(code_1c,ym,qty_file) VALUES (?,?,'30')", code, ym);
+        q("INSERT INTO sales_line(code_1c,doc_no,at,qty) VALUES (?,?,?,'30')", code, `D-${ym}`, `${ym}-15`);
+      }
+      q("INSERT INTO stock_month(code_1c,ym,opening_qty) VALUES (?,'2024-12','0')", code);
+    }
+    const first = await runCalculation({ supplier: "SE" }, {}, { database: db(), as_of: "2025-01-01" });
+    expect(JSON.parse(String(first.proposals[0].payload)).lines.map((line: { code_1c: string }) => line.code_1c)).toEqual(["SE-1", "SE-2"]);
+    await applyWorldEvent(event("BASKET-A", "in_transit_update", "SE-1", { po_ref: "NEW-A", qty: 10000 }));
+    const next = await runCalculation({ codes: ["SE-1"] }, {}, { database: db(), as_of: "2025-01-01" });
+    const lines = JSON.parse(String(next.proposals[0].payload)).lines as { code_1c: string }[];
+    expect(lines.map(line => line.code_1c)).toEqual(["SE-2"]);
+    expect(next.proposals[0].supersedes_id).toBe(first.proposals[0].id);
+  });
   it("appends a sales day once and marks only its SKU", async () => {
     const e = event("WE-1", "sales_day", "SE-1", { at: "2026-09-23", qty: 3, doc_no: "DOC-1" });
     expect((await applyWorldEvent(e)).affected_codes).toEqual(["SE-1"]);

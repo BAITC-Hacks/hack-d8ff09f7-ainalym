@@ -84,10 +84,10 @@ function fromRow(row: Record<string, unknown>): DecisionRecord {
   };
 }
 
-export async function decide(question_id: string, subject_ref: string, context: unknown): Promise<DecisionRecord> {
+export async function decide(question_id: string, subject_ref: string, context: unknown, options: { fallback_to_rules?: boolean } = {}): Promise<DecisionRecord> {
   ensureColumns();
   const question = catalogQuestion(question_id);
-  const mode = selectedProvider() === "offline" ? "replay" : selectedProvider() === "rules" ? "rules" : "live";
+  let mode: DecisionRecord["mode"] = selectedProvider() === "offline" ? "replay" : selectedProvider() === "rules" ? "rules" : "live";
   const clean = sanitizeDecisionContext(context);
   const input = clean && typeof clean === "object" && !Array.isArray(clean) ? clean as Record<string, unknown> : {};
   const versions = versionsFor(subject_ref, input);
@@ -106,7 +106,12 @@ export async function decide(question_id: string, subject_ref: string, context: 
     result = { answer: null, distribution: {}, provider: "catalog", model_version: "none", result_state: "insufficient" };
   } else {
     const providerContext = mode === "replay" ? { ...input, _replay_subject_ref: subject_ref } : input;
-    result = await decideChoice(question, providerContext);
+    try { result = await decideChoice(question, providerContext); }
+    catch { result = { answer: null, distribution: {}, provider: selectedProvider(), model_version: "none", result_state: "provider_error" }; }
+    if (result.result_state === "provider_error" && options.fallback_to_rules) {
+      result = await decideChoice(question, input, "rules");
+      mode = "rules";
+    }
   }
   // A model response to an older SKU or inbox state is never accepted as a current judgment.
   const current = versionsFor(subject_ref, input);

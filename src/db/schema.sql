@@ -7,7 +7,7 @@ CREATE INDEX IF NOT EXISTS sku_supplier ON sku(supplier_id, category);
 CREATE TABLE IF NOT EXISTS sales_line (id INTEGER PRIMARY KEY AUTOINCREMENT, code_1c TEXT NOT NULL, doc_no TEXT, doc_type TEXT, at TEXT NOT NULL, warehouse TEXT, qty TEXT NOT NULL, source TEXT NOT NULL DEFAULT 'file');
 CREATE INDEX IF NOT EXISTS sales_line_code_at ON sales_line(code_1c, at);
 CREATE INDEX IF NOT EXISTS sales_line_doc ON sales_line(doc_no);
-CREATE TABLE IF NOT EXISTS sales_month (code_1c TEXT NOT NULL, ym TEXT NOT NULL, qty_file TEXT, qty_lines TEXT, qty_regular TEXT, stockout INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (code_1c, ym));
+CREATE TABLE IF NOT EXISTS sales_month (code_1c TEXT NOT NULL, ym TEXT NOT NULL, qty_file TEXT, qty_lines TEXT, qty_regular TEXT, stockout INTEGER NOT NULL DEFAULT 0, stockout_kind TEXT, PRIMARY KEY (code_1c, ym));
 CREATE TABLE IF NOT EXISTS stock_month (code_1c TEXT NOT NULL, ym TEXT NOT NULL, opening_qty TEXT, known INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (code_1c, ym));
 CREATE TABLE IF NOT EXISTS in_transit (id INTEGER PRIMARY KEY AUTOINCREMENT, code_1c TEXT NOT NULL, po_ref TEXT NOT NULL, qty TEXT NOT NULL, expected_at TEXT, source_file TEXT);
 CREATE INDEX IF NOT EXISTS in_transit_code ON in_transit(code_1c);

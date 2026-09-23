@@ -1,8 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { db, resetInstance } from "../../src/db/client";
 import { tick } from "../../src/ai/worker";
 import { startRun } from "../../src/server/ledger";
 import { applyWorldEvent } from "../../src/domain/events";
+import * as provider from "../../src/ai/provider";
 
 beforeAll(() => {
   resetInstance();
@@ -60,5 +61,20 @@ describe("worker with replenishment domains", () => {
     expect(db().prepare("SELECT state,attempt FROM world_event WHERE id='WE-STALE'").get()).toEqual({ state: "processed", attempt: 2 });
     expect(db().prepare("SELECT state FROM agent_run WHERE id=?").get(oldRun)).toEqual({ state: "failed" });
     expect((db().prepare("SELECT COUNT(*) AS n FROM in_transit WHERE po_ref='INBOUND-STALE'").get() as { n: number }).n).toBe(1);
+  });
+  it("finishes downstream work with rules when a provider throws after facts are applied", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    db().prepare(`INSERT INTO world_event(id,org_id,seq,kind,code_1c,source_id,at,payload,state)
+      VALUES ('WE-THROW','OWN',4,'price_update','SE-ONE','PRICE-THROW',?,?,'pending')`)
+      .run(today, JSON.stringify({ code_1c: "SE-ONE", unit_cost: "13.00" }));
+    const decision = vi.spyOn(provider, "decideChoice").mockRejectedValueOnce(new Error("provider threw"));
+    try {
+      expect((await tick()).processed).toBe(1);
+      expect(db().prepare("SELECT unit_cost FROM sku WHERE code_1c='SE-ONE'").get()).toEqual({ unit_cost: "13.00" });
+      expect(db().prepare("SELECT state FROM world_event WHERE id='WE-THROW'").get()).toEqual({ state: "processed" });
+      expect(db().prepare("SELECT state FROM agent_run WHERE id=(SELECT run_id FROM world_event WHERE id='WE-THROW')").get()).toEqual({ state: "done" });
+      expect((db().prepare("SELECT COUNT(*) n FROM proposal WHERE kind='supplier_order' AND state='needs_review'").get() as { n: number }).n).toBeGreaterThan(0);
+      expect((db().prepare("SELECT COUNT(*) n FROM decision_record WHERE question_id='change_summary' AND provider='rules'").get() as { n: number }).n).toBeGreaterThan(0);
+    } finally { decision.mockRestore(); }
   });
 });

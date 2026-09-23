@@ -9,7 +9,7 @@ export function orderById(id: string): (Order & { lines: Order[] }) | null {
   const d = db();
   const order = d.prepare("SELECT * FROM purchase_order WHERE id=?").get(id) as Order | undefined;
   if (!order) return null;
-  const lines = d.prepare("SELECT l.*,s.article,s.name,s.moq FROM purchase_order_line l LEFT JOIN sku s ON s.code_1c=l.code_1c WHERE po_id=? ORDER BY l.id").all(id) as Order[];
+  const lines = d.prepare("SELECT l.*,s.article,s.name,s.unit,s.moq FROM purchase_order_line l LEFT JOIN sku s ON s.code_1c=l.code_1c WHERE po_id=? ORDER BY l.id").all(id) as Order[];
   const priced = lines.filter(line => line.unit_cost !== null);
   const totalCost = priced.length ? formatAmount(priced.reduce(
     (sum, line) => sum.plus(new Decimal(String(line.qty)).times(String(line.unit_cost))), new Decimal(0))) : null;

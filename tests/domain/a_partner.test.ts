@@ -50,8 +50,10 @@ describe.skipIf(!database)("named partner SKU properties", () => {
   it("M3: censored stockout months raise demand over the raw observed series", async () => {
     const result = await need("stockout");
     expect((result.components.stockout_months as unknown[]).length).toBeGreaterThan(0);
+    expect((result.components.inferred_stockout_months as unknown[]).length).toBeGreaterThan(0);
     expect(result.components.stockout_uplift).toBeGreaterThan(0);
     expect(result.components.forecast_qty).toBeGreaterThan(result.components.raw_observed_forecast as number);
+    expect(result.rationale_ru).toContain("предполагаемый дефицит при неизвестном остатке");
   });
 
   it("M4: an injected 5000-unit document is excluded without changing regular rate", async () => {
@@ -90,7 +92,7 @@ describe.skipIf(!database)("named partner SKU properties", () => {
       expect(result.recommended).toBeGreaterThan(0);
       expect(result.proposals).toHaveLength(1);
       expect(result.unresolved.length).toBeGreaterThan(0);
-      expect(result.unresolved[0].reason).toMatch(/source missing/);
+      expect(result.unresolved[0].reason).toMatch(/не рассчитано: /);
     } finally { writable.close(); rmSync(dir, { recursive: true, force: true }); }
   }, 30000);
 });
