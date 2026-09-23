@@ -1,0 +1,48 @@
+/* Ainalym v2 tokens — Fable UI lane 1. Warm greige canvas, one chartreuse accent, black ink, Inter only. */
+.v2 {
+  color-scheme: light;
+  --v2-canvas: #f3f1ec;
+  --v2-rail: #eae7e0;
+  --v2-rail-active: #dedad1;
+  --v2-card: #faf9f6;
+  --v2-card-raised: #ffffff;
+  --v2-wash: #ecebe6;
+  --v2-line: #e1ded6;
+  --v2-line-strong: #cfcbc1;
+  --v2-ink: #131311;
+  --v2-ink-2: #3a3936;
+  --v2-muted: #6d6b64;
+  --v2-faint: #9b9990;
+  --v2-accent: #dff22a;
+  --v2-accent-hover: #d2e61c;
+  --v2-accent-ink: #131311;
+  --v2-ring: #131311;
+  --v2-ok: #1f7a3e; --v2-ok-bg: #e4f0e5; --v2-ok-line: #b9d8bd;
+  --v2-warn: #8a5a00; --v2-warn-bg: #f5ecd3; --v2-warn-line: #e3d2a2;
+  --v2-danger: #b3261e; --v2-danger-bg: #f7e2de; --v2-danger-line: #e8b8b1;
+  --v2-alert-row: #efe7db;
+  --v2-neutral-bg: #e9e7e0;
+  --v2-viz-a: #7c5f83; --v2-viz-a-fill: #7c5f8326;
+  --v2-viz-b: #6f8f6a; --v2-viz-b-fill: #6f8f6a2e;
+  --v2-viz-c: #4d6fd1;
+  --v2-font: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --v2-display: 600 56px/1 var(--v2-font);
+  --v2-display-tracking: -0.035em;
+  --v2-h2: 600 20px/26px var(--v2-font);
+  --v2-value: 600 34px/38px var(--v2-font);
+  --v2-value-tracking: -0.03em;
+  --v2-body: 400 14px/20px var(--v2-font);
+  --v2-body-strong: 500 14px/20px var(--v2-font);
+  --v2-meta: 400 12.5px/16px var(--v2-font);
+  --v2-caption: 500 11.5px/14px var(--v2-font);
+  --v2-caption-tracking: 0.02em;
+  --v2-r-control: 6px; --v2-r-card: 8px; --v2-r-pill: 999px;
+  --v2-control-h: 36px; --v2-touch-h: 44px;
+  --v2-rail-w: 248px;
+  --v2-shadow-pop: 0 12px 32px #13131118, 0 1px 2px #13131114;
+  --v2-ease: cubic-bezier(.2,.8,.2,1);
+  --v2-fast: 100ms; --v2-settle: 160ms;
+}
+@media (max-width: 1100px) { .v2 { --v2-display: 600 44px/1 var(--v2-font); } }
+@media (max-width: 767px) { .v2 { --v2-display: 600 36px/1 var(--v2-font); --v2-value: 600 28px/32px var(--v2-font); --v2-control-h: 44px; } }
+@media (prefers-reduced-motion: reduce) { .v2 { --v2-fast: 0ms; --v2-settle: 0ms; } }
