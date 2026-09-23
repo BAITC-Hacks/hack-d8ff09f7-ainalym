@@ -1,17 +1,18 @@
 import Decimal from "decimal.js";
 import { db } from "@/db/client";
+import { RecommendationsQuerySchema } from "@/server/contracts";
 import { handle, ok } from "@/server/http";
 
 export const runtime = "nodejs";
 export async function GET(request: Request): Promise<Response> {
   return handle(() => {
-    const query = new URL(request.url).searchParams;
-    const runId = query.get("run_id") || (db().prepare("SELECT id FROM calc_run ORDER BY started_at DESC LIMIT 1").get() as { id: string } | undefined)?.id;
+    const query = RecommendationsQuerySchema.parse(Object.fromEntries(new URL(request.url).searchParams));
+    const runId = query.run_id || (db().prepare("SELECT id FROM calc_run ORDER BY started_at DESC LIMIT 1").get() as { id: string } | undefined)?.id;
     if (!runId) return ok({ groups: [] });
     const clauses = ["r.run_id = ?", "COALESCE(r.qty_adjusted, r.qty_recommended) > 0"];
     const args: string[] = [runId];
     for (const [param, column] of [["supplier", "r.supplier_id"], ["category", "s.category"], ["urgency", "r.urgency"]]) {
-      const value = query.get(param);
+      const value = query[param as keyof typeof query];
       if (value) { clauses.push(`${column} = ?`); args.push(value); }
     }
     const rows = db().prepare(`SELECT r.*, s.name, s.moq, s.unit_cost, s.category, f.base_rate
