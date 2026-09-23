@@ -75,3 +75,6 @@
 .cartBtn:hover { background: var(--v2-wash); }
 .cartBtnMeta { font: var(--v2-meta); color: var(--v2-muted); font-variant-numeric: tabular-nums; }
 .cartBtnMeta[data-stake] { font-weight: 600; }
+
+/* Docked mode on wide screens: no dimming, the page stays clickable, only the sheet takes pointer events. */
+@media (min-width: 1180px) { .open { pointer-events: none; } .open .sheet { pointer-events: auto; box-shadow: -8px 0 24px rgba(20, 22, 28, 0.06); } .backdrop { display: none; } }

@@ -150,3 +150,6 @@
   .skuLink { margin-left: 0; }
   .keys { display: none; }
 }
+
+/* Docked cart (owner 12:06Z): on wide screens the cart stays open beside the table instead of covering it. */
+@media (min-width: 1180px) { .withCart { padding-right: 448px; } }

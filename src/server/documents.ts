@@ -91,3 +91,17 @@ export function packageForOrder(po_id: string) {
   });
   return { route: routeInfo.route, route_note_ru: routeInfo.route_note_ru, items, drafts, stage_rail };
 }
+
+/** The synthetic IEK order the shipped invoice fixture matches against (same rows as scripts/demo_reset.mjs); idempotent. */
+export function ensureDocumentsDemoOrder(): void {
+  const d = db();
+  const id = "PO-DEMO-IEK-DOCUMENTS";
+  if (d.prepare("SELECT id FROM purchase_order WHERE id=?").get(id)) return;
+  const skus = d.prepare("SELECT code_1c FROM sku WHERE supplier_id='IEK' AND length(code_1c)>=8 AND name<>'0' AND article IS NOT NULL AND article<>'' ORDER BY code_1c LIMIT 10").all() as { code_1c: string }[];
+  if (skus.length !== 10) return;
+  withTx(tx => {
+    tx.prepare("INSERT INTO purchase_order(id,supplier_id,state,total_qty,cost_known_lines) VALUES (?,'IEK','approved',280,10)").run(id);
+    const line = tx.prepare("INSERT INTO purchase_order_line(po_id,code_1c,qty,unit_cost,rationale_ru) VALUES (?,?,?,?,?)");
+    skus.forEach((sku, index) => line.run(id, sku.code_1c, index === 0 ? 100 : 20, String(1000 + index * 125), "Синтетический демонстрационный заказ для сверки со счётом"));
+  });
+}

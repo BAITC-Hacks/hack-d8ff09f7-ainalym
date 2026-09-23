@@ -1,10 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { basename, join } from "node:path";
-import { db, stateVersion } from "@/db/client";
+import { basename, dirname, join } from "node:path";
+import { db, dbPath, stateVersion } from "@/db/client";
 import { extractDeterministic, packageForRoute, type ExtractedDocument } from "@/domain/documents";
 import { extractWithModel, replayExtraction } from "@/ai/extract";
-import { documentsForOrder, inferOrder, insertDocument } from "@/server/documents";
+import { documentsForOrder, ensureDocumentsDemoOrder, inferOrder, insertDocument } from "@/server/documents";
 
 export const runtime = "nodejs";
 const limit = 10 * 1024 * 1024;
@@ -31,6 +31,7 @@ export async function POST(request: Request): Promise<Response> {
       kind = typeof body.kind === "string" ? body.kind : "invoice";
       package_key = typeof body.package_key === "string" ? body.package_key : null;
       source = "fixture";
+      ensureDocumentsDemoOrder();
     } else {
       const form = await request.formData();
       const file = form.get("file");
@@ -64,10 +65,11 @@ export async function POST(request: Request): Promise<Response> {
   const inferred = po_id ? null : inferOrder(extracted);
   po_id ||= inferred?.po_id || null;
   const supplier_id = po?.supplier_id || inferred?.supplier_id || null;
-  const directory = join(process.cwd(), "data", "uploads");
+  // Uploads live next to the database (the only writable place on the demo host), never inside the release tree.
+  const directory = join(dirname(dbPath()), "uploads");
   mkdirSync(directory, { recursive: true });
-  const relative = join("data", "uploads", randomUUID());
-  const stored_path = join(process.cwd(), relative);
+  const relative = join("uploads", randomUUID());
+  const stored_path = join(directory, basename(relative));
   try {
     writeFileSync(stored_path, buffer, { flag: "wx", mode: 0o600 });
     const document = insertDocument({ po_id, supplier_id, kind, source, file_name: name, mime, sha256, stored_path: relative,

@@ -41,7 +41,7 @@ function Replenishment() {
   const [query, setQuery] = useState(""); const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, number>>({});
-  const [cartOpen, setCartOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(true); // owner 12:06Z: the cart is visible by default (docked on wide screens)
   const [flash, setFlash] = useState<{ code: string; at: number } | null>(null);
   const search = useRef<HTMLInputElement>(null);
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
@@ -109,7 +109,7 @@ function Replenishment() {
   const loading = recs.loading && !recs.data;
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} ${cartOpen ? styles.withCart : ""}`}>
       <p className={styles.eyebrow}>Закупки{run && <> · расчёт от {new Date(run.started_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · {fmtInt(run.skus)} SKU просчитано</>}</p>
       <div className={styles.head}>
         <h1 className={styles.display}>Пополнение</h1>
