@@ -38,12 +38,14 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
     starting.current = false;
     turn.current.cancel();
     transcript.current.clear();
-    channel.current?.close();
+    const dataChannel = channel.current;
     channel.current = null;
+    dataChannel?.close();
     stream.current?.getTracks().forEach(track => track.stop());
     stream.current = null;
-    peer.current?.close();
+    const connection = peer.current;
     peer.current = null;
+    connection?.close();
     if (audio.current) { audio.current.pause(); audio.current.srcObject = null; audio.current.remove(); audio.current = null; }
   }, []);
 
@@ -182,6 +184,12 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       const dataChannel = connection.createDataChannel("oai-events");
       channel.current = dataChannel;
       dataChannel.onopen = () => { if (sessionGeneration === generation.current) setState("listening"); };
+      dataChannel.onclose = () => {
+        if (sessionGeneration === generation.current && peer.current) { release(); setReason("Provider unavailable"); setState("unavailable"); }
+      };
+      dataChannel.onerror = () => {
+        if (sessionGeneration === generation.current && peer.current) { release(); setReason("Provider unavailable"); setState("unavailable"); }
+      };
       dataChannel.onmessage = e => { try { void handleEvent(JSON.parse(e.data) as RealtimeEvent, sessionGeneration); } catch { /* malformed transport event */ } };
       const offer = await connection.createOffer();
       await connection.setLocalDescription(offer);

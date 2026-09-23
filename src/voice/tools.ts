@@ -118,8 +118,8 @@ async function run(name: ToolName, call: ToolCall): Promise<{ status: number; re
   } catch {
     return err("dependency_unavailable", "Calculation could not complete", 503, version);
   }
-  const top = d.prepare("SELECT code_1c, qty_recommended AS qty, urgency FROM recommendation WHERE run_id = ? ORDER BY qty_recommended DESC LIMIT 5").all(calculated.run_id);
-  return { status: 200, result: { ok: true, run_id: calculated.run_id, recommended: calculated.recommended, top, proposal_ids: calculated.proposals.map(row => row.id), task_ids: calculated.tasks.map(row => row.id), state_version: stateVersion(d), labels: draftLabels } };
+  const top = d.prepare("SELECT code_1c, qty_recommended AS qty, urgency FROM recommendation WHERE run_id = ? AND qty_recommended > 0 ORDER BY qty_recommended DESC LIMIT 5").all(calculated.run_id);
+  return { status: 200, result: { ok: true, run_id: calculated.run_id, recommended: calculated.recommended, top, proposal_ids: calculated.proposals.map(row => row.id), task_ids: calculated.tasks.map(row => row.id), state_version: stateVersion(d), labels: calculated.proposals.length ? draftLabels : labels } };
 }
 
 export async function executeVoiceTool(name: string, raw: unknown): Promise<{ status: number; result: ToolResult }> {
