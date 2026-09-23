@@ -1,4 +1,4 @@
-Done: providers, live smokes, five-question catalog, persisted decisions, replay fixture, /api/decisions.
-Undone: worker, drafting, guardrail suite, optional cut-order items.
-Resumable: decision_record gains evidence_versions, rubric_version, cache_key additively at first decision.
-SHA: 4b4328c (previous checkpoint; this checkpoint commit follows).
+Done: providers, catalog, replay, decisions API, borderline outlier interpretation, event worker and scheduled checks.
+Undone: drafting, worker/guardrail tests, live L1/L2 integration, optional cut-order items.
+Resumable: worker uses L1 ledger and L2 apply/events seams; rerun gates after those land on main.
+SHA: ccdc4f4 (previous feature commit; this checkpoint commit follows).

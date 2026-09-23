@@ -181,7 +181,15 @@ function ruleChoice(question: ChoiceQuestion, context: unknown): ChoiceResult {
       answer = /дефицит|stockout|нет на складе|zero stock/.test(input) ? "stockout_risk" : /срок|eta|задерж/.test(input) ? "lead_time" : "no_override";
       break;
     case "change_summary":
-      answer = /рост|increas|вырос/.test(input) ? "increased" : /сниж|decreas|упал/.test(input) ? "decreased" : /без измен|unchanged/.test(input) ? "unchanged" : "mixed_or_unknown";
+      {
+        const previous = data.previous as Record<string, unknown> | undefined;
+        const current = data.current as Record<string, unknown> | undefined;
+        const before = Number(previous?.qty ?? previous?.total_qty);
+        const after = Number(current?.qty ?? current?.total_qty);
+        answer = Number.isFinite(before) && Number.isFinite(after)
+          ? after > before ? "increased" : after < before ? "decreased" : "unchanged"
+          : /рост|increas|вырос/.test(input) ? "increased" : /сниж|decreas|упал/.test(input) ? "decreased" : /без измен|unchanged/.test(input) ? "unchanged" : "mixed_or_unknown";
+      }
       break;
     case "supplier_terms_hint":
       answer = /предоплат|prepay/.test(input) ? "prepayment" : /отсроч|net [0-9]/.test(input) ? "deferred" : "unknown";
