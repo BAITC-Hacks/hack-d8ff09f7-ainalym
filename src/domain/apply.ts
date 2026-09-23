@@ -35,7 +35,7 @@ function reasonRu(error: unknown): string {
 /** Computes and persists a full run before preparing human approval proposals. */
 export async function runCalculation(scope: CalcScope = {}, overrides: Partial<EngineParams> = {}, ctx: CalcContext = {}) {
   const database = ctx.database ?? db();
-  const orgId = ctx.org_id ?? "ORG-1";
+  const orgId = ctx.org_id ?? (database.prepare("SELECT id FROM organization LIMIT 1").get() as { id: string } | undefined)?.id ?? "ORG-1";
   const query = `SELECT code_1c,supplier_id,name,unit,unit_cost,moq FROM sku WHERE 1=1${scope.supplier ? " AND supplier_id=?" : ""}${scope.category ? " AND category=?" : ""} ORDER BY supplier_id,code_1c`;
   const skus = (database.prepare(query).all(...[scope.supplier, scope.category].filter((value) => value !== undefined)) as Sku[])
     .filter((sku) => !scope.codes || scope.codes.includes(sku.code_1c));

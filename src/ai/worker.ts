@@ -130,7 +130,7 @@ async function recomputeAffected(row: EventRow, codes: string[], runId: string):
   const unique = [...new Set(codes.filter(Boolean))];
   if (!unique.length) return { calcId: null, unresolved: [] };
   const d = db();
-  const recomputed = await domainRecompute(unique, runId, row.id);
+  const recomputed = await domainRecompute(unique, runId, row.id, row.org_id);
   if (recomputed.affected_codes.length !== unique.length) throw new Error("affected_sku_missing");
   const computed = recomputed.affected_codes.filter(code => !!recomputed.results[code]);
   for (const gap of recomputed.unresolved) await recordAction(runId, {
