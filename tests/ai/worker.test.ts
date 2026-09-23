@@ -51,4 +51,14 @@ describe("world event worker", () => {
     expect(mocks.record.mock.calls.some(([, action]) => action.kind === "escalation" && action.rationale_ru === "unsupported_world_event")).toBe(true);
     expect((await tick()).processed).toBe(0);
   });
+
+  it("runs a due scheduled check once", async () => {
+    db().prepare(`INSERT INTO task(id,title,state,next_event_at,updated_at)
+      VALUES ('TK-DUE','Проверить срок','needs_review','2024-01-01T00:00:00Z','2024-01-01T00:00:00Z')`).run();
+    const first = await tick();
+    expect(first.processed).toBe(0);
+    expect(first.runs).toHaveLength(1);
+    expect(mocks.record.mock.calls.some(([, action]) => action.kind === "escalation")).toBe(true);
+    expect((await tick()).runs).toHaveLength(0);
+  });
 });

@@ -194,15 +194,15 @@ export function processEvent(world_event_id: string): Promise<ProcessResult> {
 }
 
 export async function runScheduledChecks(now: Date = new Date()): Promise<string[]> {
-  const due = db().prepare("SELECT id,title FROM task WHERE next_event_at IS NOT NULL AND next_event_at<=? AND state IN ('awaiting_supplier','needs_review') ORDER BY next_event_at,id")
-    .all(now.toISOString()) as { id: string; title: string }[];
+  const due = db().prepare("SELECT id,title,next_event_at FROM task WHERE next_event_at IS NOT NULL AND next_event_at<=? AND state IN ('awaiting_supplier','needs_review') ORDER BY next_event_at,id")
+    .all(now.toISOString()) as { id: string; title: string; next_event_at: string }[];
   const org = (db().prepare("SELECT id FROM organization LIMIT 1").get() as { id: string } | undefined)?.id || "ORG-1";
   const runs: string[] = [];
   for (const task of due) {
     const runId = await startRun({ org_id: org, trigger_type: "scheduled_check", trigger_ref: task.id });
     await recordAction(runId, {
       kind: "escalation", subject_ref: task.id, summary_ru: `Срок проверки: ${task.title}`,
-      sources: [task.id], autonomy: "escalated", result: "needs_owner", idempotency_key: `scheduled:${task.id}:${now.toISOString()}`,
+      sources: [task.id], autonomy: "escalated", result: "needs_owner", idempotency_key: `scheduled:${task.id}:${task.next_event_at}`,
     });
     withTx(tx => {
       tx.prepare("UPDATE task SET next_event_at=NULL,updated_at=? WHERE id=?").run(now.toISOString(), task.id);

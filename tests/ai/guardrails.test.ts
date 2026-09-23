@@ -79,6 +79,24 @@ describe("provider and decision guardrails", () => {
     expect(result).toMatchObject({ answer: "regular", provider: "jev:gateway" });
   });
 
+  it("falls back to the gateway after a direct provider error", async () => {
+    process.env.TYPESAFE_API_KEY = "test-only-key";
+    process.env.AI_GATEWAY_API_KEY = "test-only-key";
+    const endpoints: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      endpoints.push(url);
+      return url.includes("api.typesafe.ai")
+        ? { ok: false, status: 429 }
+        : { ok: true, json: async () => ({ ...response("one_off"), model: "typesafe-ai/jev" }) };
+    }));
+    const result = await decideChoice(question, { document_qty: 120, threshold: 100 }, "jev");
+    expect(endpoints).toEqual([
+      "https://api.typesafe.ai/v1/systemone", "https://api.typesafe.ai/v1/systemone",
+      "https://ai-gateway.vercel.sh/v1/evaluate",
+    ]);
+    expect(result).toMatchObject({ answer: "one_off", provider: "jev:gateway" });
+  });
+
   it("maps the provider error to HTTP 503", async () => {
     process.env.AI_PROVIDER = "jev";
     const request = new Request("http://localhost/api/decisions", { method: "POST", body: JSON.stringify({
