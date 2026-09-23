@@ -30,7 +30,8 @@ export function inferOrder(extracted: ExtractedDocument): { po_id: string; suppl
 }
 export function insertDocument(input: { po_id: string | null; supplier_id: string | null; kind: string; source: "upload" | "fixture" | "world_event";
   file_name: string; mime: string; sha256: string; stored_path: string; extracted: ExtractedDocument; extraction_mode: string }) {
-  const match = input.po_id ? matchDocumentToOrder(input.extracted, orderLines(input.po_id)) : null;
+  const receipt = input.po_id && input.kind !== "receipt" ? documentsForOrder(input.po_id).find(x => x.kind === "receipt" && x.extracted.lines.length) : null;
+  const match = input.po_id ? matchDocumentToOrder(input.extracted, orderLines(input.po_id), receipt ? receipt.extracted.lines.map(x => ({ code_1c: x.code_1c, article: x.article, name: x.name, qty: x.qty })) : undefined) : null;
   const state = input.extraction_mode === "unavailable" ? "received" : match ? match.summary.discrepancies ? "discrepancy" : "matched" : "extracted";
   const id = `DOC-${randomUUID()}`;
   const created_at = new Date().toISOString();
@@ -38,6 +39,16 @@ export function insertDocument(input: { po_id: string | null; supplier_id: strin
     tx.prepare(`INSERT INTO document(id,po_id,supplier_id,kind,source,file_name,mime,sha256,stored_path,extracted,extraction_mode,match,state,created_at)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,input.po_id,input.supplier_id,input.kind,input.source,input.file_name,input.mime,input.sha256,input.stored_path,
         JSON.stringify(input.extracted),input.extraction_mode,JSON.stringify(match || {}),state,created_at);
+    if (input.kind === "receipt" && input.po_id && input.extracted.lines.length) {
+      const prior = tx.prepare("SELECT id,extracted,state FROM document WHERE po_id=? AND kind='invoice' AND id<>?").all(input.po_id,id) as
+        { id: string; extracted: string; state: string }[];
+      for (const old of prior) {
+        const refreshed = matchDocumentToOrder(JSON.parse(old.extracted) as ExtractedDocument, orderLines(input.po_id),
+          input.extracted.lines.map(x => ({ code_1c: x.code_1c, article: x.article, name: x.name, qty: x.qty })));
+        tx.prepare("UPDATE document SET match=?,state=?,version=version+1 WHERE id=?").run(JSON.stringify(refreshed),
+          old.state === "accepted" ? "accepted" : refreshed.summary.discrepancies ? "discrepancy" : "matched",old.id);
+      }
+    }
     const run = startRun({ org_id: orgId(), trigger_type: "document_intake", trigger_ref: id }, tx, false);
     recordAction(run, { kind: "document_extracted", subject_ref: id, po_id: input.po_id || undefined,
       summary_ru: input.extraction_mode === "unavailable" ? `Документ ${input.file_name} сохранён; распознавание недоступно` :

@@ -19,7 +19,8 @@ describe("demo reset", () => {
       const first = run();
       expect(first.counts.sku).toBeGreaterThan(3000);
       expect(first.counts.world_event).toBe(46);
-      expect(first.counts.purchase_order).toBe(1);
+      expect(first.counts.purchase_order).toBe(2);
+      expect(first.counts.purchase_order_line).toBe(11);
       expect(first.counts.organization).toBe(1);
       expect(first.counts.recommendation).toBe(0);
       const prior = process.env.DATABASE_PATH;
