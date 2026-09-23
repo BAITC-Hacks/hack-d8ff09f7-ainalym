@@ -1,0 +1,11 @@
+{
+  "mode": "replay",
+  "recordings": [
+    { "question_id": "one_off_order", "subject_ref": "DEMO-ONEOFF", "answer": "one_off", "distribution": { "one_off": 0.91, "regular": 0.04, "unknown": 0.05 }, "model_version": "recorded-v1" },
+    { "question_id": "one_off_order", "subject_ref": "DEMO-REGULAR", "answer": "regular", "distribution": { "one_off": 0.06, "regular": 0.89, "unknown": 0.05 }, "model_version": "recorded-v1" },
+    { "question_id": "category_hint", "subject_ref": "DEMO-IEK-BREAKER", "answer": "circuit_breakers", "distribution": { "circuit_breakers": 0.91, "cables": 0.02, "sockets": 0.02, "unknown": 0.05 }, "model_version": "recorded-v1" },
+    { "question_id": "urgency_override_reason", "subject_ref": "DEMO-STOCKOUT", "answer": "stockout_risk", "distribution": { "stockout_risk": 0.94, "lead_time": 0.02, "no_override": 0.04 }, "model_version": "recorded-v1" },
+    { "question_id": "change_summary", "subject_ref": "DEMO-RUN-INCREASE", "answer": "increased", "distribution": { "increased": 0.85, "decreased": 0.05, "unchanged": 0.05, "mixed_or_unknown": 0.05 }, "model_version": "recorded-v1" },
+    { "question_id": "supplier_terms_hint", "subject_ref": "DEMO-IEK-TERMS", "answer": "prepayment", "distribution": { "prepayment": 0.9, "deferred": 0.03, "unknown": 0.07 }, "model_version": "recorded-v1" }
+  ]
+}
