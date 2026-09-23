@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { bumpStateVersion, db, resetInstance } from "../../src/db/client";
 import { executeVoiceTool } from "../../src/voice/tools";
-import { VoiceTurnGate } from "../../src/voice/transport";
+import { TranscriptGate, VoiceTurnGate } from "../../src/voice/transport";
 import { POST as toolRoute } from "../../src/app/api/voice/tools/[name]/route";
 
 const priorPath = process.env.DATABASE_PATH;
@@ -96,9 +96,17 @@ describe("voice tool bridge", () => {
   it("does not create a run for a corrected, ambiguous spoken quantity", async () => {
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
+    const transcript = new TranscriptGate();
+    for (const event of [
+      { type: "input_audio_buffer.speech_started", item_id: "input-ambiguous" },
+      { type: "conversation.item.input_audio_transcription.completed", item_id: "input-ambiguous", text: "Закажи тринадцать… нет, четырнадцать тысяч" },
+    ]) {
+      if (event.type === "input_audio_buffer.speech_started") transcript.started(event.item_id);
+      else transcript.completed(event.item_id, event.text!);
+    }
     const response = await executeVoiceTool("recommend_for", {
       request_id: "call-ambiguous", scope: { org_id: "ORG-1", supplier_id: "SE" },
-      args: { supplier_id: "SE", utterance: "Закажи тринадцать… нет, четырнадцать тысяч" },
+      args: { supplier_id: "SE", utterance: transcript.take() },
     });
     expect(response.status).toBe(422);
     expect(response.result.code).toBe("needs_clarification");
