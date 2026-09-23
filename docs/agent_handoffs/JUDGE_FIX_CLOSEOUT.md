@@ -31,3 +31,7 @@ Lane: `lane/judgefix` (cut from main `be9e1ad`). Date: 2026-09-23, commits befor
 - The `runCalculation` default change is defensive: every caller that already passed `org_id` behaves the same; callers that passed nothing now land on the real organisation instead of `ORG-1`. Tests that seed `ORG-1` events without an `organization` row keep the `ORG-1` fallback.
 - Hosted M4 «+3.44 %» was a symptom of the same scope gap (the injected document recomputed under `ORG-1`, the visible view read the org's stale run); re-verify on the hosted demo after merge.
 - No new dependencies, no secrets, no absolute local paths.
+
+## Check line (12:24Z)
+
+`npm run check` → `check: passed=336 failed=0 skipped=7 externally-unverified=7` (exit 0). `node scripts/scenario.mjs` → 11 PASS, 0 FAIL. Gate: GREEN.
