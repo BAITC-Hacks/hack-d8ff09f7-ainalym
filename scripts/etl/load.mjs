@@ -36,6 +36,7 @@ const run = (sql, data) => d.prepare(sql).run(...data);
 d.exec('BEGIN');
 try {
   for (const table of ['sales_line','sales_month','stock_month','in_transit','seasonality','season_index','sku','supplier']) d.exec(`DELETE FROM ${table}`);
+  run('INSERT INTO organization (id,name) VALUES (?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name', ['partner','ТОО «Электрокомплект»']);
   run('INSERT INTO supplier (id,name,lead_time_days,review_days,terms) VALUES (?,?,?,?,?)', ['IEK','IEK',40,30,JSON.stringify({prepay_pct:30})]);
   run('INSERT INTO supplier (id,name,lead_time_days,review_days,terms) VALUES (?,?,?,?,?)', ['SE','System Electric',50,30,JSON.stringify({prepay_pct:30})]);
   const lineInsert = d.prepare('INSERT INTO sales_line (code_1c,doc_no,doc_type,at,warehouse,qty,source) VALUES (?,?,?,?,?,?,?)');
