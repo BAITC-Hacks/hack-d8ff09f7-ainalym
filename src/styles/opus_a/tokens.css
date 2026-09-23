@@ -1,0 +1,41 @@
+/* OPUS-A tokens — Ramp-like warm greige language, scoped to .oa so no other route changes. */
+.oa {
+  --oa-canvas: #ecebe6;        /* warm greige page, never pure white */
+  --oa-rail: #e2e0d9;          /* slightly darker warm sidebar */
+  --oa-surface: #f4f3ef;       /* raised rows / cards, still warm */
+  --oa-surface-2: #e7e5df;     /* hover / pressed */
+  --oa-line: #d6d3ca;          /* hairline */
+  --oa-line-soft: #dfddd5;
+  --oa-ink: #121211;
+  --oa-ink-2: #3a3935;
+  --oa-muted: #6d6b64;
+  --oa-accent: #dcec2a;        /* the one chartreuse for the primary action + counts */
+  --oa-accent-ink: #151a00;
+  --oa-accent-press: #cddc1c;
+  --oa-black: #121211;
+  --oa-ok-bg: #dfe9d8; --oa-ok-fg: #2d5e2a; --oa-ok-dot: #3f7d3a;
+  --oa-warn-bg: #f1e5c8; --oa-warn-fg: #7a4f06; --oa-warn-dot: #b07a12;
+  --oa-bad-bg: #f3dcd6; --oa-bad-fg: #9b2f1c; --oa-bad-dot: #c2432a;
+  --oa-alert-row: #efe2d6;     /* warm beige alert rows */
+  --oa-alert-ink: #9b3a1c;
+  --oa-plum: #5b3b58; --oa-plum-fill: #d9cad6;
+  --oa-sage: #5f7a5c; --oa-sage-fill: #cfd9ca;
+  --oa-bar: #aab5d3; --oa-bar-strong: #6f84c0;
+  --oa-focus: #121211;
+  --oa-font: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --oa-display: 600 56px/1.02 var(--oa-font);
+  --oa-display-track: -0.035em;
+  --oa-crumb: 400 17px/24px var(--oa-font);
+  --oa-h2: 500 22px/28px var(--oa-font);
+  --oa-num-xl: 500 34px/40px var(--oa-font);
+  --oa-body: 400 15px/21px var(--oa-font);
+  --oa-meta: 400 13px/18px var(--oa-font);
+  --oa-small: 500 12px/16px var(--oa-font);
+  --oa-rail-w: 248px; --oa-top-h: 60px;
+  --oa-pad-x: 56px;
+  --oa-radius: 6px; --oa-radius-sm: 4px;
+  --oa-ease: cubic-bezier(.2,.8,.2,1); --oa-fast: 90ms;
+}
+@media (max-width: 1100px) { .oa { --oa-pad-x: 32px; --oa-display: 600 46px/1.04 var(--oa-font); } }
+@media (max-width: 767px) { .oa { --oa-pad-x: 16px; --oa-display: 600 38px/1.06 var(--oa-font); --oa-num-xl: 500 28px/34px var(--oa-font); --oa-top-h: 56px; } }
+@media (prefers-reduced-motion: reduce) { .oa { --oa-fast: 0ms; } }
