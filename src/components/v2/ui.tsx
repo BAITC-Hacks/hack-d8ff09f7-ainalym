@@ -53,8 +53,8 @@ export function PageHead({ crumbs, title, sub, actions, badges }: { crumbs: { hr
   </header>;
 }
 export function Kpis({ items }: { items: { label: string; value: ReactNode; meta?: ReactNode; tone?: Tone }[] }) {
-  return <dl className={styles.kpis}>{items.map((item, i) => <div key={i} className={styles.kpi}>
-    <dt>{item.label}</dt><dd className={item.tone ? styles[`num_${item.tone}`] : undefined}>{item.value}</dd>{item.meta && <p className={styles.kpiMeta}>{item.meta}</p>}
+  return <dl className={`v2-priority-card ${styles.kpis}`}>{items.map((item, i) => <div key={i} className={styles.kpi}>
+    <dt className="v2-metric-label">{item.label}</dt><dd className={`v2-metric-value ${item.tone ? styles[`num_${item.tone}`] : ""}`}>{item.value}</dd>{item.meta && <p className={styles.kpiMeta}>{item.meta}</p>}
   </div>)}</dl>;
 }
 export function Section({ title, count, aside, children, id }: { title: ReactNode; count?: number; aside?: ReactNode; children: ReactNode; id?: string }) {
@@ -63,8 +63,8 @@ export function Section({ title, count, aside, children, id }: { title: ReactNod
     {children}
   </section>;
 }
-export function Card({ children, tone, className = "" }: { children: ReactNode; tone?: "alert" | "info"; className?: string }) {
-  return <div className={`${styles.card} ${tone === "alert" ? styles.cardAlert : tone === "info" ? styles.cardInfo : ""} ${className}`}>{children}</div>;
+export function Card({ children, tone, priority = false, className = "" }: { children: ReactNode; tone?: "alert" | "info"; priority?: boolean; className?: string }) {
+  return <div className={`${styles.card} ${tone === "alert" ? styles.cardAlert : tone === "info" ? styles.cardInfo : ""} ${priority ? "v2-priority-card" : ""} ${className}`}>{children}</div>;
 }
 export function Btn({ variant = "secondary", className = "", busy, children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "black" | "quiet"; busy?: boolean }) {
   return <button {...props} type={props.type ?? "button"} className={`${styles.btn} ${styles[`btn_${variant}`]} ${className}`} aria-busy={busy || undefined} disabled={props.disabled || busy}>{children}</button>;

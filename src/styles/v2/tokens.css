@@ -6,6 +6,9 @@
   --v2-rail-active: #dedad1;
   --v2-card: #faf9f6;
   --v2-card-raised: #ffffff;
+  --v2-shadow-card: 0 1px 2px #13131105, 0 4px 12px #13131106;
+  --v2-metric-label: 400 13px/18px var(--v2-font);
+  --v2-metric-value: 600 32px/1.15 var(--v2-font);
   --v2-wash: #ecebe6;
   --v2-line: #e1ded6;
   --v2-line-strong: #cfcbc1;
@@ -73,3 +76,5 @@
 @media (prefers-reduced-motion: reduce) { .v2 { --v2-fast: 0ms; --v2-settle: 0ms; } }
 @media (max-width: 1100px) { .v2 { --v2-num: 500 28px/1.1 var(--v2-font); } }
 @media (max-width: 767px) { .v2 { --v2-num: 500 26px/1.1 var(--v2-font); } }
+@media (max-width: 1100px) { .v2 { --v2-metric-value: 600 28px/1.15 var(--v2-font); } }
+@media (max-width: 767px) { .v2 { --v2-metric-value: 600 26px/1.2 var(--v2-font); } }
