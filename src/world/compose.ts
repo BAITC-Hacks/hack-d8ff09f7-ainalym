@@ -22,9 +22,33 @@ export async function composeEvent(input: ComposeInput) {
   if (input.actor_id !== undefined && (typeof input.actor_id !== "string" || input.actor_id.length > 100)) throw new WorldError("invalid_actor", 400);
   if (input.code_1c !== undefined && (typeof input.code_1c !== "string" || !input.code_1c || input.code_1c.length > 100)) throw new WorldError("invalid_code", 400);
   if (input.po_id !== undefined && (typeof input.po_id !== "string" || !input.po_id || input.po_id.length > 100)) throw new WorldError("invalid_po", 400);
-  if (input.po_id && !db().prepare("SELECT 1 FROM purchase_order WHERE id = ?").get(input.po_id)) throw new WorldError("unknown_po", 404);
   if (input.payload !== undefined && (!input.payload || Array.isArray(input.payload) || typeof input.payload !== "object")) throw new WorldError("invalid_payload", 400);
   const payload = input.payload ?? {};
+  const po = input.po_id ? db().prepare("SELECT supplier_id FROM purchase_order WHERE id = ?").get(input.po_id) as { supplier_id: string } | undefined : undefined;
+  if (input.po_id && !po) throw new WorldError("unknown_po", 404);
+  const codes = new Set<string>();
+  const addCode = (value: unknown) => {
+    if (value === undefined) return;
+    if (typeof value !== "string" || !value) throw new WorldError("invalid_code", 400);
+    codes.add(value);
+  };
+  addCode(input.code_1c);
+  addCode(payload.code_1c);
+  for (const key of ["line", "lines", "rows", "stocks"] as const) {
+    const entries = Array.isArray(payload[key]) ? payload[key] : payload[key] ? [payload[key]] : [];
+    for (const entry of entries) if (entry && typeof entry === "object" && "code_1c" in entry) addCode(entry.code_1c);
+  }
+  for (const code of codes) {
+    const sku = db().prepare("SELECT supplier_id FROM sku WHERE code_1c = ?").get(code) as { supplier_id: string } | undefined;
+    if (!sku) throw new WorldError("unknown_sku", 404);
+    if ((po && po.supplier_id !== sku.supplier_id) ||
+      (typeof payload.supplier_id === "string" && payload.supplier_id !== sku.supplier_id)) {
+      throw new WorldError("sku_supplier_mismatch", 404);
+    }
+  }
+  if (input.kind === "supplier_reply" && po && input.actor_id && input.actor_id !== po.supplier_id) {
+    throw new WorldError("supplier_mismatch", 404);
+  }
   const actorId = input.actor_id ?? (input.kind === "supplier_reply" ? "supplier" : "judge");
   const digest = createHash("sha256").update(JSON.stringify(stable([input.kind, actorId, input.code_1c ?? "", input.po_id ?? "", input.text, payload]))).digest("hex").slice(0, 24);
   const sourceId = `${input.kind === "supplier_reply" ? "SUPPLIER" : "JUDGE"}-${digest}`;
