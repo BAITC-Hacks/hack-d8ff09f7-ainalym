@@ -18,6 +18,7 @@ const imagesOnly = process.env.EKT_SNAPSHOT_IMAGES_ONLY === '1';
 const database = new DatabaseSync(dbPath, { readOnly: true });
 const skus = database.prepare('SELECT code_1c,supplier_id,article,name FROM sku').all();
 let snapshot = loadSnapshot();
+const refreshDetails = snapshot.complete;
 let requests = 0;
 let page = snapshot.complete ? 1 : snapshot.pages_fetched + 1;
 let done = false;
@@ -28,12 +29,13 @@ while (!imagesOnly && requests < cap && page <= pageCap) {
   try { data = await fetchPage(page); requests = ektRequestCount(); }
   catch (error) { console.error(`EKT page ${page} stopped: ${error.message}`); break; }
   if (!data.items.length) { done = true; snapshot.complete = true; break; }
+  if (page > 1 && data.items.every(item => snapshot.products[item.id])) { done = true; snapshot.complete = true; break; }
   for (const item of data.items) snapshot.products[item.id] = { ...item, source: 'ekt_snapshot' };
   snapshot.fetched_at = data.as_of;
   snapshot.pages_fetched = page;
-  // This API can return a short nonfinal page; only an empty page proves the end.
-  snapshot.complete = false;
+  snapshot.complete = data.items.length < data.per_page;
   if (page % 50 === 0) { save(); console.log(`pages=${page} products=${Object.keys(snapshot.products).length} requests=${requests}`); }
+  if (snapshot.complete) { done = true; break; }
   page++;
 }
 if (!imagesOnly) save();
@@ -43,7 +45,7 @@ const recommended = database.prepare('SELECT DISTINCT code_1c FROM recommendatio
 const ids = [...new Set([...recommended.map(code => map[code]?.id).filter(Boolean), ...Object.values(map).map(x => x.id)])];
 for (const id of imagesOnly ? [] : ids) {
   if (requests >= cap) break;
-  if (snapshot.products[id]?.stock_total !== null) continue;
+  if (snapshot.products[id]?.stock_total !== null && !refreshDetails) continue;
   try { snapshot.products[id] = { ...await fetchDetail(id), source: 'ekt_snapshot' }; }
   catch (error) { console.error(`EKT detail ${id}: ${error.message}`); }
   requests = ektRequestCount();

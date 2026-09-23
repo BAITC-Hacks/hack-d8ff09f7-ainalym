@@ -26,3 +26,11 @@
 - Introduced replenishment policies: IEK lead time 40 days, SE 50 days, review interval 30 days, prepayment 30%. Positive in-transit rows have `expected_at` equal to 2026-09-22 plus supplier lead time (IEK 2026-11-01; SE 2026-11-11). PO references retain IEK column headers or `СЭ 24.09` for SE.
 - `season_index` uses 2024–2025 annual-normalized supplier revenue, averaged by calendar month and normalized to mean one; partial 2026 is excluded. A stockout requires zero or unknown opening stock and sales in at least two of the previous three months (1,591 flagged months); known negative stock is not zero. SKU p95 uses positive outgoing document lines.
 - `fixtures/world_events.jsonl` contains 40 real sales days, the September 2026 opening-stock snapshot, and the SE in-transit update. The only synthetic records are the three explicitly labeled judge presets (one-off line, in-transit +100, SE price update). No synthetic rows are inserted by `npm run etl`.
+
+## Каталог ekt.kz
+
+- Read-only partner store API snapshot on 2026-09-23: the full 752 pages, 15,037 distinct products, and 698 successful product details with total and warehouse stock. Pages after 752 repeat page 1, so the snapshot stops at the 17-item final page. `fixtures/ekt_snapshot.json` marks `complete:true`.
+- Matched to the 3,909 loaded SKUs by supplier article, 1C code, then a normalized name similarity threshold of 0.9: IEK 2,776/3,185; SE 607/724. Match kind is recorded in `fixtures/ekt_map.json`.
+- Catalog prices and stock are illustrative live data from the partner's public store at each record's `as_of`, not purchase terms or our own inventory. Stock is null on list-only records. Product links and images point to ekt.kz; 600 local 96×96 thumbnails (≤12 KB each) in `public/sku/` are derived from mapped recommendations, with provenance in `fixtures/sku_images.json`.
+- In 2 of the 698 inspected details, `quantity` differs from the sum of `stores[].quantity`; both reported fields are preserved without reconciliation.
+- This integration only issues GET requests to ekt.kz catalog API and image URLs. It writes nothing to ekt.kz and does not create carts or orders.
