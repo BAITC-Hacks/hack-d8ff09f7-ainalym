@@ -11,6 +11,14 @@ const item: QueueItem = { id: "PR-test", version: 7, kind: "proposal", title: "�
 beforeEach(() => vi.stubGlobal("fetch", vi.fn()));
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 describe("a_real action boundaries", () => {
+  it("retains a removed queue row while its action owns focus and blocks stale writes", async () => {
+    const first = { ...item, id: "PR-first", title: "Первое предложение" };
+    const view = render(<DecisionQueue data={{ items: [first, item] }} error={null} loading={false} reload={() => {}} />);
+    const approve = screen.getByRole("button", { name: "Утвердить" }); approve.focus();
+    view.rerender(<DecisionQueue data={{ items: [first] }} error={null} loading={false} reload={() => {}} />);
+    await screen.findByText("Есть обновлённые решения."); expect(document.activeElement).toBe(approve); expect(screen.getByText(item.title)).toBeTruthy(); expect(approve.getAttribute("aria-disabled")).toBe("true"); fireEvent.click(approve); expect(fetch).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Показать обновления" })); await waitFor(() => expect(screen.queryByText(item.title)).toBeNull());
+  });
   it("keeps a recorded result's top-level replay axes even when current mode differs", () => {
     render(<DecisionQueue data={{ items: [{ ...item, ai: "replay", provenance: "synthetic", external: "local_simulator" }] }} error={null} loading={false} reload={() => {}} axes={{ ai: "live", provenance: "partner_anonymised", external: "export_only" }} />);
     expect(screen.getByText("Воспроизведение · записанное решение")).toBeTruthy(); expect(screen.queryByText("Живой AI")).toBeNull(); expect(screen.getByText("Синтетические данные")).toBeTruthy();

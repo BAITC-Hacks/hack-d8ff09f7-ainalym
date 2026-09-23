@@ -3,7 +3,7 @@ import { useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "rea
 import { ApiError, useApiSync } from "./api";
 import styles from "./controls.module.css";
 export function Button({ busy, variant = "secondary", className = "", children, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { busy?: boolean; variant?: "primary" | "secondary" | "quiet" }) {
-  return <button {...props} type={props.type ?? "button"} onClick={event => { if (busy || props.disabled) { event.preventDefault(); return; } props.onClick?.(event); }} className={`${styles.button} ${styles[variant]} ${className}`} aria-busy={busy || undefined} aria-disabled={busy || props.disabled || undefined}>{children}<span className={styles.busyMark} aria-hidden="true">{busy ? "…" : ""}</span></button>;
+  return <button {...props} type={props.type ?? "button"} onClick={event => { if (busy || props.disabled || props["aria-disabled"] === true || props["aria-disabled"] === "true") { event.preventDefault(); return; } props.onClick?.(event); }} className={`${styles.button} ${styles[variant]} ${className}`} aria-busy={busy || undefined} aria-disabled={busy || props.disabled || props["aria-disabled"] || undefined}>{children}<span className={styles.busyMark} aria-hidden="true">{busy ? "…" : ""}</span></button>;
 }
 export function useApiAction() {
   const locked = useRef(false); const [busy, setBusy] = useState(false); const [error, setError] = useState<ApiError | null>(null); const [receipt, setReceipt] = useState(""); const { refresh, reportNetwork } = useApiSync();

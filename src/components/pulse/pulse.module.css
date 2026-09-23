@@ -82,3 +82,6 @@
 .dueStrip > div { display: grid; gap: 4px; }
 .dueStrip strong { font: var(--t-lead); }
 @media (max-width:767px) { .dueStrip a { min-height: 44px; display: inline-flex; align-items: center; } }
+
+.updateNotice { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; font: var(--t-meta); color: var(--muted); }
+.updateNotice button { flex-shrink: 0; }
