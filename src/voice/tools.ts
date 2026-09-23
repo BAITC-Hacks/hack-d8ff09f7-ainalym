@@ -65,7 +65,10 @@ async function run(name: ToolName, call: ToolCall): Promise<{ status: number; re
         tasks.forEach(task => allowed!.add(task.id));
       }
     }
-    const items = queue.items.filter(own).filter(item => !allowed || allowed.has(String(item.id))).map(item => ({ id: item.id, kind: item.kind, title: item.title, money_at_stake: item.money_at_stake, href: item.href }));
+    const items = queue.items.filter(own).filter(item => !allowed || allowed.has(String(item.id))).map(item => ({
+      id: item.id, kind: item.kind, title: item.title, money_at_stake: item.money_at_stake,
+      href: item.kind === "proposal" ? `/review/${encodeURIComponent(String(item.id))}` : "/review",
+    }));
     return { status: 200, result: { ok: true, items, state_version: version, labels } };
   }
   if (name === "what_changed") {
@@ -74,8 +77,10 @@ async function run(name: ToolName, call: ToolCall): Promise<{ status: number; re
     if (typeof since === "number" && since > version) return err("invalid", "since is newer than current state", 400, version);
     const cursor = typeof since === "number" && since < version ? d.prepare("SELECT last_rowid FROM voice_change_cursor WHERE org_id = ? AND version = ?").get(call.scope.org_id, since) as { last_rowid: number } | undefined : undefined;
     if (typeof since === "number" && since < version && !cursor) return err("unsupported_since", "No saved cursor for that state version", 422, version);
-    const scopeSql = call.scope.code_1c ? " AND code_1c = ?" : call.scope.supplier_id ? " AND (subject_ref = ? OR code_1c IN (SELECT code_1c FROM sku WHERE supplier_id = ?) OR po_id IN (SELECT id FROM purchase_order WHERE supplier_id = ?))" : "";
-    const scopeArgs = call.scope.code_1c ? [call.scope.code_1c] : call.scope.supplier_id ? [call.scope.supplier_id, call.scope.supplier_id, call.scope.supplier_id] : [];
+    const scopeSql = call.scope.code_1c ? " AND code_1c = ?" : call.scope.supplier_id ? ` AND (subject_ref = ? OR code_1c IN (SELECT code_1c FROM sku WHERE supplier_id = ?)
+      OR po_id IN (SELECT id FROM purchase_order WHERE supplier_id = ?)
+      OR run_id IN (SELECT ar.id FROM agent_run ar JOIN calc_run cr ON cr.id = ar.trigger_ref WHERE json_extract(cr.scope, '$.supplier') = ?))` : "";
+    const scopeArgs = call.scope.code_1c ? [call.scope.code_1c] : call.scope.supplier_id ? [call.scope.supplier_id, call.scope.supplier_id, call.scope.supplier_id, call.scope.supplier_id] : [];
     const rows = since === version ? [] : typeof since === "number" ? d.prepare(`SELECT id, kind, subject_ref, summary_ru FROM agent_action WHERE org_id = ? AND rowid > ?${scopeSql} ORDER BY rowid DESC LIMIT 20`).all(call.scope.org_id, cursor!.last_rowid, ...scopeArgs) as { id: string; kind: string; subject_ref: string | null; summary_ru: string }[] : d.prepare(`SELECT id, kind, subject_ref, summary_ru FROM agent_action WHERE org_id = ?${scopeSql} ORDER BY rowid DESC LIMIT 20`).all(call.scope.org_id, ...scopeArgs) as { id: string; kind: string; subject_ref: string | null; summary_ru: string }[];
     const latest = d.prepare("SELECT COALESCE(MAX(rowid), 0) AS n FROM agent_action WHERE org_id = ?").get(call.scope.org_id) as { n: number };
     d.prepare("INSERT OR IGNORE INTO voice_change_cursor (org_id, version, last_rowid) VALUES (?, ?, ?)").run(call.scope.org_id, version, latest.n);

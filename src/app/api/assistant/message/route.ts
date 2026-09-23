@@ -2,6 +2,7 @@ import { stateVersion } from "../../../../db/client";
 import { executeVoiceTool } from "../../../../voice/tools";
 import type { ToolScope } from "../../../../voice/tools";
 import { keywordIntent, replyFromResult, structuredIntent } from "../../../../voice/typed";
+import { mentionedSupplier } from "../../../../voice/transport";
 import { reserveLiveCall } from "../../../../server/demo_guard";
 
 export const runtime = "nodejs";
@@ -24,6 +25,8 @@ export async function POST(request: Request) {
   if (intent.tool === "clarify") {
     return Response.json({ ok: true, reply_ru: "Уточните, пожалуйста: изменения, очередь решений, расчёт по поставщику или объяснение товара?", labels: { ai: intentMode }, state_version: stateVersion() });
   }
-  const { status, result } = await executeVoiceTool(intent.tool, { request_id, scope, args: intent.args });
+  const namedSupplier = mentionedSupplier(text);
+  const toolScope = !scope.supplier_id && namedSupplier ? { ...scope, supplier_id: namedSupplier } : scope;
+  const { status, result } = await executeVoiceTool(intent.tool, { request_id, scope: toolScope, args: intent.args });
   return Response.json({ ok: result.ok, reply_ru: replyFromResult(intent.tool, result), tool: intent.tool, result, labels: { ...result.labels, intent: intentMode }, state_version: result.state_version }, { status });
 }

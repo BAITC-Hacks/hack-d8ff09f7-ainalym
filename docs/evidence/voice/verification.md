@@ -1,6 +1,6 @@
 # L5 voice evidence (2026-09-23)
 
-- `npm run check -- voice` after L2a/L2b merge: 18 passed, 0 failed, 2 externally unverified. `tests/voice/tools.test.ts` runs the real `runCalculation` service and observes one `calc_run`, one `proposal`, and one durable `task` after concurrent duplicate delivery; it also makes a second delivery wait on a 2.2-second first call and receive `replayed:true`. It checks stale state rejection, supplier scope, and the persisted SKU explanation.
+- `npm run check -- voice` after MERGE-2: 19 passed, 0 failed, 2 externally unverified. `tests/voice/tools.test.ts` runs the real `runCalculation` service and observes one `calc_run`, one `proposal`, and durable tasks after concurrent duplicate delivery; it also makes a second delivery wait on a 2.2-second first call and receive `replayed:true`. It checks the real queue and ledger, stale state rejection, supplier scope, and the persisted SKU explanation.
 - `npm run build`: GREEN; `npx tsc --noEmit`: GREEN after build.
 - `tests/voice/session.test.ts`: missing key returns `503` with `label:"Provider unavailable"`; mocked mint requests provider TTL 50 seconds, returns actual expiry and four tool definitions, rejects provider expiry over 60 seconds, and exposes no standard key.
 - Ephemeral token creation sends a stable, hashed safety identifier for the shared demo guest, as required by the current OpenAI WebRTC guide; `tests/voice/session.test.ts` asserts its shape without exposing the key.
@@ -14,5 +14,6 @@
 - `tests/voice/partner.test.ts`: ETL into a disposable SQLite file, then a temporary contract organization row, then `recommend_for` on a real anonymised SE SKU → one persisted `calc_run`. This isolates the missing organization row from the working engine bridge.
 - Live Russian microphone/WebRTC round-trip and UI task visibility: externally unverified; L4 panel and L1 state/ledger routes were not present at this checkpoint. No OpenAI product call was made to build or test.
 - L4 panel landed on `main`; the hook now dispatches `ainalym:voice-tool-result` after a confirmed tool HTTP result so its result card can use the same backend result. L4 still needs to subscribe; the UI acceptance gate is not claimed.
+- After L1/L2 landed, the local no-key HTTP and browser integration ran against a disposable reset of the partner data: [integration gate](integration.md) and [typed/queue screenshot](typed-partner-status.png). The live microphone gate remains externally unverified.
 
 Official OpenAI Docs checked: [WebRTC](https://developers.openai.com/api/docs/guides/voice-webrtc), [Realtime conversations and function calls](https://developers.openai.com/api/docs/guides/realtime-conversations), [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [file transcription](https://developers.openai.com/api/docs/guides/speech-to-text).

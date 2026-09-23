@@ -61,6 +61,12 @@ describe("voice tool bridge", () => {
     expect(db().prepare("SELECT COUNT(*) AS n FROM task").get()).toEqual({ n: 1 });
     expect(db().prepare("SELECT COUNT(*) AS n FROM approval").get()).toEqual({ n: 0 });
     expect(db().prepare("SELECT COUNT(*) AS n FROM purchase_order").get()).toEqual({ n: 0 });
+    const proposal = db().prepare("SELECT id FROM proposal LIMIT 1").get() as { id: string };
+    const queue = await executeVoiceTool("what_needs_me", { request_id: "call-after-run-queue", scope: { org_id: "ORG-1", supplier_id: "SE" }, args: {} });
+    expect(queue.result.items).toMatchObject([{ id: proposal.id, kind: "proposal", href: `/review/${proposal.id}` }]);
+    const changes = await executeVoiceTool("what_changed", { request_id: "call-after-run-ledger", scope: { org_id: "ORG-1", supplier_id: "SE" }, args: {} });
+    expect((changes.result.changes as { after: string }[]).some(change => change.after.includes("Подготовлены рекомендации SE"))).toBe(true);
+    expect((changes.result.changes as { after: string }[]).some(change => change.after.includes("Нужно решение по заказу SE"))).toBe(true);
     const turn = new VoiceTurnGate();
     turn.cancel(); // Same gate used by stop(); the durable review task is independent of the call.
     expect(db().prepare("SELECT state FROM task LIMIT 1").get()).toEqual({ state: "needs_review" });
