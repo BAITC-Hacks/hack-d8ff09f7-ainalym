@@ -1,0 +1,6 @@
+{
+  "page": { "page": 1, "per_page": 20, "count": 20, "items": [
+    { "id": 45357, "name": "***LED STARK 30W 2400Lm d98x180 4000K IP20 MEGALIGHT (20)", "article": "ярп4520", "price": 1810, "image": "https://ekt.kz/upload/iblock/c39/product.jpg", "url": "https://ekt.kz/catalog/spets_predlozhenie/product/", "url_api_detail": "https://ekt.kz/api/products/detail?id=45357", "offers": [] }
+  ] },
+  "detail": { "id": 45357, "name": "***LED STARK 30W 2400Lm d98x180 4000K IP20 MEGALIGHT (20)", "article": "ярп4520", "description": "Светодиодный светильник направленного освещения.", "price": 1810, "quantity": 0, "stores": [{ "id": 12, "name": "Основной склад", "quantity": 0 }], "image": "https://ekt.kz/upload/iblock/544/product.jpg", "url": "https://ekt.kz/catalog/spets_predlozhenie/product/", "offers": [], "properties": { "CML2_ARTICLE": "ярп4520", "ARTIKULPOSTAVSHCHIKA": "ярп4520", "TORGOVAYA_MARKA": " MEGALIGHT" } }
+}

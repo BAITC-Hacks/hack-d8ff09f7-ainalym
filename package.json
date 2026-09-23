@@ -11,6 +11,7 @@
     "check": "node scripts/check.mjs",
     "demo:reset": "node scripts/demo_reset.mjs",
     "etl": "node scripts/etl/load.mjs",
+    "ekt:snapshot": "node scripts/ekt/snapshot.mjs",
     "e2e": "playwright test tests/e2e"
   },
   "dependencies": {
