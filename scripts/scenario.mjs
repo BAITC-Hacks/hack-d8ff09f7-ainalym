@@ -93,6 +93,20 @@ try {
     const drop = netNeed(before) - netNeed(after);
     report("M1", "Товар в пути +100 уменьшает чистую потребность до ограничения нулём", Math.abs(drop - 100) < 0.01,
       `Δ=${drop.toFixed(3)}, заказ ${before.need}→${after.need} из-за достаточного запаса`);
+    let active = null;
+    for (const row of d.prepare("SELECT DISTINCT code_1c FROM in_transit WHERE code_1c<>? ORDER BY code_1c").all(code("intransit"))) {
+      try {
+        const candidate = await computeNeed(row.code_1c, params(d, row.code_1c), { database: d, as_of: asOf });
+        if (component(candidate, "raw_need") > 150) { active = { code: row.code_1c, before: candidate }; break; }
+      } catch { /* catalog rows without required sources are not calculable */ }
+    }
+    if (active) {
+      await applyWorldEvent({ id: "WE-SCENARIO-ACTIVE-TRANSIT", kind: "in_transit_update", org_id: "partner", code_1c: active.code, payload: { delta_qty: 100 } });
+      const revised = await computeNeed(active.code, params(d, active.code), { database: d, as_of: asOf });
+      const activeDrop = component(active.before, "raw_need") - component(revised, "raw_need");
+      report("M1-active", "При дефиците +100 в пути снижает потребность до кратности на 100", Math.abs(activeDrop - 100) < 0.01,
+        `SKU=${active.code}, Δ=${activeDrop.toFixed(3)}`);
+    } else report("M1-active", "Найден SKU с активным дефицитом и товаром в пути", false);
     d.prepare("DELETE FROM stock_month WHERE code_1c=?").run(code("intransit"));
     let named = false;
     try { await calculate(d, "intransit"); } catch (error) { named = /stock source missing/.test(String(error)); }
