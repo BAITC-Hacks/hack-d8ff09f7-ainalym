@@ -82,7 +82,10 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     JOIN purchase_order p ON p.id=l.po_id WHERE l.code_1c=? AND p.state IN ('approved','exported')
     AND p.eta IS NOT NULL AND substr(p.eta,1,10)>=? AND substr(p.eta,1,10)<=?`)
     .all(code_1c, asOf, horizonDate.toISOString().slice(0, 10)) as { po_id: string; eta: string; qty: number }[];
-  const approvedSupply = approvedRows.reduce((sum, row) => sum.plus(row.qty), new Decimal(0));
+  // A PO line can appear in both the approval ledger and the transit feed.
+  const transitRefs = new Set(transitRows.map((row) => row.po_ref));
+  const approvedSupply = approvedRows.filter((row) => !transitRefs.has(row.po_id))
+    .reduce((sum, row) => sum.plus(row.qty), new Decimal(0));
   const onHand = dec(freshOnHand ? sku.on_hand_qty : stock?.opening_qty);
   if (noSalesHistory || (months.length > 0 && months.every((month) => dec(month.qty_file ?? month.qty_regular).isZero()) && sales.every((sale) => dec(sale.qty).isZero()))) {
     const flags = ["inactive"];
@@ -204,6 +207,8 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     monthlyForecast.set(ym, (monthlyForecast.get(ym) ?? new Decimal(0)).plus(daily));
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
+  // Daily thirds can leave a sub-unit Decimal residue that incorrectly rounds need up.
+  forecastQty = forecastQty.toDecimalPlaces(9);
   const variance = uncensored.reduce((sum, point) => sum.plus(point.qty.minus(baseRate).pow(2)), new Decimal(0)).div(uncensored.length);
   const sigmaDaily = variance.sqrt().div(new Decimal(30).sqrt());
   const z = params.service_level >= 0.99 ? new Decimal("2.33") : params.service_level >= 0.95 ? new Decimal("1.645") : new Decimal("1.28");

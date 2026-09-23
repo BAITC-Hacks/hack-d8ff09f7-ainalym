@@ -35,7 +35,31 @@ function fixture(options: { seasonal?: boolean; stockout?: boolean; oneoff?: boo
 
 const context = (database: DatabaseSync, as_of = "2025-09-23") => ({ database, as_of });
 
+function eightyFixture() {
+  const database = new DatabaseSync(":memory:");
+  migrate(database);
+  database.prepare("INSERT INTO supplier(id,name,lead_time_days) VALUES ('IEK','IEK',30)").run();
+  database.prepare("INSERT INTO sku(code_1c,supplier_id,name,moq) VALUES ('EIGHTY','IEK','Eighty',1)").run();
+  database.prepare("INSERT INTO sales_month(code_1c,ym,qty_file) VALUES ('EIGHTY','2025-01','80')").run();
+  for (let i = 0; i < 8; i++) database.prepare("INSERT INTO sales_line(code_1c,doc_no,at,qty) VALUES ('EIGHTY',?,'2025-01-15','10')").run(`DOC-${i}`);
+  database.prepare("INSERT INTO stock_month(code_1c,ym,opening_qty) VALUES ('EIGHTY','2025-01','0')").run();
+  return database;
+}
+
+const eightyParams: EngineParams = { ...params, lead_time_days: 30, review_days: 0 };
+
 describe("deterministic replenishment need", () => {
+  it("deduplicates 30 approved units already represented by matching 30 in transit: 20 to 50", async () => {
+    const database = eightyFixture();
+    database.prepare("INSERT INTO in_transit(code_1c,po_ref,qty,expected_at) VALUES ('EIGHTY','PO-30','30','2025-02-10')").run();
+    database.prepare("INSERT INTO purchase_order(id,supplier_id,state,eta) VALUES ('PO-30','IEK','approved','2025-02-10')").run();
+    database.prepare("INSERT INTO purchase_order_line(po_id,code_1c,qty) VALUES ('PO-30','EIGHTY',30)").run();
+    const result = await computeNeed("EIGHTY", eightyParams, context(database, "2025-02-01"));
+    expect(result.components.forecast_qty).toBe(80);
+    expect(result.components.in_transit).toBe(30);
+    expect(result.components.approved_order_qty).toBe(0);
+    expect(result.need).toBe(50);
+  });
   it("completes a supplier's SKUs when one has no sales", async () => {
     const database = fixture();
     database.prepare("INSERT INTO sku (code_1c,supplier_id,name,moq) VALUES ('INACTIVE','IEK','Без продаж',1)").run();
