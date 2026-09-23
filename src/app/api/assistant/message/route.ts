@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     try { intent = await structuredIntent(text, scope, key); intentMode = "Live AI"; }
     catch { intentMode = "Provider unavailable"; }
   }
+  if (intent.tool === "recommend_for" && "state_version" in input && Number.isInteger(input.state_version)) intent.args.expected_state_version = input.state_version;
   if (intent.tool === "clarify") {
     return Response.json({ ok: true, reply_ru: "Уточните, пожалуйста: изменения, очередь решений, расчёт по поставщику или объяснение товара?", labels: { ai: intentMode }, state_version: stateVersion() });
   }

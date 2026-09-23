@@ -1,6 +1,6 @@
 # L5 voice evidence (2026-09-23)
 
-- `npm run check -- voice` after L2a merge: 11 passed, 0 failed, 2 externally unverified. `tests/voice/tools.test.ts` runs the real `runCalculation` service and observes one `calc_run`, one `proposal`, and one durable `task` after concurrent duplicate delivery.
+- `npm run check -- voice` after L2a/L2b merge: 13 passed, 0 failed, 2 externally unverified. `tests/voice/tools.test.ts` runs the real `runCalculation` service and observes one `calc_run`, one `proposal`, and one durable `task` after concurrent duplicate delivery; it checks stale state rejection, supplier scope, and the persisted SKU explanation.
 - `npm run build`: GREEN; `npx tsc --noEmit`: GREEN after build.
 - `tests/voice/session.test.ts`: missing key returns `503` with `label:"Provider unavailable"`; mocked mint returns one ephemeral secret with four tool definitions, capped response expiry, and no standard key in response.
 - `tests/voice/interruption.test.ts`: scripted response creation, interruption and late completion abort a pending request and drop the late call.

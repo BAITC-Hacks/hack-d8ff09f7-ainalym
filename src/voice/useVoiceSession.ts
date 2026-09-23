@@ -26,6 +26,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
   const generation = useRef(0);
   const turn = useRef(new VoiceTurnGate());
   const latestUtterance = useRef("");
+  const latestStateVersion = useRef<number | undefined>(undefined);
   const scopeRef = useRef(scope);
   scopeRef.current = scope;
 
@@ -91,6 +92,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       try {
         const args = JSON.parse(call.arguments || "{}");
         if (call.name === "recommend_for" && latestUtterance.current) args.utterance = latestUtterance.current;
+        if (call.name === "recommend_for" && latestStateVersion.current !== undefined) args.expected_state_version = latestStateVersion.current;
         const response = await fetch(`/api/voice/tools/${encodeURIComponent(call.name)}`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ request_id: call.call_id, scope: scopeRef.current, args }), signal: controller.signal,
@@ -108,6 +110,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
         void fetch("/api/state", { cache: "no-store" }).then(async response => {
           if (!response.ok) return;
           const snapshot = await response.json();
+          if (typeof snapshot.state_version === "number") latestStateVersion.current = snapshot.state_version;
           window.dispatchEvent(new CustomEvent("ainalym:state-changed", { detail: snapshot }));
           router.refresh();
         }).catch(() => undefined);
@@ -126,6 +129,13 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
     setReason(undefined);
     setState("connecting");
     try {
+      try {
+        const stateResponse = await fetch("/api/state", { cache: "no-store" });
+        if (stateResponse.ok) {
+          const snapshot = await stateResponse.json();
+          if (typeof snapshot.state_version === "number") latestStateVersion.current = snapshot.state_version;
+        }
+      } catch { /* voice can still answer if the state fingerprint is temporarily unavailable */ }
       const sessionResponse = await fetch("/api/voice/session", { method: "POST", cache: "no-store" });
       const session = await sessionResponse.json() as SessionResponse;
       if (!sessionResponse.ok || !session.client_secret || !session.expires_at || session.expires_at * 1000 <= Date.now()) throw new Error("Provider unavailable");

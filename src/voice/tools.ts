@@ -37,8 +37,8 @@ function scopeError(scope: ToolScope, name: ToolName, args: Record<string, unkno
   if (supplier && !d.prepare("SELECT 1 FROM supplier WHERE id = ?").get(supplier)) return { code: "unknown", message: "Supplier not found", status: 404 };
   const code = typeof args.code_1c === "string" ? args.code_1c : scope.code_1c;
   if (scope.code_1c && code && code !== scope.code_1c) return { code: "denied", message: "SKU is outside current scope", status: 403 };
-  if (name === "explain_sku") {
-    if (!code) return { code: "invalid", message: "code_1c is required", status: 400 };
+  if (name === "explain_sku" && !code) return { code: "invalid", message: "code_1c is required", status: 400 };
+  if (code) {
     const row = d.prepare("SELECT supplier_id FROM sku WHERE code_1c = ?").get(code) as { supplier_id: string } | undefined;
     if (!row) return { code: "unknown", message: "SKU not found", status: 404 };
     if (scope.supplier_id && row.supplier_id !== scope.supplier_id) return { code: "denied", message: "SKU is outside current supplier", status: 403 };
@@ -52,7 +52,18 @@ async function run(name: ToolName, call: ToolCall): Promise<{ status: number; re
   if (name === "what_needs_me") {
     const queue = await queueView(call.scope.org_id);
     if (queue.empty_reason === "domain pending") return err("dependency_unavailable", "Approval queue is not ready", 503, version);
-    const items = queue.items.filter(own).map(item => ({ id: item.id, kind: item.kind, title: item.title, money_at_stake: item.money_at_stake, href: item.href }));
+    let allowed: Set<string> | undefined;
+    if (call.scope.supplier_id || call.scope.code_1c) {
+      const proposalIds = call.scope.code_1c
+        ? d.prepare("SELECT DISTINCT proposal_id AS id FROM recommendation WHERE code_1c = ? AND proposal_id IS NOT NULL").all(call.scope.code_1c) as { id: string }[]
+        : d.prepare("SELECT id FROM proposal WHERE subject_id = ?").all(call.scope.supplier_id!) as { id: string }[];
+      allowed = new Set(proposalIds.map(row => row.id));
+      for (const proposalId of proposalIds) {
+        const tasks = d.prepare("SELECT id FROM task WHERE proposal_id = ?").all(proposalId.id) as { id: string }[];
+        tasks.forEach(task => allowed!.add(task.id));
+      }
+    }
+    const items = queue.items.filter(own).filter(item => !allowed || allowed.has(String(item.id))).map(item => ({ id: item.id, kind: item.kind, title: item.title, money_at_stake: item.money_at_stake, href: item.href }));
     return { status: 200, result: { ok: true, items, state_version: version, labels } };
   }
   if (name === "what_changed") {
@@ -61,7 +72,9 @@ async function run(name: ToolName, call: ToolCall): Promise<{ status: number; re
     if (typeof since === "number" && since > version) return err("invalid", "since is newer than current state", 400, version);
     const cursor = typeof since === "number" && since < version ? d.prepare("SELECT last_rowid FROM voice_change_cursor WHERE org_id = ? AND version = ?").get(call.scope.org_id, since) as { last_rowid: number } | undefined : undefined;
     if (typeof since === "number" && since < version && !cursor) return err("unsupported_since", "No saved cursor for that state version", 422, version);
-    const rows = since === version ? [] : typeof since === "number" ? d.prepare("SELECT id, kind, subject_ref, summary_ru FROM agent_action WHERE org_id = ? AND rowid > ? ORDER BY rowid DESC LIMIT 20").all(call.scope.org_id, cursor!.last_rowid) as { id: string; kind: string; subject_ref: string | null; summary_ru: string }[] : d.prepare("SELECT id, kind, subject_ref, summary_ru FROM agent_action WHERE org_id = ? ORDER BY rowid DESC LIMIT 20").all(call.scope.org_id) as { id: string; kind: string; subject_ref: string | null; summary_ru: string }[];
+    const scopeSql = call.scope.code_1c ? " AND code_1c = ?" : call.scope.supplier_id ? " AND (subject_ref = ? OR code_1c IN (SELECT code_1c FROM sku WHERE supplier_id = ?) OR po_id IN (SELECT id FROM purchase_order WHERE supplier_id = ?))" : "";
+    const scopeArgs = call.scope.code_1c ? [call.scope.code_1c] : call.scope.supplier_id ? [call.scope.supplier_id, call.scope.supplier_id, call.scope.supplier_id] : [];
+    const rows = since === version ? [] : typeof since === "number" ? d.prepare(`SELECT id, kind, subject_ref, summary_ru FROM agent_action WHERE org_id = ? AND rowid > ?${scopeSql} ORDER BY rowid DESC LIMIT 20`).all(call.scope.org_id, cursor!.last_rowid, ...scopeArgs) as { id: string; kind: string; subject_ref: string | null; summary_ru: string }[] : d.prepare(`SELECT id, kind, subject_ref, summary_ru FROM agent_action WHERE org_id = ?${scopeSql} ORDER BY rowid DESC LIMIT 20`).all(call.scope.org_id, ...scopeArgs) as { id: string; kind: string; subject_ref: string | null; summary_ru: string }[];
     const latest = d.prepare("SELECT COALESCE(MAX(rowid), 0) AS n FROM agent_action WHERE org_id = ?").get(call.scope.org_id) as { n: number };
     d.prepare("INSERT OR IGNORE INTO voice_change_cursor (org_id, version, last_rowid) VALUES (?, ?, ?)").run(call.scope.org_id, version, latest.n);
     const changes = rows.map(row => ({ object: row.kind, id: row.subject_ref ?? row.id, field: "summary_ru", before: null, after: row.summary_ru }));
@@ -72,20 +85,28 @@ async function run(name: ToolName, call: ToolCall): Promise<{ status: number; re
     const code = String(call.args.code_1c ?? call.scope.code_1c);
     const view = await skuView(code);
     if (!view) return err("dependency_unavailable", "SKU view is not ready", 503, version);
-    const recommendation = own(view.recommendation) ? view.recommendation : {};
+    if (!own(view.recommendation)) return err("no_recommendation", "Для этого товара ещё нет сохранённого расчёта", 422, version);
+    const recommendation = view.recommendation;
+    let components: Record<string, unknown> = {};
+    try { components = typeof recommendation.components === "string" ? JSON.parse(recommendation.components) as Record<string, unknown> : own(recommendation.components) ? recommendation.components : {}; }
+    catch { return err("invalid_record", "Saved recommendation components are invalid", 503, version); }
+    const series = Array.isArray(view.series) ? view.series.filter(own) : [];
+    const outliers = Array.isArray(components.outliers_excluded) ? components.outliers_excluded : series.flatMap(month => Array.isArray(month.outliers) ? month.outliers.filter(own).filter(row => row.state === "excluded") : []);
+    const stockoutMonths = Array.isArray(components.stockout_months) ? components.stockout_months : series.filter(month => month.stockout === 1).map(month => month.ym);
     const forecast = own(view.forecast) ? view.forecast : null;
     const result = {
       ok: true, code_1c: code,
       rationale_ru: recommendation.rationale_ru ?? null,
-      components: recommendation.components ?? {},
-      outliers_excluded: view.outliers_excluded ?? [],
-      stockout_months: view.stockout_months ?? [],
+      components,
+      outliers_excluded: outliers,
+      stockout_months: stockoutMonths,
       forecast, state_version: version, labels,
     };
     return { status: 200, result };
   }
   const supplier = call.args.supplier_id ?? call.scope.supplier_id;
   const category = call.args.category;
+  if (call.args.expected_state_version !== undefined && (!Number.isInteger(call.args.expected_state_version) || call.args.expected_state_version !== version)) return err("stale", "State changed; refresh before calculating", 409, version);
   if (typeof call.args.utterance === "string" && ambiguousQuantity(call.args.utterance)) return err("needs_clarification", "Уточните количество перед расчётом.", 422, version);
   if (supplier === undefined && category === undefined) return err("invalid", "Supplier or category is required", 400, version);
   if (category !== undefined && (typeof category !== "string" || !category.trim())) return err("invalid", "Invalid category", 400, version);

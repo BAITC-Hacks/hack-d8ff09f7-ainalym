@@ -54,10 +54,16 @@ describe("voice tool bridge", () => {
     expect(second.result).toMatchObject({ ok: true, run_id: first.result.run_id, replayed: true });
     expect(db().prepare("SELECT COUNT(*) AS n FROM calc_run").get()).toEqual({ n: 1 });
     expect(db().prepare("SELECT COUNT(*) AS n FROM proposal").get()).toEqual({ n: 1 });
+    expect(db().prepare("SELECT state FROM proposal LIMIT 1").get()).toEqual({ state: "needs_review" });
     expect(db().prepare("SELECT COUNT(*) AS n FROM task").get()).toEqual({ n: 1 });
+    expect(db().prepare("SELECT COUNT(*) AS n FROM approval").get()).toEqual({ n: 0 });
+    expect(db().prepare("SELECT COUNT(*) AS n FROM purchase_order").get()).toEqual({ n: 0 });
     const turn = new VoiceTurnGate();
     turn.cancel(); // Same gate used by stop(); the durable review task is independent of the call.
     expect(db().prepare("SELECT state FROM task LIMIT 1").get()).toEqual({ state: "needs_review" });
+    const explanation = await executeVoiceTool("explain_sku", { request_id: "call-explain", scope: { org_id: "ORG-1", supplier_id: "SE", code_1c: "CODE-1" }, args: { code_1c: "CODE-1" } });
+    expect(explanation.result).toMatchObject({ ok: true, code_1c: "CODE-1", components: { on_hand: 0 } });
+    expect(typeof explanation.result.rationale_ru).toBe("string");
   });
 
   it("rejects a SKU outside the current supplier", async () => {
@@ -66,6 +72,17 @@ describe("voice tool bridge", () => {
     const response = await executeVoiceTool("explain_sku", { request_id: "call-scope", scope: { org_id: "ORG-1", supplier_id: "SE" }, args: { code_1c: "SKU-1" } });
     expect(response.status).toBe(403);
     expect(response.result.code).toBe("denied");
+  });
+
+  it("keeps status actions inside the current supplier scope", async () => {
+    db().prepare("INSERT INTO supplier (id, name, lead_time_days) VALUES (?, ?, ?)").run("IEK", "IEK", 40);
+    db().prepare("INSERT INTO sku (code_1c, supplier_id, name) VALUES (?, ?, ?)").run("SE-1", "SE", "Part SE");
+    db().prepare("INSERT INTO sku (code_1c, supplier_id, name) VALUES (?, ?, ?)").run("IEK-1", "IEK", "Part IEK");
+    const add = db().prepare("INSERT INTO agent_action (id, run_id, org_id, code_1c, kind, summary_ru, at) VALUES (?, 'RUN-1', 'ORG-1', ?, 'recompute', ?, '2026-09-23')");
+    add.run("AR-SE", "SE-1", "SE updated");
+    add.run("AR-IEK", "IEK-1", "IEK updated");
+    const response = await executeVoiceTool("what_changed", { request_id: "call-scoped-status", scope: { org_id: "ORG-1", supplier_id: "SE" }, args: {} });
+    expect(response.result.summary_ru).toBe("SE updated");
   });
 
   it("labels a malformed transport payload", async () => {
@@ -84,5 +101,15 @@ describe("voice tool bridge", () => {
     expect(response.status).toBe(422);
     expect(response.result.code).toBe("needs_clarification");
     expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("rejects a stale purchase view before a calculation", async () => {
+    const response = await executeVoiceTool("recommend_for", {
+      request_id: "call-stale", scope: { org_id: "ORG-1", supplier_id: "SE" },
+      args: { supplier_id: "SE", expected_state_version: 0 },
+    });
+    expect(response.status).toBe(409);
+    expect(response.result.code).toBe("stale");
+    expect(db().prepare("SELECT COUNT(*) AS n FROM calc_run").get()).toEqual({ n: 0 });
   });
 });
