@@ -1,0 +1,32 @@
+{
+  "verified_at": "2026-09-23T10:14:19.761Z",
+  "counts": {
+    "official": 379,
+    "store": 0,
+    "generated": 0,
+    "category": 30
+  },
+  "max_bytes": 5654,
+  "dimensions": "all 96x96 JPEG",
+  "sku_api_rows": 3909,
+  "recommended_rows": 1259,
+  "recommended_with_image": 1184,
+  "detail_cases": [
+    {
+      "code_1c": "010300002_",
+      "image_url": "/sku/010300002_.jpg"
+    },
+    {
+      "code_1c": "010300001_",
+      "image_url": "/sku/category/iek-0103.jpg"
+    },
+    {
+      "code_1c": "0",
+      "image_url": null
+    }
+  ],
+  "calculation_response_unchanged": true,
+  "priority_and_top_30_categories_verified": true,
+  "credits_used": 45,
+  "checks": "fixture integrity; list + alias; exact/category/null detail; every recommendation URL; served JPEG bytes; baseline recommendation response deep equality"
+}
