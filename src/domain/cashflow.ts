@@ -19,8 +19,8 @@ export async function moneyView(orgId: string, asOf = new Date()): Promise<Money
   const d = db();
   const org = d.prepare("SELECT payload FROM organization WHERE id=?").get(orgId) as { payload: string } | undefined;
   const payload = org ? JSON.parse(org.payload) as { opening_cash?: MoneyRow[] } : {};
-  const hasOpening = Array.isArray(payload.opening_cash);
-  const opening = hasOpening ? payload.opening_cash! : [];
+  const hasOpening = Array.isArray(payload.opening_cash) && payload.opening_cash.length > 0;
+  const opening = Array.isArray(payload.opening_cash) ? payload.opening_cash : [];
   const cash = new Map<string, Decimal>();
   for (const row of opening) cash.set(row.currency, (cash.get(row.currency) || new Decimal(0)).plus(row.amount));
   const payments = d.prepare("SELECT direction,amount,currency FROM payment").all() as Row[];

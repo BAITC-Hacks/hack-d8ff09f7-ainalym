@@ -92,6 +92,12 @@ describe("money derived from ledger rows", () => {
     expect(view.cash).toEqual([]);
     expect(view.risks).toEqual(expect.arrayContaining([expect.objectContaining({ code: "opening_cash_unknown" })]));
   });
+  it("does not present an empty opening-cash list as a known zero balance", async () => {
+    q("UPDATE organization SET payload=? WHERE id='ORG'", JSON.stringify({ opening_cash: [] }));
+    const view = await moneyView("ORG");
+    expect(view.cash).toEqual([]);
+    expect(view.risks).toEqual(expect.arrayContaining([expect.objectContaining({ code: "opening_cash_unknown" })]));
+  });
   it("adds incoming and subtracts outgoing payments once", async () => {
     q("INSERT INTO payment(id,direction,counterparty_id,amount,currency,payment_ref,at) VALUES ('P-1','in','X','500.00','KZT','REF-1','2026-09-23')");
     q("INSERT INTO payment(id,direction,counterparty_id,amount,currency,payment_ref,at) VALUES ('P-2','out','SE','300.00','KZT','REF-2','2026-09-23')");
@@ -139,6 +145,13 @@ describe("world events and SKU drilldown", () => {
     const e = event("WE-1", "sales_day", "SE-1", { at: "2026-09-23", qty: 3, doc_no: "DOC-1" });
     expect((await applyWorldEvent(e)).affected_codes).toEqual(["SE-1"]);
     expect((await applyWorldEvent(e)).applied).toBe(false);
+    expect(one("SELECT count(*) AS n FROM sales_line WHERE code_1c='SE-1'")?.n).toBe(1);
+  });
+  it("deduplicates distinct event IDs sharing an organization source ID", async () => {
+    const first = { ...event("WE-SRC-1", "sales_day", "SE-1", { qty: 2, at: "2026-09-23" }), org_id: "ORG", source_id: "SOURCE-1" };
+    const second = { ...event("WE-SRC-2", "sales_day", "SE-1", { qty: 2, at: "2026-09-23" }), org_id: "ORG", source_id: "SOURCE-1" };
+    expect((await applyWorldEvent(first)).applied).toBe(true);
+    expect((await applyWorldEvent(second)).applied).toBe(false);
     expect(one("SELECT count(*) AS n FROM sales_line WHERE code_1c='SE-1'")?.n).toBe(1);
   });
   it("records one action for multiple lines of the same SKU", async () => {
