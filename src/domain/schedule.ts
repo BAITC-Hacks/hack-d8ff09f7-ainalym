@@ -4,6 +4,10 @@ import { db, bumpStateVersion } from "../db/client";
 import { startRun, recordAction, finishRun } from "../server/ledger";
 import { runCalculation } from "./apply";
 
+const startRunIn = startRun as (input: Parameters<typeof startRun>[0], database: DatabaseSync) => ReturnType<typeof startRun>;
+const recordActionIn = recordAction as (runId: string, action: Parameters<typeof recordAction>[1], database: DatabaseSync) => ReturnType<typeof recordAction>;
+const finishRunIn = finishRun as (runId: string, state: "done" | "failed", database: DatabaseSync) => ReturnType<typeof finishRun>;
+
 type DueTask = { id: string; title: string; version: number; next_event_at: string; proposal_id: string | null };
 type CoverRow = { id: string; code_1c: string; urgency: string; components: string; finished_at: string; lead_time_days: number };
 type EventRow = { code_1c: string; latest_at: string };
@@ -41,7 +45,7 @@ export async function runScheduledChecks(now: string | Date = new Date(), ctx: {
   }).map((event) => event.code_1c);
   if (!followups.length && !crossing.length && !staleCodes.length) return { runs: [], processed: 0, proposals: [], affected: [] };
 
-  const runId = await startRun({ org_id: orgId, trigger_type: "scheduled_check", trigger_ref: at });
+  const runId = await startRunIn({ org_id: orgId, trigger_type: "scheduled_check", trigger_ref: at }, database);
   const proposals: string[] = [];
   const affected = new Set<string>();
   for (const task of followups) {
@@ -54,9 +58,9 @@ export async function runScheduledChecks(now: string | Date = new Date(), ctx: {
       JSON.stringify([task.id]), "needs_review", rationale, JSON.stringify(sources), at);
     bumpStateVersion(database);
     proposals.push(id);
-    await recordAction(runId, { kind: "escalation", subject_ref: id, summary_ru: `Нужно уточнение по задаче ${task.id}`,
+    await recordActionIn(runId, { kind: "escalation", subject_ref: id, summary_ru: `Нужно уточнение по задаче ${task.id}`,
       rationale_ru: rationale, sources, autonomy: "escalated", result: "needs_owner",
-      idempotency_key: `schedule:followup:${task.id}:${task.version}` });
+      idempotency_key: `schedule:followup:${task.id}:${task.version}` }, database);
   }
   for (const row of crossing) {
     const components = JSON.parse(row.components) as Record<string, unknown>;
@@ -65,9 +69,9 @@ export async function runScheduledChecks(now: string | Date = new Date(), ctx: {
       .run(JSON.stringify(components), row.id);
     bumpStateVersion(database);
     affected.add(row.code_1c);
-    await recordAction(runId, { kind: "status_change", subject_ref: row.id, code_1c: row.code_1c,
+    await recordActionIn(runId, { kind: "status_change", subject_ref: row.id, code_1c: row.code_1c,
       summary_ru: `Критичный срок пополнения ${row.code_1c}`, rationale_ru: `Покрытие остатком пересекло срок поставки ${row.lead_time_days} дн.`,
-      sources: [`recommendation:${row.id}`], autonomy: "auto", idempotency_key: `schedule:critical:${row.id}` });
+      sources: [`recommendation:${row.id}`], autonomy: "auto", idempotency_key: `schedule:critical:${row.id}` }, database);
   }
   const runs: string[] = [];
   if (staleCodes.length) {
@@ -75,6 +79,6 @@ export async function runScheduledChecks(now: string | Date = new Date(), ctx: {
     runs.push(result.run_id);
     for (const code of staleCodes) affected.add(code);
   }
-  await finishRun(runId, "done");
+  await finishRunIn(runId, "done", database);
   return { runs: [runId, ...runs], processed: followups.length + crossing.length + staleCodes.length, proposals, affected: [...affected] };
 }

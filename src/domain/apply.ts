@@ -8,6 +8,10 @@ import { Money } from "./money";
 import { transitionTask } from "./tasks";
 import { createTask } from "./tasks";
 
+const startRunIn = startRun as (input: Parameters<typeof startRun>[0], database: DatabaseSync) => ReturnType<typeof startRun>;
+const recordActionIn = recordAction as (runId: string, action: Parameters<typeof recordAction>[1], database: DatabaseSync) => ReturnType<typeof recordAction>;
+const finishRunIn = finishRun as (runId: string, state: "done" | "failed", database: DatabaseSync) => ReturnType<typeof finishRun>;
+
 export interface CalcScope { supplier?: string; category?: string; codes?: string[] }
 export interface CalcContext extends EngineContext { org_id?: string }
 export interface ApplyResult { proposals: Record<string, unknown>[]; tasks: Record<string, unknown>[]; affected: string[] }
@@ -45,7 +49,7 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
     }
   }
   const id = `RUN-${randomUUID()}`;
-  const agentRunId = await startRun({ org_id: orgId, trigger_type: "calc_request", trigger_ref: id });
+  const agentRunId = await startRunIn({ org_id: orgId, trigger_type: "calc_request", trigger_ref: id }, database);
   const startedAt = new Date().toISOString();
   const finishedAt = ctx.as_of && ctx.as_of > startedAt ? ctx.as_of : startedAt;
   inTx(database, () => {
@@ -62,13 +66,13 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
     bumpStateVersion(database);
   });
   for (const { sku, result } of computed) {
-    await recordAction(agentRunId, { kind: "recompute", subject_ref: sku.code_1c, code_1c: sku.code_1c,
+    await recordActionIn(agentRunId, { kind: "recompute", subject_ref: sku.code_1c, code_1c: sku.code_1c,
       summary_ru: `Пересчитана потребность ${sku.code_1c}: ${result.need} шт`, rationale_ru: result.rationale_ru,
-      sources: [`sku:${sku.code_1c}`, "sales_month", "sales_line", "stock_month", "in_transit"], autonomy: "auto", idempotency_key: `recompute:${id}:${sku.code_1c}` });
-    if ((result.components.outliers_excluded as unknown[]).length) await recordAction(agentRunId, {
+      sources: [`sku:${sku.code_1c}`, "sales_month", "sales_line", "stock_month", "in_transit"], autonomy: "auto", idempotency_key: `recompute:${id}:${sku.code_1c}` }, database);
+    if ((result.components.outliers_excluded as unknown[]).length) await recordActionIn(agentRunId, {
       kind: "outlier_flagged", subject_ref: sku.code_1c, code_1c: sku.code_1c,
       summary_ru: `Исключены разовые документы по ${sku.code_1c}`, rationale_ru: result.rationale_ru,
-      sources: result.components.outliers_excluded as unknown[], autonomy: "auto", idempotency_key: `outlier:${id}:${sku.code_1c}` });
+      sources: result.components.outliers_excluded as unknown[], autonomy: "auto", idempotency_key: `outlier:${id}:${sku.code_1c}` }, database);
   }
   const applied = await applyRecommendations(id, { database, org_id: orgId });
   for (const supplierId of [...new Set(unresolved.map((row) => row.supplier_id))]) {
@@ -76,12 +80,12 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
     const task = await createTask({ title: `Проверить отсутствующие источники ${supplierId}: ${gaps.length} SKU`, state: "needs_review",
       sources: gaps.map((row) => `${row.code_1c}: ${row.reason}`) }, { database, org_id: orgId, run_id: agentRunId });
     applied.tasks.push(task);
-    await recordAction(agentRunId, { kind: "escalation", subject_ref: task.id,
+    await recordActionIn(agentRunId, { kind: "escalation", subject_ref: task.id,
       summary_ru: `Требуются данные для ${gaps.length} SKU ${supplierId}`,
       rationale_ru: `${gaps.slice(0, 5).map((row) => `${row.code_1c}: ${row.reason}`).join("; ")}${gaps.length > 5 ? `; и ещё ${gaps.length - 5} SKU` : ""}`,
-      sources: gaps.map((row) => row.code_1c), autonomy: "escalated", result: "needs_owner", idempotency_key: `source-gap:${id}:${supplierId}` });
+      sources: gaps.map((row) => row.code_1c), autonomy: "escalated", result: "needs_owner", idempotency_key: `source-gap:${id}:${supplierId}` }, database);
   }
-  await finishRun(agentRunId, "done");
+  await finishRunIn(agentRunId, "done", database);
   return { run_id: id, skus: skus.length, recommended: computed.filter(({ result }) => result.need > 0).length, unresolved, ...applied };
 }
 
@@ -129,9 +133,9 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
       if (old) {
         database.prepare("UPDATE proposal SET state='stale',version=version+1 WHERE id=? AND state='needs_review'").run(old.id);
         bumpStateVersion(database);
-        if (run.agent_run_id) await recordAction(run.agent_run_id, { kind: "status_change", subject_ref: old.id,
+        if (run.agent_run_id) await recordActionIn(run.agent_run_id, { kind: "status_change", subject_ref: old.id,
           summary_ru: `Предложение ${old.id} устарело: потребность исчезла`, sources: [`proposal:${old.id}`, `run:${run_id}`],
-          autonomy: "auto", idempotency_key: `proposal:stale:${old.id}:${run_id}` });
+          autonomy: "auto", idempotency_key: `proposal:stale:${old.id}:${run_id}` }, database);
       }
       continue;
     }
@@ -158,15 +162,15 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
     proposals.push(proposal);
     tasks.push({ id: taskId, proposal_id: id, state: "needs_review" });
     if (run.agent_run_id) {
-      if (old) await recordAction(run.agent_run_id, { kind: "status_change", subject_ref: old.id,
+      if (old) await recordActionIn(run.agent_run_id, { kind: "status_change", subject_ref: old.id,
         summary_ru: `Предложение ${old.id} заменено новой версией ${id}`, sources: [`proposal:${old.id}`, `proposal:${id}`],
-        autonomy: "auto", idempotency_key: `proposal:stale:${old.id}:${run_id}` });
-      await recordAction(run.agent_run_id, { kind: "recommendation_prepared", subject_ref: supplierId,
+        autonomy: "auto", idempotency_key: `proposal:stale:${old.id}:${run_id}` }, database);
+      await recordActionIn(run.agent_run_id, { kind: "recommendation_prepared", subject_ref: supplierId,
         summary_ru: `Подготовлены рекомендации ${supplierId}: ${lines.length} позиций`, rationale_ru: rationale,
-        sources, autonomy: "auto", idempotency_key: `recommendation:${run_id}:${supplierId}` });
-      await recordAction(run.agent_run_id, { kind: "escalation", subject_ref: id,
+        sources, autonomy: "auto", idempotency_key: `recommendation:${run_id}:${supplierId}` }, database);
+      await recordActionIn(run.agent_run_id, { kind: "escalation", subject_ref: id,
         summary_ru: `Нужно решение по заказу ${supplierId}`, rationale_ru: rationale,
-        sources, autonomy: "escalated", result: "needs_owner", idempotency_key: `escalation:${id}` });
+        sources, autonomy: "escalated", result: "needs_owner", idempotency_key: `escalation:${id}` }, database);
     }
   }
   for (const rec of staleStock) {
@@ -214,12 +218,12 @@ export async function adjustRecommendation(id: string, qty: number, reason: stri
     return proposal.version + 1;
   });
   const run = database.prepare("SELECT agent_run_id FROM calc_run WHERE id=?").get(rec.run_id) as { agent_run_id: string | null } | undefined;
-  const runId = run?.agent_run_id ?? await startRun({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id });
-  await recordAction(runId, { kind: "decision", subject_ref: id, code_1c: rec.code_1c,
+  const runId = run?.agent_run_id ?? await startRunIn({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id }, database);
+  await recordActionIn(runId, { kind: "decision", subject_ref: id, code_1c: rec.code_1c,
     summary_ru: `Количество ${rec.code_1c} изменено на ${qty} шт`, rationale_ru: reason.trim(),
     sources: [`recommendation:${id}`, `proposal:${proposal.id}`], autonomy: "escalated", result: "done",
-    idempotency_key: `recommendation:adjust:${id}:${version + 1}` });
-  if (!run?.agent_run_id) await finishRun(runId, "done");
+    idempotency_key: `recommendation:adjust:${id}:${version + 1}` }, database);
+  if (!run?.agent_run_id) await finishRunIn(runId, "done", database);
   return { id, code_1c: rec.code_1c, qty_recommended: rec.qty_recommended, qty_adjusted: qty,
     version: version + 1, proposal_id: proposal.id, proposal_version: proposalVersion,
     affected: { recommendations: [id], proposals: [proposal.id] }, state_version: stateVersion(database) };
@@ -306,13 +310,13 @@ export async function decideProposal(id: string, proposalVersion: number, decisi
     bumpStateVersion(database);
   });
   const run = payload.run_id ? database.prepare("SELECT agent_run_id FROM calc_run WHERE id=?").get(payload.run_id) as { agent_run_id: string | null } | undefined : undefined;
-  const runId = run?.agent_run_id ?? await startRun({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id });
-  await recordAction(runId, { kind: "decision", subject_ref: id,
+  const runId = run?.agent_run_id ?? await startRunIn({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id }, database);
+  await recordActionIn(runId, { kind: "decision", subject_ref: id,
     summary_ru: decision === "approve" ? `Одобрено предложение ${id}` : `Отклонено предложение ${id}`,
     rationale_ru: proposal.rationale_ru ?? undefined, sources: JSON.parse(proposal.sources),
     autonomy: "escalated", result: "done", idempotency_key: `decision:${id}:${proposalVersion}`,
-    po_id: poId ?? undefined });
-  if (!run?.agent_run_id) await finishRun(runId, "done");
+    po_id: poId ?? undefined }, database);
+  if (!run?.agent_run_id) await finishRunIn(runId, "done", database);
   const linkedTask = database.prepare("SELECT id,state,version FROM task WHERE proposal_id=?").get(id) as { id: string; state: string; version: number } | undefined;
   if (linkedTask?.state === "needs_review") await transitionTask(linkedTask.id, decision === "approve" ? "ready_to_handover" : "preparing", linkedTask.version, { database, org_id: ctx.org_id });
   if (decision === "approve" && proposal.kind === "clarification" && payload.task_id) await createTask({ title: `Подготовить уточнение по ${payload.task_id}`,
