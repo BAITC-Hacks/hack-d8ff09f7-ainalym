@@ -42,8 +42,8 @@ export function Truth({ children }: { children: ReactNode }) { return <span clas
 export function Crumbs({ items }: { items: { href?: string; label: string }[] }) {
   return <nav aria-label="Путь" className={styles.crumbs}>{items.map((item, i) => <span key={i}>{item.href ? <Link href={item.href} prefetch={false}>{item.label}</Link> : <span>{item.label}</span>}{i < items.length - 1 && <span aria-hidden="true"> / </span>}</span>)}</nav>;
 }
-export function PageHead({ crumbs, title, sub, actions, badges }: { crumbs: { href?: string; label: string }[]; title: ReactNode; sub?: ReactNode; actions?: ReactNode; badges?: ReactNode }) {
-  return <header className={styles.head}>
+export function PageHead({ crumbs, title, sub, actions, badges, priority = false }: { crumbs: { href?: string; label: string }[]; title: ReactNode; sub?: ReactNode; actions?: ReactNode; badges?: ReactNode; priority?: boolean }) {
+  return <header className={`${styles.head} ${priority ? "v2-priority-card v2-hero-card" : ""}`}>
     <div className={styles.headText}>
       <Crumbs items={crumbs} />
       <h1 className={styles.display}>{title}</h1>

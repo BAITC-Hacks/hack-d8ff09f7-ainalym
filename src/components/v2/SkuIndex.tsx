@@ -38,7 +38,7 @@ export function SkuIndex({ initialQuery = "" }: { initialQuery?: string }) {
   }, [q, supplier, revision, attempt]);
   const items = resp?.items ?? [];
   return <div style={{ display: "grid", gap: 28 }}>
-    <PageHead crumbs={[{ href: "/today", label: "Сегодня" }, { label: "Товары" }]} title="Товары" sub="Каталог по данным партнёра: остаток, кратность заказа и себестоимость. Откройте товар — там продажи за 24 месяца и рекомендация." actions={<Btn variant="primary" onClick={() => router.push(supplier ? `/replenishment?supplier=${supplier}` : "/replenishment")}>К пополнению <ArrowRight size={14} aria-hidden="true" /></Btn>} />
+    <PageHead priority crumbs={[{ href: "/today", label: "Сегодня" }, { label: "Товары" }]} title="Товары" sub="Каталог по данным партнёра: остаток, кратность заказа и себестоимость. Откройте товар — там продажи за 24 месяца и рекомендация." actions={<Btn variant="primary" onClick={() => router.push(supplier ? `/replenishment?supplier=${supplier}` : "/replenishment")}>К пополнению <ArrowRight size={14} aria-hidden="true" /></Btn>} />
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Найти по названию или коду 1С" aria-label="Найти по названию или коду 1С" style={control} data-v2-search />
       <div role="group" aria-label="Поставщик" style={{ display: "flex", gap: 6 }}>{SUP.map(([id, label]) => <Btn key={id || "all"} variant={supplier === id ? "black" : "secondary"} aria-pressed={supplier === id} onClick={() => setSupplier(id)}>{label}</Btn>)}</div>
