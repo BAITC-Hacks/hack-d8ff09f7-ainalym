@@ -25,7 +25,7 @@ try {
   const sales=new Map(), stats=new Map();
   for(const r of monthRows){const qty=Number(r.qty_file ?? r.qty_lines ?? 0);sales.set(`${r.code_1c}|${r.ym}`,qty);if(qty>0){if(!stats.has(r.code_1c))stats.set(r.code_1c,{months:[],first:r.ym});stats.get(r.code_1c).months.push(qty);}}
   const observedUpdate=d.prepare("UPDATE sales_month SET stockout=1,stockout_kind='observed' WHERE code_1c=? AND ym=?");
-  const inferredUpdate=d.prepare("UPDATE sales_month SET stockout_kind='inferred' WHERE code_1c=? AND ym=?");
+  const inferredUpdate=d.prepare("UPDATE sales_month SET stockout=1,stockout_kind='inferred' WHERE code_1c=? AND ym=?");
   d.exec('UPDATE sales_month SET stockout=0,stockout_kind=NULL');
   for(const r of d.prepare('SELECT code_1c,ym,opening_qty,known FROM stock_month').iterate()){
     const prior=[1,2,3].filter(n=>(sales.get(`${r.code_1c}|${prev(r.ym,n)}`)||0)>0).length;

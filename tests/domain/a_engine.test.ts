@@ -93,6 +93,16 @@ describe("deterministic replenishment need", () => {
     expect(moreSales.components.base_rate).toBeGreaterThan(lessStock.components.base_rate as number);
   });
 
+  it("averages completed months starting at first sale, excluding current partial month", async () => {
+    const database = fixture();
+    database.prepare("UPDATE sku SET first_sale_ym='2025-05' WHERE code_1c='TEST'").run();
+    database.prepare("UPDATE sales_month SET qty_file='0' WHERE code_1c='TEST' AND ym<'2025-05'").run();
+    database.prepare("UPDATE sales_month SET qty_file='1000' WHERE code_1c='TEST' AND ym='2025-09'").run();
+    const result = await computeNeed("TEST", params, context(database, "2025-09-23"));
+    expect(result.components.source_months).toBe(4);
+    expect(result.components.base_rate).toBe(10);
+  });
+
   it("includes a new world sales day but excludes its one-off judge document", async () => {
     const database = fixture();
     const before = await computeNeed("TEST", params, context(database));
@@ -118,7 +128,7 @@ describe("deterministic replenishment need", () => {
     expect(result.components.stockout_uplift).toBeGreaterThan(0);
     expect(result.components.corrected_demand_rate).toBeGreaterThan(result.components.raw_demand_rate as number);
     expect(result.rationale_ru).toContain(`фактические продажи ${result.components.raw_demand_rate}`);
-    expect(result.rationale_ru).toContain(`спрос с учётом подтверждённого дефицита ${result.components.corrected_demand_rate}`);
+    expect(result.rationale_ru).toContain(`спрос с учётом дефицита ${result.components.corrected_demand_rate}`);
   });
 
   it("excludes an injected one-off document from regular demand", async () => {

@@ -29,7 +29,7 @@ describe("ETL document statistics", () => {
       const result = new DatabaseSync(path);
       expect(result.prepare("SELECT p95_doc_qty FROM sku WHERE code_1c='SKU'").get()).toEqual({ p95_doc_qty: "100" });
       expect(result.prepare("SELECT ym,stockout,stockout_kind FROM sales_month WHERE ym IN ('2025-04','2025-05') ORDER BY ym").all()).toEqual([
-        { ym: "2025-04", stockout: 0, stockout_kind: "inferred" },
+        { ym: "2025-04", stockout: 1, stockout_kind: "inferred" },
         { ym: "2025-05", stockout: 1, stockout_kind: "observed" },
       ]);
       result.close();

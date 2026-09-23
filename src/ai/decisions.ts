@@ -87,7 +87,7 @@ function fromRow(row: Record<string, unknown>): DecisionRecord {
 export async function decide(question_id: string, subject_ref: string, context: unknown, options: { fallback_to_rules?: boolean } = {}): Promise<DecisionRecord> {
   ensureColumns();
   const question = catalogQuestion(question_id);
-  let mode = selectedProvider() === "offline" ? "replay" : selectedProvider() === "rules" ? "rules" : "live";
+  let mode: DecisionRecord["mode"] = selectedProvider() === "offline" ? "replay" : selectedProvider() === "rules" ? "rules" : "live";
   const clean = sanitizeDecisionContext(context);
   const input = clean && typeof clean === "object" && !Array.isArray(clean) ? clean as Record<string, unknown> : {};
   const versions = versionsFor(subject_ref, input);

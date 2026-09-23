@@ -7,9 +7,9 @@ Case: «Автоматический расчёт заказов поставщ�
 | Capability | Real | Proof |
 |---|---|---|
 | Data intake (L9/L1) | xlsx → SQLite, one table per source; counts printed; anonymised | reset reloads; counts match the files |
-| Need engine (M1) | per SKU: forecast over lead time + review period − on hand − in transit + safety stock, MOQ rounding; every source read | change in-transit by +100 → qty drops (before rounding); remove a source → the run refuses with the missing source named |
+| Need engine (M1) | per SKU: forecast over lead time + review period + safety stock − on hand − due in-transit − approved unreceived orders; IEK minimum and SE multiple in `sku.unit` | change in-transit by +100 → qty drops (before order rule); remove a source → that SKU is reported not computed |
 | Forecast (M2) | per-SKU seasonal index (own months ≥ 12 with sales, else supplier revenue seasonality) × YoY growth (capped) | seasonal SKU forecast varies by month, not flat; chart shows it |
-| Stockout compensation (M3) | observed zero opening stock after prior sales is censored; unknown stock is flagged inferred and retained in the series | raw demand vs corrected demand shown on the same SKU; corrected > raw |
+| Stockout compensation (M3) | observed zero opening stock after prior sales is censored; unknown stock after prior sales is flagged inferred, never reported as observed zero | raw demand vs corrected demand shown on the same SKU; corrected > raw |
 | Outlier exclusion (M4) | document-level one-off detection against other documents; p95 leaves out the candidate, and fewer than 6 documents use the peers' median → excluded, listed in the rationale | judge injects a 5 000-unit doc via the feed → regular qty changes < 10 %; the doc appears as «исключено» |
 | Supplier orders + export (M5) | grouped by supplier, rationale per line with the numbers, urgency; xlsx/csv with «Код 1с» | export opens; every row has a rationale |
 | Approval queue | proposals `needs_review`; adjust → approve binds version; auto-send impossible | queue empties; ledger shows it |
