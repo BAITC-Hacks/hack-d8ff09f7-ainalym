@@ -276,8 +276,8 @@ export async function decideProposal(id: string, proposalVersion: number, decisi
         database.prepare("INSERT INTO purchase_order (id,supplier_id,run_id,state,total_qty,total_cost,cost_known_lines,eta) VALUES (?,?,?,?,?,?,?,?)")
           .run(poId, payload.supplier_id!, payload.run_id ?? null, "draft", lines.reduce((sum, line) => sum + line.qty, 0), totalCost?.amount ?? null, priced.length, eta);
         for (const line of lines) {
-          database.prepare("INSERT INTO purchase_order_line (po_id,code_1c,qty,unit_cost,rationale_ru) VALUES (?,?,?,?,?)")
-            .run(poId, line.code_1c, line.qty, line.unit_cost, line.rationale_ru);
+          database.prepare("INSERT INTO purchase_order_line (po_id,code_1c,qty,unit_cost,rationale_ru,recommendation_id) VALUES (?,?,?,?,?,?)")
+            .run(poId, line.code_1c, line.qty, line.unit_cost, line.rationale_ru, line.recommendation_id);
           database.prepare("UPDATE recommendation SET qty_adjusted=?,state='approved',version=version+1 WHERE id=?")
             .run(adjustmentMap.has(line.code_1c) ? line.qty : null, line.recommendation_id);
         }

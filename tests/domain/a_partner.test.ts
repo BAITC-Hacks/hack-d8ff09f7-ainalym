@@ -7,13 +7,18 @@ import { computeNeed } from "../../src/domain/engine";
 import { migrate } from "../../src/db/client";
 import { paramsForSupplier } from "../../src/domain/params";
 import { runCalculation } from "../../src/domain/apply";
+import { databasePath } from "../../src/db/path.mjs";
 
-const path = join(process.cwd(), "data", "partner.db");
+const path = process.env.AINALYM_ETL_DATABASE_PATH || databasePath();
 const fixture = JSON.parse(readFileSync(join(process.cwd(), "tests/fixtures/eval/replenishment_expectations.json"), "utf8")) as {
   as_of: string; skus: Record<string, { code_1c: string; supplier_id: string }>;
 };
 const database = existsSync(path) ? new DatabaseSync(path) : null;
 if (database) migrate(database);
+it("opens the resolved ETL database for the named partner checks", () => {
+  expect(path).not.toBe(":memory:");
+  expect(database).not.toBeNull();
+});
 const need = (name: string) => {
   if (!database) throw new Error("run npm run etl first");
   const sku = fixture.skus[name];
