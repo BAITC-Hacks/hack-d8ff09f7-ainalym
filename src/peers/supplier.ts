@@ -5,9 +5,9 @@ import { bumpStateVersion, db, stateVersion, withTx } from "../db/client";
 
 export type SupplierChannelState = "draft" | "sent" | "confirmed";
 const LABELS: Record<SupplierChannelState, string> = {
-  draft: "Draft",
-  sent: "Sent (controlled demo channel)",
-  confirmed: "Confirmed",
+  draft: "Черновик заказа — не отправлен",
+  sent: "Отправлено (контролируемый демо-канал)",
+  confirmed: "Подтверждено (симулятор)",
 };
 
 interface PurchaseOrderRow { id: string; supplier_id: string; supplier_name: string; state: string; total_qty: number; eta: string | null; version: number }
