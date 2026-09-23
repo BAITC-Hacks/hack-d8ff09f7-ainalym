@@ -40,7 +40,7 @@ export async function interpretSupplierReply(input: {
   }
   const delayDays = eta ? Math.ceil((eta.getTime() - base.getTime()) / 86_400_000) : null;
   const context = { text: input.text, org_id: input.org_id, po_id: input.po_id };
-  const record = await decide("supplier_fulfilment", input.po_id, context);
+  const record = await decide("supplier_fulfilment", input.po_id, context, { fallback_to_rules: true });
   const fallback = record.result_state === "decided" ? null : await decideChoice(catalogQuestion("supplier_fulfilment")!, context, decisionRoute, "rules");
   const chosen = fallback?.answer ?? record.answer;
   const hasPartial = (partialShare !== null && partialShare > 0 && partialShare < 1)
