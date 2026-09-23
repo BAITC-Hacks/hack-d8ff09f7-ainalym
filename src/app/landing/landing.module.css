@@ -270,4 +270,4 @@
   .video { display: none; }
   .page *, .page *::before, .page *::after { animation: none !important; transition: none !important; }
 }
-@media (max-width: 767px) { .hero::before { background: linear-gradient(180deg, rgba(7, 12, 20, 0.5) 0, rgba(7, 12, 20, 0) 112px), linear-gradient(0deg, rgba(7, 12, 20, 0.9) 0, rgba(7, 12, 20, 0.78) 50%, rgba(7, 12, 20, 0.3) 66%, rgba(7, 12, 20, 0) 78%); } }
+@media (max-width: 767px) { .shade { background: linear-gradient(180deg, rgba(7, 12, 20, 0.5) 0, rgba(7, 12, 20, 0) 112px), linear-gradient(0deg, rgba(7, 12, 20, 0.9) 0, rgba(7, 12, 20, 0.78) 50%, rgba(7, 12, 20, 0.3) 66%, rgba(7, 12, 20, 0) 78%); } }
