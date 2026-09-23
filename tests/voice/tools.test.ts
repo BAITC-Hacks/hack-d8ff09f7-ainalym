@@ -52,6 +52,8 @@ describe("voice tool bridge", () => {
     ]);
     expect(first.result).toMatchObject({ ok: true, recommended: 1 });
     expect(second.result).toMatchObject({ ok: true, run_id: first.result.run_id, replayed: true });
+    const changedArgs = await executeVoiceTool("recommend_for", { ...call, args: { supplier_id: "SE", category: "different" } });
+    expect(changedArgs.result).toMatchObject({ run_id: first.result.run_id, replayed: true });
     expect(db().prepare("SELECT COUNT(*) AS n FROM calc_run").get()).toEqual({ n: 1 });
     expect(db().prepare("SELECT COUNT(*) AS n FROM proposal").get()).toEqual({ n: 1 });
     expect(db().prepare("SELECT state FROM proposal LIMIT 1").get()).toEqual({ state: "needs_review" });

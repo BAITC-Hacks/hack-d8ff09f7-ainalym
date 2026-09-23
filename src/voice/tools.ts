@@ -9,7 +9,8 @@ export interface ToolScope { org_id: string; supplier_id?: string; code_1c?: str
 export interface ToolCall { request_id: string; scope: ToolScope; args: Record<string, unknown> }
 export interface ToolResult { ok: boolean; state_version: number; labels: Record<string, string>; replayed?: boolean; [key: string]: unknown }
 
-const labels = { provenance: "Partner data · anonymised", ai: "Rules, no LLM", external: "Export for 1C (file)", draft: "Draft — not sent" };
+const labels = { provenance: "Partner data · anonymised", ai: "Rules, no LLM", external: "Export for 1C (file)" };
+const draftLabels = { ...labels, draft: "Draft — not sent" };
 const ttlSeconds = 600;
 const own = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const err = (code: string, message: string, status: number, version = stateVersion()) => ({ status, result: { ok: false, code, message, state_version: version, labels } as ToolResult });
@@ -118,26 +119,29 @@ async function run(name: ToolName, call: ToolCall): Promise<{ status: number; re
     return err("dependency_unavailable", "Calculation could not complete", 503, version);
   }
   const top = d.prepare("SELECT code_1c, qty_recommended AS qty, urgency FROM recommendation WHERE run_id = ? ORDER BY qty_recommended DESC LIMIT 5").all(calculated.run_id);
-  return { status: 200, result: { ok: true, run_id: calculated.run_id, recommended: calculated.recommended, top, proposal_ids: calculated.proposals.map(row => row.id), task_ids: calculated.tasks.map(row => row.id), state_version: stateVersion(d), labels } };
+  return { status: 200, result: { ok: true, run_id: calculated.run_id, recommended: calculated.recommended, top, proposal_ids: calculated.proposals.map(row => row.id), task_ids: calculated.tasks.map(row => row.id), state_version: stateVersion(d), labels: draftLabels } };
 }
 
 export async function executeVoiceTool(name: string, raw: unknown): Promise<{ status: number; result: ToolResult }> {
   if (!toolNames.includes(name as ToolName)) return err("unknown_tool", "Unknown voice tool", 404);
   if (!own(raw) || typeof raw.request_id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(raw.request_id) || !own(raw.scope) || typeof raw.scope.org_id !== "string" || !raw.scope.org_id || !own(raw.args)) return err("invalid", "Invalid tool call", 400);
   const call = raw as unknown as ToolCall;
-  const scopeIssue = scopeError(call.scope, name as ToolName, call.args);
-  if (scopeIssue) return err(scopeIssue.code, scopeIssue.message, scopeIssue.status);
   init();
   const d = db();
   const now = Math.floor(Date.now() / 1000);
   d.prepare("DELETE FROM voice_tool_call WHERE expires_at <= ?").run(now);
-  const scopeJson = JSON.stringify(call.scope);
+  const scopeJson = JSON.stringify({ org_id: call.scope.org_id, supplier_id: call.scope.supplier_id ?? null, code_1c: call.scope.code_1c ?? null });
   const argsJson = JSON.stringify(call.args);
+  const existing = d.prepare("SELECT scope_json FROM voice_tool_call WHERE request_id = ?").get(call.request_id) as { scope_json: string } | undefined;
+  if (!existing) {
+    const scopeIssue = scopeError(call.scope, name as ToolName, call.args);
+    if (scopeIssue) return err(scopeIssue.code, scopeIssue.message, scopeIssue.status);
+  }
   const insert = d.prepare("INSERT OR IGNORE INTO voice_tool_call (request_id, tool, scope_json, args_json, expires_at, state) VALUES (?, ?, ?, ?, ?, 'pending')").run(call.request_id, name, scopeJson, argsJson, now + ttlSeconds);
   if (!insert.changes) {
     for (let attempt = 0; attempt < 40; attempt++) {
-      const row = d.prepare("SELECT tool, scope_json, args_json, state, result_json FROM voice_tool_call WHERE request_id = ?").get(call.request_id) as { tool: string; scope_json: string; args_json: string; state: string; result_json: string | null };
-      if (row.tool !== name || row.scope_json !== scopeJson || row.args_json !== argsJson) return err("request_conflict", "request_id belongs to another call", 409);
+      const row = d.prepare("SELECT scope_json, state, result_json FROM voice_tool_call WHERE request_id = ?").get(call.request_id) as { scope_json: string; state: string; result_json: string | null };
+      if (row.scope_json !== scopeJson) return err("request_conflict", "request_id belongs to another scope", 409);
       if (row.state === "done" && row.result_json) {
         const saved = JSON.parse(row.result_json) as { status: number; result: ToolResult };
         return { status: saved.status, result: { ...saved.result, replayed: true } };
