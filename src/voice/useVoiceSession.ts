@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { TranscriptGate, VoiceTurnGate, mentionedSupplier } from "./transport";
+import { AutomaticResponseGate, TranscriptGate, VoiceTurnGate, mentionedSupplier } from "./transport";
 
 export type VoiceState = "idle" | "connecting" | "listening" | "checking" | "preparing" | "waiting_review" | "ended" | "unavailable";
 export interface Caption { who: "user" | "assistant" | "tool"; text: string }
-export interface VoiceSession { state: VoiceState; reason?: string; start: () => Promise<void>; stop: () => void; mute: (on: boolean) => void; interrupt: () => void; captions: Caption[] }
+export interface VoiceSession { state: VoiceState; reason?: string; audioBlocked: boolean; enableAudio: () => void; localStream: MediaStream | null; remoteStream: MediaStream | null; start: () => Promise<void>; stop: () => void; mute: (on: boolean) => void; interrupt: () => void; captions: Caption[] }
 export interface VoiceScope { org_id: string; supplier_id?: string; code_1c?: string }
 
 type FunctionCall = { type: "function_call"; name: string; call_id: string; arguments: string };
-type RealtimeEvent = { type: string; item_id?: string; transcript?: string; response?: { id?: string; status?: string; output?: FunctionCall[] } };
+type RealtimeEvent = { type: string; item_id?: string; transcript?: string; item?: { type?: string; role?: string }; response?: { id?: string; status?: string; output?: FunctionCall[] } };
 type SessionResponse = { client_secret?: string; expires_at?: number };
 
 export function useVoiceSession(scope: VoiceScope): VoiceSession {
@@ -18,6 +18,10 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
   const [state, setState] = useState<VoiceState>("idle");
   const [reason, setReason] = useState<string>();
   const [captions, setCaptions] = useState<Caption[]>([]);
+  const [audioBlocked, setAudioBlocked] = useState(false);
+  // Exposed for the live sound wave (AnalyserNode on the microphone and on the assistant's track).
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const peer = useRef<RTCPeerConnection | null>(null);
   const starting = useRef(false);
   const channel = useRef<RTCDataChannel | null>(null);
@@ -25,10 +29,13 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
   const audio = useRef<HTMLAudioElement | null>(null);
   const generation = useRef(0);
   const turn = useRef(new VoiceTurnGate());
+  const automatic = useRef(new AutomaticResponseGate());
+  const inputTurnId = useRef<string | null>(null);
+  const requestedTurns = useRef(new Set<string>());
   const transcript = useRef(new TranscriptGate());
   const latestStateVersion = useRef<number | undefined>(undefined);
   const scopeRef = useRef(scope);
-  scopeRef.current = scope;
+  useEffect(() => { scopeRef.current = scope; }, [scope]);
 
   const send = useCallback((event: Record<string, unknown>) => {
     if (channel.current?.readyState === "open") channel.current.send(JSON.stringify(event));
@@ -37,16 +44,22 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
   const release = useCallback(() => {
     starting.current = false;
     turn.current.cancel();
+    inputTurnId.current = null;
+    requestedTurns.current.clear();
+    automatic.current = new AutomaticResponseGate();
     transcript.current.clear();
     const dataChannel = channel.current;
     channel.current = null;
     dataChannel?.close();
     stream.current?.getTracks().forEach(track => track.stop());
     stream.current = null;
+    setLocalStream(null);
+    setRemoteStream(null);
     const connection = peer.current;
     peer.current = null;
     connection?.close();
     if (audio.current) { audio.current.pause(); audio.current.srcObject = null; audio.current.remove(); audio.current = null; }
+    setAudioBlocked(false);
   }, []);
 
   const stop = useCallback(() => {
@@ -67,6 +80,13 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
     stream.current?.getAudioTracks().forEach(track => { track.enabled = !on; });
   }, []);
 
+  const enableAudio = useCallback(() => {
+    const speaker = audio.current;
+    if (!speaker) return;
+    void speaker.play().then(() => { if (audio.current === speaker) setAudioBlocked(false); })
+      .catch(() => { if (audio.current === speaker) setAudioBlocked(true); });
+  }, []);
+
   const handleEvent = useCallback(async (event: RealtimeEvent, sessionGeneration: number) => {
     if (sessionGeneration !== generation.current) return;
     if (event.type === "response.created" && event.response?.id) turn.current.created(event.response.id);
@@ -79,8 +99,26 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
     }
     if (event.type === "input_audio_buffer.speech_started") {
       turn.current.cancel();
+      automatic.current.resetTurn();
+      inputTurnId.current = crypto.randomUUID();
       transcript.current.started(event.item_id);
       setState("listening");
+    }
+    if (event.type === "conversation.item.created" && event.item?.role === "user" && event.item.type === "message") automatic.current.resetTurn();
+    if (event.type === "input_audio_buffer.committed") {
+      const id = inputTurnId.current ?? crypto.randomUUID();
+      inputTurnId.current = id;
+      if (requestedTurns.current.has(id)) return;
+      requestedTurns.current.add(id);
+      try {
+        const reservation = await fetch("/api/voice/turn", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ turn_id: id }) });
+        if (sessionGeneration !== generation.current || inputTurnId.current !== id) return;
+        if (!reservation.ok) { release(); setReason("Сегодня ответы закончились"); setState("unavailable"); return; }
+        send({ type: "response.create" });
+      } catch {
+        if (sessionGeneration === generation.current && inputTurnId.current === id) { release(); setReason("Не удалось начать ответ"); setState("unavailable"); }
+      }
+      return;
     }
     if (event.type !== "response.done" || event.response?.status !== "completed") return;
     const callEpoch = turn.current.accept(event.response.id);
@@ -90,7 +128,8 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
     let utterance: string | undefined;
     let checkedTranscript = false;
     for (const call of calls) {
-      if (sessionGeneration !== generation.current || !turn.current.isCurrent(callEpoch) || !call.call_id) return;
+      if (sessionGeneration !== generation.current || !turn.current.isCurrent(callEpoch)) return;
+      if (!automatic.current.claim(call.call_id)) continue;
       const controller = new AbortController();
       turn.current.track(controller);
       setState(call.name === "recommend_for" ? "preparing" : "checking");
@@ -146,14 +185,20 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       if (call.name === "recommend_for" && output.ok && Array.isArray(output.proposal_ids) && output.proposal_ids.length > 0) setState("waiting_review");
       else setState("listening");
       send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: call.call_id, output: JSON.stringify(output) } });
+      if (automatic.current.followUp()) send({ type: "response.create", response: { tool_choice: "none" } });
     }
-    if (sessionGeneration === generation.current && turn.current.isCurrent(callEpoch)) send({ type: "response.create", response: { tool_choice: "none" } });
-  }, [router, send]);
+  }, [release, router, send]);
 
   const start = useCallback(async () => {
     if (starting.current || peer.current || !scopeRef.current.org_id) return;
     starting.current = true;
     const sessionGeneration = ++generation.current;
+    const speaker = document.createElement("audio");
+    speaker.autoplay = true;
+    speaker.setAttribute("playsinline", "");
+    audio.current = speaker;
+    setAudioBlocked(false);
+    void speaker.play().catch(() => { if (sessionGeneration === generation.current && audio.current === speaker) setAudioBlocked(true); });
     setReason(undefined);
     setState("connecting");
     try {
@@ -173,16 +218,11 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       const media = await navigator.mediaDevices.getUserMedia({ audio: true });
       if (sessionGeneration !== generation.current) { media.getTracks().forEach(track => track.stop()); return; }
       stream.current = media;
+      setLocalStream(media);
       const connection = new RTCPeerConnection();
       peer.current = connection;
-      const speaker = document.createElement("audio");
-      speaker.autoplay = true;
-      audio.current = speaker;
       connection.ontrack = e => {
-        speaker.srcObject = e.streams[0];
-        void speaker.play().catch(() => {
-          if (sessionGeneration === generation.current) { release(); setReason("Provider unavailable"); setState("unavailable"); }
-        });
+        if (sessionGeneration === generation.current && audio.current === speaker) { speaker.srcObject = e.streams[0]; setRemoteStream(e.streams[0] ?? null); }
       };
       connection.onconnectionstatechange = () => {
         if (sessionGeneration !== generation.current) return;
@@ -221,5 +261,5 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
   }, [handleEvent, release]);
 
   useEffect(() => () => { generation.current++; release(); }, [release]);
-  return { state, reason, start, stop, mute, interrupt, captions };
+  return { state, reason, audioBlocked, enableAudio, localStream, remoteStream, start, stop, mute, interrupt, captions };
 }

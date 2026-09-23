@@ -13,13 +13,15 @@ function rebase(href: string, base?: string): string {
 }
 
 /** `plain` hides the internal truth chips so business users see only the answer; `base` maps links onto the current shell. */
-export function ResultCard({ title, response, plain = false, base }: { title: string; response: AssistantResult; plain?: boolean; base?: string }) {
+/** `hideTitle` keeps the accessible name but drops the visible heading (the question is already shown as a turn). */
+export function ResultCard({ title, response, plain = false, base, hideTitle = false }: { title: string; response: AssistantResult; plain?: boolean; base?: string; hideTitle?: boolean }) {
   const data = response.result ?? response;
   const failed = response.ok === false;
   const Icon = failed ? CircleAlert : Check;
   const to = (href?: string) => { const safe = localHref(href); return safe ? rebase(safe, base) : undefined; };
   return <article className={styles.result} aria-label={title}>
-    <header className={styles.resultHead}><Icon size={16} aria-hidden="true" /><h3>{title}</h3></header>
+    {!hideTitle && <header className={styles.resultHead}><Icon size={16} aria-hidden="true" /><h3>{title}</h3></header>}
+    {hideTitle && failed && <p className={styles.meta}><CircleAlert size={14} aria-hidden="true" /> Не получилось ответить</p>}
     {response.reply_ru && <p className={styles.prose}>{response.reply_ru}</p>}
     {data.summary_ru && data.summary_ru !== response.reply_ru && <p className={styles.prose}>{data.summary_ru}</p>}
     {data.items && (data.items.length ? <ul className={styles.resultList}>{data.items.map(item => <li key={item.id}>{to(item.href) ? <Link href={to(item.href)!}>{item.title}<ArrowUpRight size={14} aria-hidden="true" /></Link> : <span>{item.title}</span>}{item.meta && <span className={styles.meta}>{item.meta}</span>}</li>)}</ul> : !failed && !response.reply_ru && <p>Сейчас нет решений, требующих вашего участия.</p>)}
