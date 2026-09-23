@@ -3,6 +3,7 @@
  * E2E_BASE_URL and DEMO_ACCESS_CODE stay in the environment; auth stays in memory.
  * Run: node --experimental-strip-types tests/e2e/landing_clips.spec.ts record today
  * Repeat for purchases, order, money, assistant. Set FFMPEG to a full binary if needed.
+ * Verify a served landing: node --experimental-strip-types tests/e2e/landing_clips.spec.ts verify http://localhost:3133
  * The assistant budget is one request, guarded across invocations by a temporary marker.
  */
 import { chromium, expect, type Locator, type Page } from "@playwright/test";
@@ -203,15 +204,91 @@ export async function recordClip(name: Clip) {
   if (mp4) run(["-i", webm, "-an", "-c:v", "libx264", "-crf", "28", "-preset", "veryfast", "-pix_fmt", "yuv420p", "-movflags", "+faststart", `${OUT}/${name}.mp4`]);
   const files = ["webm", ...(mp4 ? ["mp4"] : []), "png"].map(ext => ({ file: `${name}.${ext}`, bytes: statSync(`${OUT}/${name}.${ext}`).size }));
   for (const file of files) if (file.bytes > 2_500_000) throw new Error(`${file.file} exceeds 2.5 MB`);
+  const mediaInfo = spawnSync(ffmpeg, ["-hide_banner", "-i", webm], { encoding: "utf8" }).stderr;
+  const duration = mediaInfo.match(/Duration: (\d+):(\d+):(\d+(?:\.\d+)?)/);
+  if (!duration) throw new Error("Cannot verify clip duration");
+  const durationSeconds = Number(duration[1]) * 3600 + Number(duration[2]) * 60 + Number(duration[3]);
+  if (durationSeconds < 6 || durationSeconds > 10 || !mediaInfo.includes("1280x800") || mediaInfo.includes("Audio:")) throw new Error("Clip media contract failed");
   const manifestPath = `${OUT}/manifest.json`;
   const manifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")) : {};
-  manifest[name] = { ...SIZE, durationSeconds: 9, audio: false, files, assistantRequests, waitingCut, ...(reviewRoute ? { reviewRoute } : {}) };
+  manifest[name] = { ...SIZE, durationSeconds, audio: false, files, assistantRequests, waitingCut, ...(reviewRoute ? { reviewRoute } : {}) };
   writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   console.log(JSON.stringify({ clip: name, files, assistantRequests, waitingCut }));
 }
 
+export async function verifyLanding(baseURL: string) {
+  const browser = await chromium.launch();
+  const evidence = mkdtempSync(join(tmpdir(), "ainalym-landing-qa-"));
+  const errors: string[] = [];
+  try {
+    for (const width of [1440, 390]) {
+      const context = await browser.newContext({ baseURL, viewport: { width, height: 900 }, reducedMotion: "no-preference" });
+      const page = await context.newPage();
+      const requests: string[] = [];
+      page.on("pageerror", error => errors.push(error.message));
+      page.on("request", request => {
+        if (/\/landing\/clips\/.*\.(mp4|webm)/.test(request.url())) requests.push(new URL(request.url()).pathname);
+      });
+      await ready(page, "/landing");
+      await expect(page.locator("[data-product-clip]")).toHaveCount(5);
+      expect(requests, "No below-fold clip downloads on entry").toHaveLength(0);
+      await expect(page.locator("main > section").nth(1)).toHaveAttribute("id", "product");
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      for (const name of NAMES) {
+        const card = page.locator(`[data-product-clip="${name}"]`);
+        await card.scrollIntoViewIfNeeded();
+        const video = card.locator("video");
+        await expect(video).toBeVisible();
+        await expect.poll(() => video.evaluate(element => (element as HTMLVideoElement).readyState)).toBeGreaterThanOrEqual(2);
+        const media = await video.evaluate(element => {
+          const v = element as HTMLVideoElement;
+          return { width: v.videoWidth, height: v.videoHeight, duration: v.duration, muted: v.muted, autoplay: v.autoplay, loop: v.loop, inline: v.playsInline, preload: v.preload };
+        });
+        expect(media).toMatchObject({ ...SIZE, muted: true, autoplay: true, loop: true, inline: true, preload: "metadata" });
+        expect(media.duration).toBeGreaterThanOrEqual(6);
+        expect(media.duration).toBeLessThanOrEqual(10);
+        await expect.poll(() => video.evaluate(element => (element as HTMLVideoElement).currentTime)).toBeGreaterThan(0);
+        expect(await card.locator("img").evaluate(element => (element as HTMLImageElement).naturalWidth)).toBe(1280);
+      }
+      const last = page.locator('[data-product-clip="assistant"]');
+      await last.getByRole("button", { name: "Приостановить ролик «ИИ-Помощник»" }).click();
+      await expect.poll(() => last.locator("video").evaluate(element => (element as HTMLVideoElement).paused)).toBe(true);
+      await last.getByRole("button", { name: "Воспроизвести ролик «ИИ-Помощник»" }).click();
+      await expect.poll(() => last.locator("video").evaluate(element => (element as HTMLVideoElement).paused)).toBe(false);
+      await last.getByRole("button", { name: "Развернуть ролик «ИИ-Помощник»" }).click();
+      await expect.poll(() => page.evaluate(() => document.fullscreenElement?.tagName)).toBe("VIDEO");
+      await page.evaluate(() => document.exitFullscreen());
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await expect.poll(() => last.locator("video").evaluate(element => (element as HTMLVideoElement).paused)).toBe(true);
+      await page.locator("#product").scrollIntoViewIfNeeded();
+      await pause(page);
+      await page.screenshot({ path: join(evidence, `landing-${width}.png`), fullPage: true });
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await expect(page.locator("[data-product-clip] video")).toHaveCount(0);
+      await context.close();
+    }
+    const reduced = await browser.newContext({ baseURL, viewport: SIZE, reducedMotion: "reduce" });
+    const page = await reduced.newPage();
+    const downloads: string[] = [];
+    page.on("request", request => { if (/\/landing\/clips\/.*\.(mp4|webm)/.test(request.url())) downloads.push(request.url()); });
+    await ready(page, "/landing");
+    for (const name of NAMES) {
+      const card = page.locator(`[data-product-clip="${name}"]`);
+      await card.scrollIntoViewIfNeeded();
+      await expect(card.locator("img")).toBeVisible();
+    }
+    await expect(page.locator("[data-product-clip] video")).toHaveCount(0);
+    expect(downloads, "Reduced motion never downloads clips").toHaveLength(0);
+    expect(errors, "No browser runtime errors").toHaveLength(0);
+    await reduced.close();
+    console.log("PASS: five playable clips; desktop + phone; lazy downloads; pause/resume; fullscreen; offscreen pause; live and initial reduced motion; no overflow or runtime errors.");
+    console.log(`Screenshots: ${evidence}`);
+  } finally { await browser.close(); }
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const [command, name] = process.argv.slice(2);
-  if (command !== "record" || !NAMES.includes(name as Clip)) throw new Error("Usage: record today|purchases|order|money|assistant");
-  await recordClip(name as Clip);
+  if (command === "verify") await verifyLanding(name ?? "http://localhost:3133");
+  else if (command === "record" && NAMES.includes(name as Clip)) await recordClip(name as Clip);
+  else throw new Error("Usage: record today|purchases|order|money|assistant OR verify [baseURL]");
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ArrowRight, CalendarRange, Eye, FileSpreadsheet, Funnel, PackageX, ShieldCheck, Sparkles, Truck, UserCheck } from "lucide-react";
 import { HeroMedia, POSTER_SRC } from "./HeroMedia";
+import { ProductClips } from "./ProductClips";
 import styles from "./landing.module.css";
 
 export const metadata: Metadata = {
@@ -74,6 +75,8 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        <ProductClips />
 
         <section id="how" className={styles.section} aria-labelledby="how-title">
           <div className={styles.sectionHead}>
