@@ -189,7 +189,8 @@ function changed(orgId: string): Answer {
 }
 
 export async function answerInContext(ask: Ask): Promise<Answer> {
-  const base = ask.base && /^\/[a-z0-9_-]*$/i.test(ask.base) ? ask.base.replace(/\/$/, "") : "/v2";
+  // The shell is served at /, so the default prefix is ""; an explicit "/v2" style prefix is still honoured.
+  const base = typeof ask.base === "string" && /^(\/[a-z0-9_-]*)?$/i.test(ask.base) ? ask.base.replace(/\/$/, "") : "";
   const mentioned = mentionedSku(ask.text, ask.org_id);
   let context: AssistantContext = mentioned ? { ...ask.context, entity: { ...ask.context.entity, code_1c: mentioned } } : ask.context;
   let kind = detectKind(ask.text, context);

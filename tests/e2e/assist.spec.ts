@@ -9,7 +9,7 @@ const OUT = "docs/evidence/v2/assist";
 mkdirSync(OUT, { recursive: true });
 const TECH = /LLM|provider|HTTP|JSON|state_version|ETL|adapter|stack/i;
 
-async function go(page: Page, path: string) { await page.goto(`${BASE}${path}`); await page.locator("html[data-v2='ready']").waitFor({ state: "attached", timeout: 60_000 }); await page.waitForLoadState("networkidle"); }
+async function go(page: Page, path: string) { await page.goto(`${BASE}${path}`); await page.locator('aside[aria-label="Разделы"] nav').waitFor({ state: "attached", timeout: 60_000 }); await page.waitForLoadState("networkidle"); }
 
 test.beforeEach(async ({ page }) => { await page.setViewportSize({ width: 1440, height: 900 }); });
 
@@ -35,7 +35,7 @@ test("money: ⌘J opens the dock, a chip answers, «Открыть отдель�
   await popup.waitForLoadState();
   expect(popup.url()).toContain(`${PREFIX}/assistant?ctx=`);
   await expect(dock).toBeHidden();
-  await popup.locator("html[data-v2='ready']").waitFor({ state: "attached", timeout: 60_000 });
+  await popup.getByRole("region", { name: "Помощник" }).waitFor({ state: "attached", timeout: 60_000 });
   await popup.setViewportSize({ width: 480, height: 760 });
   await expect(popup.getByRole("article", { name: "Что заплатить на этой неделе?" })).toBeVisible();
   await popup.screenshot({ path: `${OUT}/04_popup_page_mode.png` });
