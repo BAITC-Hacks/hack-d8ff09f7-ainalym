@@ -3,8 +3,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, FileText, Bot, CircleAlert, RefreshCw } from "lucide-react";
 import { ApiError, apiRequest, useApi, useApiSync } from "@/components/shell/api";
-import { Button, Pill, Skeleton, StateBlock, TruthStrip, UrgencyPill, errorKind, errorTitle, fmtInt, fmtMoney, fmtNum, type Money, type Urgency } from "@/components/primitives";
-import { useTodaySnapshot } from "@/components/Shell";
+import { Button, Pill, Skeleton, StateBlock, TruthStrip, UrgencyPill, errorKind, errorTitle, fmtInt, fmtMoney, fmtNum, type Money, type Urgency } from "@/components/v2/primitives";
+import { useTodaySnapshot } from "@/components/v2/Shell";
 import styles from "./today.module.css";
 
 type Decision = { id: string; kind: string; title: string; why: string; sources: string[]; money_at_stake?: Money | null; options: { key: string; label: string; effect: string }[]; href: string; since: string };

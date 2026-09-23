@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronRight, Search, CircleAlert, PencilLine, Undo2, ArrowRight } from "lucide-react";
 import { ApiError, apiRequest, useApi, useApiSync } from "@/components/shell/api";
-import { Button, MiniBars, Pill, Skeleton, Sparkline, StateBlock, TruthStrip, UrgencyPill, URGENCY_RU, errorKind, errorTitle, fmtInt, fmtMoney, fmtNum, fmtYm, type Money, type Urgency } from "@/components/primitives";
+import { Button, MiniBars, Pill, Skeleton, Sparkline, StateBlock, TruthStrip, UrgencyPill, URGENCY_RU, errorKind, errorTitle, fmtInt, fmtMoney, fmtNum, fmtYm, type Money, type Urgency } from "@/components/v2/primitives";
 import styles from "./replenishment.module.css";
 
 type Components = { source_months?: number; sales_lines?: number; stock_month?: string; stock_stale?: boolean; transit_rows?: number; base_rate?: number; season_source?: string; season?: Record<string, number>; growth?: number; horizon_days?: number; forecast_qty?: number; monthly_forecast?: Record<string, number>; stockout_uplift?: number; safety?: number; on_hand?: number; on_hand_as_of?: string; in_transit?: number; in_transit_sources?: unknown[]; net_need?: number; raw_need?: number; moq?: number; days_of_cover?: number; outlier_threshold?: number; median_month_qty?: number; p95_doc_qty?: number; raw_observed_forecast?: number };

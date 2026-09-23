@@ -1,8 +1,8 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
 import { ApiError, apiRequest, useApi, useApiSync } from "@/components/shell";
-import { Bars, type Month } from "@/components/Bars";
-import { Btn, Card, Empty, Kpis, Loading, PageHead, Pill, Row, Rows, Section, StaleBanner, Truth, Unavailable, URGENCY, fmtDate, fmtMoney, fmtNum, fmtQty, fmtYm, useRowKeys } from "@/components/ui";
+import { Bars, type Month } from "@/components/v2/Bars";
+import { Btn, Card, Empty, Kpis, Loading, PageHead, Pill, Row, Rows, Section, StaleBanner, Truth, Unavailable, URGENCY, fmtDate, fmtMoney, fmtNum, fmtQty, fmtYm, useRowKeys } from "@/components/v2/ui";
 import styles from "./sku.module.css";
 
 type Series = { ym: string; qty_file: string | null; qty_lines: string | null; qty_regular: string | null; stockout: number; stock: string | null; stock_known: boolean; outliers: unknown[] };

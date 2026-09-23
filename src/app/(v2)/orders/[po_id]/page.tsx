@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { supplierChannel } from "@/peers/supplier";
-import { PageHead, Unavailable } from "@/components/ui";
+import { PageHead, Unavailable } from "@/components/v2/ui";
 import { SupplierDraft, type SupplierInitial } from "./SupplierDraft";
 
 export const dynamic = "force-dynamic";

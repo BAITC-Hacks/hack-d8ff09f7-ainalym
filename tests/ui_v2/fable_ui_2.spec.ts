@@ -111,13 +111,13 @@ test("supplier — stale-409, draft, sent, confirmed, 404", async ({ page }) => 
   watch(page, "supplier");
   const PO = await freshOrder(page);
   await page.route("**/api/supplier/*/reply", r => r.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ ok: false, code: "channel_not_sent", message: "channel_not_sent" }) }));
-  await go(page, `/supplier/${PO}`);
+  await go(page, `/orders/${PO}`);
   await expect(page.getByText("Черновик заказа — не отправлен").first()).toBeVisible();
   await page.getByRole("button", { name: "Разместить в демо-канале" }).click();
   await expect(page.getByText("Данные обновились")).toBeVisible();
   await both(page, "supplier_stale_409");
   await page.unroute("**/api/supplier/*/reply");
-  await go(page, `/supplier/${PO}`);
+  await go(page, `/orders/${PO}`);
   await expect(page.getByText("Черновик заказа — не отправлен").first()).toBeVisible();
   // keyboard: j moves focus down the rows, Enter opens the rationale
   await page.locator("[data-row]").first().focus();
@@ -130,7 +130,7 @@ test("supplier — stale-409, draft, sent, confirmed, 404", async ({ page }) => 
   await page.getByRole("button", { name: "Подтвердить получение" }).click();
   await expect(page.getByText("Подтверждено (симулятор)").first()).toBeVisible();
   await both(page, "supplier_confirmed");
-  await go(page, "/supplier/PO-NOPE");
+  await go(page, "/orders/PO-NOPE");
   await expect(page.getByText("Заказ не найден")).toBeVisible();
   await both(page, "supplier_404");
 });

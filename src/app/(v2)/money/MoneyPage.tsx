@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useMemo, useRef } from "react";
 import { useApi } from "@/components/shell";
-import { Card, Empty, Kpis, Loading, PageHead, Pill, Section, StaleBanner, Truth, Unavailable, fmtDate, fmtMoney, fmtMoneyShort, fmtNum, useRowKeys } from "@/components/ui";
+import { Card, Empty, Kpis, Loading, PageHead, Pill, Section, StaleBanner, Truth, Unavailable, fmtDate, fmtMoney, fmtMoneyShort, fmtNum, useRowKeys } from "@/components/v2/ui";
 import styles from "./money.module.css";
 
 type Money = { amount: string; currency: string };
@@ -54,7 +54,7 @@ export function MoneyPage() {
                 const order = orders.data?.orders.find(o => o.supplier_id === c.supplier_id && (o.state === "approved" || o.state === "exported"));
                 return <div key={c.supplier_id} className={styles.rowGroup}>
                   <div className={styles.tr} role="row" data-row tabIndex={0}>
-                    <span role="cell" className={styles.cellMain}><span className={styles.name}>{SUPPLIER[c.supplier_id] ?? c.supplier_id}</span><span className={styles.meta}>{order ? <Link href={`/supplier/${order.id}`}>{order.id.slice(0, 11)}… · ETA {fmtDate(order.eta)}</Link> : `заказ ${c.supplier_id}`}</span></span>
+                    <span role="cell" className={styles.cellMain}><span className={styles.name}>{SUPPLIER[c.supplier_id] ?? c.supplier_id}</span><span className={styles.meta}>{order ? <Link href={`/orders/${order.id}`}>{order.id.slice(0, 11)}… · ETA {fmtDate(order.eta)}</Link> : `заказ ${c.supplier_id}`}</span></span>
                     <span role="cell" className={styles.num}>{fmtNum(c.lines)}</span>
                     <span role="cell" className={styles.num}>{fmtNum(c.cost_known_lines)}<span className={styles.meta}> из {fmtNum(c.lines)}</span></span>
                     <span role="cell" className={`${styles.num} ${styles.money}`}>{fmtMoney(c.amount, c.currency)}</span>
@@ -72,7 +72,7 @@ export function MoneyPage() {
                 {byDay.map(d => <div key={d.day} className={styles.day} title={`${fmtDate(d.day)} · ${fmtMoney(String(d.total), cur)}`}><div className={styles.dayBar} style={{ height: `${Math.max(4, (d.total / maxDay) * 100)}%` }} /><span>{fmtDate(d.day).slice(0, 5)}</span></div>)}
               </div>
               <div className={styles.table}>
-                {outflows.map((o, i) => <div key={`${o.po_id}-${i}`} className={styles.tr} role="row"><span className={styles.cellMain}><span className={styles.name}>{fmtDate(o.at)}</span><span className={styles.meta}>{KIND[o.kind] ?? o.kind} · <Link href={`/supplier/${o.po_id}`}>{o.po_id.slice(0, 11)}…</Link></span></span><span /><span /><span className={`${styles.num} ${styles.money}`}>{fmtMoney(o.amount, o.currency)}</span></div>)}
+                {outflows.map((o, i) => <div key={`${o.po_id}-${i}`} className={styles.tr} role="row"><span className={styles.cellMain}><span className={styles.name}>{fmtDate(o.at)}</span><span className={styles.meta}>{KIND[o.kind] ?? o.kind} · <Link href={`/orders/${o.po_id}`}>{o.po_id.slice(0, 11)}…</Link></span></span><span /><span /><span className={`${styles.num} ${styles.money}`}>{fmtMoney(o.amount, o.currency)}</span></div>)}
               </div>
             </Card>}
         </Section>

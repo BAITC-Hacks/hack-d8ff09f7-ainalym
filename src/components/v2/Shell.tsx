@@ -1,16 +1,21 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { House, Package, Boxes, Wallet, Search, Bell, WifiOff, Menu, X } from "lucide-react";
+import { House, Package, ClipboardCheck, Truck, Boxes, Wallet, Activity, Workflow, AudioLines, Search, Bell, WifiOff, Menu, X } from "lucide-react";
 import { useApi, useApiSync } from "@/components/shell/api";
 import styles from "./shell.module.css";
 
 const NAV = [
   { href: "/today", label: "Сегодня", icon: House, count: "queue" as const },
-  { href: "/replenishment", label: "Пополнение", icon: Package, count: "recs" as const },
+  { href: "/replenishment", label: "Закупки", icon: Package, count: "recs" as const },
+  { href: "/orders", label: "Заказы", icon: ClipboardCheck, count: null },
+  { href: "/suppliers", label: "Поставщики", icon: Truck, count: null },
   { href: "/skus", label: "Товары", icon: Boxes, count: null },
   { href: "/money", label: "Деньги", icon: Wallet, count: null },
+  { href: "/world", label: "Лента", icon: Activity, count: null },
+  { href: "/connections", label: "Связи", icon: Workflow, count: null },
+  { href: "/assistant", label: "Помощник", icon: AudioLines, count: null },
 ];
 
 type Today = { queue_count: number; pulse?: { stockout_risk?: { count?: number } } };
@@ -21,6 +26,7 @@ export function useTodaySnapshot<T>(): Snapshot<T> { const ctx = useContext(Toda
 
 export function V2Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { offline, syncError } = useApiSync();
   const today = useApi<Today>("/api/today");
   const [open, setOpen] = useState(false);
@@ -50,13 +56,13 @@ export function V2Shell({ children }: { children: ReactNode }) {
       <a href="#v2-main" className={styles.skip}>К содержимому</a>
       <aside className={`${styles.rail} ${open ? styles.railOpen : ""}`} aria-label="Разделы">
         <div className={styles.brand}>
-          <span className={styles.mark} aria-hidden="true"><img src="/brand/ainalym-mark.svg" alt="" width={24} height={24} onError={e => { e.currentTarget.style.display = "none"; }} /></span>
-          <span className={styles.wordmark}>Ainalym</span>
+          <Link href="/today" prefetch={false} aria-label="Ainalym — на страницу Сегодня" style={{ display: "inline-flex", alignItems: "center", gap: 10, color: "inherit", textDecoration: "none" }}><span className={styles.mark} aria-hidden="true"><img src="/brand/ainalym-mark.svg" alt="" width={24} height={24} onError={e => { e.currentTarget.style.display = "none"; }} /></span>
+          <span className={styles.wordmark}>Ainalym</span></Link>
           <button type="button" className={styles.railClose} onClick={() => setOpen(false)} aria-label="Закрыть меню"><X size={18} /></button>
         </div>
         <nav className={styles.nav}>
           {NAV.map(item => {
-            const active = pathname === item.href || pathname.startsWith(item.href + "/");
+            const active = pathname === item.href || pathname.startsWith(item.href + "/") || (item.href === "/replenishment" && pathname.startsWith("/purchases")) || (item.href === "/today" && pathname.startsWith("/review"));
             const n = item.count ? counts[item.count] : undefined;
             const Icon = item.icon;
             return (
@@ -80,7 +86,7 @@ export function V2Shell({ children }: { children: ReactNode }) {
           <label className={styles.search}>
             <kbd>⌘</kbd><kbd>K</kbd>
             <Search size={15} aria-hidden="true" />
-            <input ref={search} type="search" placeholder="Найти товар, код 1С или заказ" aria-label="Поиск" />
+            <input ref={search} type="search" placeholder="Найти товар, код 1С или заказ" aria-label="Поиск (клавиша /)" onKeyDown={e => { if (e.key !== "Enter") return; const value = e.currentTarget.value.trim(); if (!value) return; if (/^\d{9}_?$/.test(value)) router.push(`/skus/${value.endsWith("_") ? value : value + "_"}`); else if (/^PO-/i.test(value)) router.push(`/orders/${encodeURIComponent(value)}`); else router.push(`/skus?q=${encodeURIComponent(value)}`); }} />
           </label>
           <div className={styles.topRight}>
             {(offline || syncError) && <span className={styles.offline} role="status"><WifiOff size={14} aria-hidden="true" />{offline ? "Нет связи — показываю последнее" : "Обновления недоступны"}</span>}

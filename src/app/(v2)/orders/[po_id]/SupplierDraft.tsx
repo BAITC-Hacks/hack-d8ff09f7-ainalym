@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ApiError, apiRequest, useApi, useApiSync } from "@/components/shell";
-import { Btn, Card, Empty, Kpis, PageHead, Pill, PO_STATE, Section, StaleBanner, Truth, fmtDate, fmtMoney, fmtNum, fmtQty, useRowKeys, type Tone } from "@/components/ui";
+import { Btn, Card, Empty, Kpis, PageHead, Pill, PO_STATE, Section, StaleBanner, Truth, fmtDate, fmtMoney, fmtNum, fmtQty, useRowKeys, type Tone } from "@/components/v2/ui";
 import styles from "./supplier.module.css";
 
 export type ChannelState = "draft" | "sent" | "confirmed";
