@@ -1,5 +1,5 @@
-# L7 checkpoint — 10:40Z (main @ 3b3dcbd merged)
-- VERIFIED keyless clean clone 3b3dcbd: clean_clone_check PASS 250/0/7/7; scenario 11×PASS; export «Заказ_поставщику_SE_2026-09-23.xlsx», 10 cols («Номенклатура.Код» … «Обоснование»), 294 rows, urgency 58/83/153 (FIX-3 confirmed).
-- done: README v1.8.1 (+ D-H56 1C input sentence, ekt.kz read-only adapter UNVERIFIED live) · TASK_MAP · SUBMISSION_RU v1.
-- held: screen descriptions until the UI pick; SUBMISSION refresh ≈11:40Z; GitHub clean clone ≈12:10Z; README final ≈12:40Z.
-- queue: done 001–100; queued 110, 120; drafts 130–170 (1C export guide updated to the new form).
+# L7 checkpoint — 11:15Z (main @ 220d777 merged)
+- VERIFIED keyless clean clone 220d777: clean_clone_check PASS 287/0/7/7; nine routes 200, / → /today; calc SE 560/307; 300200745_ 126 (→ 24 after +100 verified on 9b01fcb); demo URL /api/health 200.
+- done: README v2.0 («Экраны», demo URL, ENGINE-1/WORLD-2 methodology) · TASK_MAP · SUBMISSION_RU v2 · clean_clone_check.sh.
+- next: GitHub-remote clean clone ≈12:10Z → README §8; README final + closeout ≈12:40Z; freeze 12:55Z.
+- queue: done 001–120 (per runner); drafts 140 (refreshed), 145 methodology refresh, 150–170 drip.
