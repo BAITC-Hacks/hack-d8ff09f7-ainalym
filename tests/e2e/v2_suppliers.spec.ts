@@ -13,8 +13,8 @@ test("suppliers — desktop 1440×900, IEK / SE cards from real data, no technic
   await expect(page.getByRole("heading", { level: 2, name: /IEK/ })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: /System Electric/ })).toBeVisible();
   await expect(page.getByText("Срок поставки").first()).toBeVisible();
-  await expect(page.getByRole("link", { name: /Закупки IEK/ })).toHaveAttribute("href", "/v2/replenishment?supplier=IEK");
-  await expect(page.getByRole("link", { name: /Заказы SE/ })).toHaveAttribute("href", "/v2/orders?supplier=SE");
+  await expect(page.getByRole("link", { name: /Закупки IEK/ })).toHaveAttribute("href", "/replenishment?supplier=IEK");
+  await expect(page.getByRole("link", { name: /Заказы SE/ })).toHaveAttribute("href", "/orders?supplier=SE");
   const body = await page.locator("main").innerText();
   for (const banned of ["state_version", "JSON", "HTTP", "ETL", "null", "undefined", "NaN", "api/"]) expect(body).not.toContain(banned);
   await page.screenshot({ path: `${OUT}/suppliers_desktop.png` });

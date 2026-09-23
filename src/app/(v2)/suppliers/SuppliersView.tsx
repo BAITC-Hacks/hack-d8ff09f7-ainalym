@@ -35,7 +35,7 @@ function Supplier({ c }: { c: SupplierCard }) {
     </div>
     <Rows>
       <Row label="Срок поставки" meta={`заказ пересматриваем раз в ${fmtNum(c.review_days)} ${plural(c.review_days, "день", "дня", "дней")}`} value={<span className={styles.big}>{fmtNum(c.lead_time_days)}<span className={styles.unit}>дн</span></span>} />
-      <Row label="Открытые заказы" href={`/v2/orders?supplier=${encodeURIComponent(c.id)}`}
+      <Row label="Открытые заказы" href={`/orders?supplier=${encodeURIComponent(c.id)}`}
         meta={o.count ? `черновиков ${fmtNum(o.draft)} · утверждено ${fmtNum(o.approved)} · передано в 1С ${fmtNum(o.exported)}${waiting ? ` · ${waiting}` : ""}` : waiting || "появятся после утверждения предложения"}
         value={<span className={styles.big}>{fmtNum(o.count)}</span>} valueMeta={o.count ? `${fmtNum(o.units)} шт` : undefined} />
       <Row label="В пути" meta={c.in_transit.shipments ? `${fmtNum(c.in_transit.shipments)} ${plural(c.in_transit.shipments, "поставка", "поставки", "поставок")}${c.in_transit.next_eta ? ` · ближайшая ${fmtDate(c.in_transit.next_eta)}` : ""}` : "ничего не едет"}
@@ -58,12 +58,12 @@ function Supplier({ c }: { c: SupplierCard }) {
       <h3 className={styles.blockTitle}>Последний ответ</h3>
       {c.last_reply ? <>
         <p className={styles.reply}>{c.last_reply.text ?? "Ответ получен"}</p>
-        <p className={styles.replyMeta}>{when(c.last_reply.at)}{c.last_reply.po_id && <> · <Link href={`/v2/supplier/${encodeURIComponent(c.last_reply.po_id)}`} prefetch={false}>заказ {c.last_reply.po_id}</Link></>}</p>
+        <p className={styles.replyMeta}>{when(c.last_reply.at)}{c.last_reply.po_id && <> · <Link href={`/supplier/${encodeURIComponent(c.last_reply.po_id)}`} prefetch={false}>заказ {c.last_reply.po_id}</Link></>}</p>
       </> : <p className={styles.none}>ответов пока нет</p>}
     </div>
     <div className={styles.actions}>
-      <Link href={`/v2/replenishment?supplier=${encodeURIComponent(c.id)}`} prefetch={false} className={`${styles.btn} ${styles.btnBlack}`}>Закупки {c.id}<ArrowRight size={14} aria-hidden="true" /></Link>
-      <Link href={`/v2/orders?supplier=${encodeURIComponent(c.id)}`} prefetch={false} className={styles.btn}>Заказы {c.id}</Link>
+      <Link href={`/replenishment?supplier=${encodeURIComponent(c.id)}`} prefetch={false} className={`${styles.btn} ${styles.btnBlack}`}>Закупки {c.id}<ArrowRight size={14} aria-hidden="true" /></Link>
+      <Link href={`/orders?supplier=${encodeURIComponent(c.id)}`} prefetch={false} className={styles.btn}>Заказы {c.id}</Link>
     </div>
   </Card>;
 }
@@ -86,7 +86,7 @@ export function SuppliersView() {
     <PageHead crumbs={crumbs} title="Поставщики"
       badges={<><Pill tone={open ? "warn" : "good"}>{open ? `${fmtNum(open)} ${plural(open, "открытый заказ", "открытых заказа", "открытых заказов")}` : "открытых заказов нет"}</Pill><Pill tone="neutral">{transit ? `${fmtNum(transit)} шт в пути` : "в пути ничего нет"}</Pill></>}
       sub={<>Сроки, условия оплаты, открытые заказы и деньги по каждому поставщику · предоплата при утверждении, остаток при получении</>}
-      actions={<Link href="/v2/replenishment" prefetch={false} className={`${styles.btn} ${styles.btnPrimary}`}>Пополнение<ArrowRight size={14} aria-hidden="true" /></Link>} />
+      actions={<Link href="/replenishment" prefetch={false} className={`${styles.btn} ${styles.btnPrimary}`}>Пополнение<ArrowRight size={14} aria-hidden="true" /></Link>} />
     <Kpis items={[
       { label: "Поставщиков", value: fmtNum(cards.length), meta: cards.map(c => c.id).join(" · ") || "пока нет" },
       { label: "Открытые заказы", value: open ? fmtNum(open) : "нет", meta: open ? `${fmtNum(cards.reduce((n, c) => n + c.open_orders.units, 0))} шт в заказах` : "появятся после утверждения предложений" },
