@@ -1,4 +1,4 @@
-Done: provider interface; direct TypeSafe → Gateway fallback; OpenAI; rules; live smokes.
-Undone: catalog, persisted decisions, worker, drafting, guardrails, routes.
-Resumable: provider result states and parsers are in src/ai/provider.ts; replay adapter is a placeholder.
-SHA: 0d9406a (base; this checkpoint commit follows).
+Done: providers, live smokes, five-question catalog, persisted decisions, replay fixture, /api/decisions.
+Undone: worker, drafting, guardrail suite, optional cut-order items.
+Resumable: decision_record gains evidence_versions, rubric_version, cache_key additively at first decision.
+SHA: 4b4328c (previous checkpoint; this checkpoint commit follows).
