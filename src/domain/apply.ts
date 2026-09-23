@@ -8,12 +8,12 @@ import { Money } from "./money";
 import { transitionTask } from "./tasks";
 import { createTask } from "./tasks";
 
-export interface CalcScope { supplier?: string; category?: string; codes?: string[] }
+export interface CalcScope { supplier?: string; category?: string; codes?: string[]; full_catalog?: boolean }
 export interface CalcContext extends EngineContext { org_id?: string; agent_run_id?: string; world_event_id?: string }
 export interface ApplyResult { proposals: Record<string, unknown>[]; tasks: Record<string, unknown>[]; affected: string[] }
-type Sku = { code_1c: string; supplier_id: string; name: string; unit_cost: string | null; moq: number };
-type Rec = { id: string; code_1c: string; supplier_id: string; qty_recommended: number; qty_adjusted: number | null; rationale_ru: string; proposal_id: string | null; unit_cost: string | null; name: string; components: string };
-type Run = { id: string; agent_run_id: string | null; scope: string };
+type Sku = { code_1c: string; supplier_id: string; name: string; unit: string | null; unit_cost: string | null; moq: number };
+type Rec = { id: string; code_1c: string; supplier_id: string; qty_recommended: number; qty_adjusted: number | null; rationale_ru: string; proposal_id: string | null; unit_cost: string | null; name: string; unit: string | null; components: string };
+type Run = { id: string; agent_run_id: string | null; scope: string; org_id: string | null };
 
 function inTx<T>(database: DatabaseSync, fn: () => T): T {
   database.exec("BEGIN");
@@ -21,27 +21,34 @@ function inTx<T>(database: DatabaseSync, fn: () => T): T {
   catch (error) { database.exec("ROLLBACK"); throw error; }
 }
 
+function reasonRu(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/stock source missing/i.test(message)) return "нет подтверждённого остатка";
+  if (/uncensored sales source missing/i.test(message)) return "нет месяцев продаж без дефицита";
+  if (/sales source missing/i.test(message)) return "нет истории продаж";
+  if (/invalid engine parameters/i.test(message)) return "неверные параметры расчёта";
+  return "ошибка расчёта; проверьте данные артикула";
+}
+
 /** Computes and persists a full run before preparing human approval proposals. */
 export async function runCalculation(scope: CalcScope = {}, overrides: Partial<EngineParams> = {}, ctx: CalcContext = {}) {
   const database = ctx.database ?? db();
   const orgId = ctx.org_id ?? "ORG-1";
-  const query = `SELECT code_1c,supplier_id,name,unit_cost,moq FROM sku WHERE 1=1${scope.supplier ? " AND supplier_id=?" : ""}${scope.category ? " AND category=?" : ""} ORDER BY supplier_id,code_1c`;
+  const query = `SELECT code_1c,supplier_id,name,unit,unit_cost,moq FROM sku WHERE 1=1${scope.supplier ? " AND supplier_id=?" : ""}${scope.category ? " AND category=?" : ""} ORDER BY supplier_id,code_1c`;
   const skus = (database.prepare(query).all(...[scope.supplier, scope.category].filter((value) => value !== undefined)) as Sku[])
     .filter((sku) => !scope.codes || scope.codes.includes(sku.code_1c));
   const computed: { sku: Sku; result: NeedResult; params: EngineParams }[] = [];
   const unresolved: { code_1c: string; supplier_id: string; reason: string }[] = [];
   for (const sku of skus) {
-    const params = paramsForSupplier(sku.supplier_id, database, overrides);
     try {
+      const params = paramsForSupplier(sku.supplier_id, database, overrides);
       const result = await computeNeed(sku.code_1c, params, { database, as_of: ctx.as_of });
       if (result.components.stock_stale) unresolved.push({ code_1c: sku.code_1c, supplier_id: sku.supplier_id,
-        reason: `stock source missing for ${sku.code_1c}: latest confirmed month ${result.components.stock_month}` });
+        reason: `не рассчитано: нет актуального остатка; последний подтверждённый месяц ${result.components.stock_month}` });
       else computed.push({ sku, params, result });
     }
     catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      if (!/source missing/i.test(reason)) throw error;
-      unresolved.push({ code_1c: sku.code_1c, supplier_id: sku.supplier_id, reason });
+      unresolved.push({ code_1c: sku.code_1c, supplier_id: sku.supplier_id, reason: `не рассчитано: ${reasonRu(error)}` });
     }
   }
   const id = `RUN-${randomUUID()}`;
@@ -49,8 +56,8 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
   const startedAt = new Date().toISOString();
   const finishedAt = ctx.as_of && ctx.as_of > startedAt ? ctx.as_of : startedAt;
   inTx(database, () => {
-    database.prepare("INSERT INTO calc_run (id,scope,params,started_at,finished_at,skus,recommended,agent_run_id) VALUES (?,?,?,?,?,?,?,?)")
-      .run(id, JSON.stringify(scope), JSON.stringify(overrides), startedAt, finishedAt, skus.length, computed.filter(({ result }) => result.need > 0).length, agentRunId);
+    database.prepare("INSERT INTO calc_run (id,org_id,scope,params,started_at,finished_at,skus,recommended,agent_run_id) VALUES (?,?,?,?,?,?,?,?,?)")
+      .run(id, orgId, JSON.stringify(scope), JSON.stringify(overrides), startedAt, finishedAt, skus.length, computed.filter(({ result }) => result.need > 0).length, agentRunId);
     for (const { sku, result } of computed) {
       const forecastId = `FC-${randomUUID()}`;
       const recommendationId = `REC-${randomUUID()}`;
@@ -63,7 +70,7 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
   });
   for (const { sku, result } of computed) {
     await recordAction(agentRunId, { kind: "recompute", subject_ref: sku.code_1c, code_1c: sku.code_1c, world_event_id: ctx.world_event_id,
-      summary_ru: `Пересчитана потребность ${sku.code_1c}: ${result.need} шт`, rationale_ru: result.rationale_ru,
+      summary_ru: `Пересчитана потребность ${sku.code_1c}: ${result.need} ${sku.unit?.trim() || "шт"}`, rationale_ru: result.rationale_ru,
       sources: [`sku:${sku.code_1c}`, "sales_month", "sales_line", "stock_month", "in_transit"], autonomy: "auto",
       idempotency_key: ctx.world_event_id ? `worker:${ctx.world_event_id}:recompute:${sku.code_1c}` : `recompute:${id}:${sku.code_1c}` }, database);
     if ((result.components.outliers_excluded as unknown[]).length) await recordAction(agentRunId, {
@@ -83,17 +90,18 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
       sources: gaps.map((row) => row.code_1c), autonomy: "escalated", result: "needs_owner", idempotency_key: `source-gap:${id}:${supplierId}` }, database);
   }
   if (!ctx.agent_run_id) await finishRun(agentRunId, "done", database);
-  return { run_id: id, skus: skus.length, recommended: computed.filter(({ result }) => result.need > 0).length, unresolved, ...applied };
+  return { run_id: id, skus: skus.length, computed: computed.length, not_computed: unresolved.length,
+    recommended: computed.filter(({ result }) => result.need > 0).length, unresolved, ...applied };
 }
 
 /** One supplier order proposal per supplier; replay and newer runs are safe. */
 export async function applyRecommendations(run_id: string, ctx: CalcContext = {}): Promise<ApplyResult> {
   const database = ctx.database ?? db();
-  const run = database.prepare("SELECT id,agent_run_id,scope FROM calc_run WHERE id=?").get(run_id) as Run | undefined;
+  const run = database.prepare("SELECT id,agent_run_id,scope,org_id FROM calc_run WHERE id=?").get(run_id) as Run | undefined;
   if (!run) throw new Error(`calculation run ${run_id} is missing`);
   const scope = JSON.parse(run.scope) as CalcScope;
   const scopedCodes = new Set(scope.codes ?? []);
-  const recommendations = database.prepare(`SELECT r.id,r.code_1c,r.supplier_id,r.qty_recommended,r.qty_adjusted,r.rationale_ru,r.proposal_id,r.components,s.name,s.unit_cost
+  const recommendations = database.prepare(`SELECT r.id,r.code_1c,r.supplier_id,r.qty_recommended,r.qty_adjusted,r.rationale_ru,r.proposal_id,r.components,s.name,s.unit,s.unit_cost
     FROM recommendation r JOIN sku s ON s.code_1c=r.code_1c WHERE r.run_id=? ORDER BY r.supplier_id,r.code_1c`).all(run_id) as Rec[];
   const groups = new Map<string, Rec[]>();
   const staleStock = recommendations.filter((rec) => (JSON.parse(rec.components) as { stock_stale?: boolean }).stock_stale);
@@ -103,10 +111,9 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
     if ((rec.qty_adjusted ?? rec.qty_recommended) <= 0) continue;
     groups.set(rec.supplier_id, [...(groups.get(rec.supplier_id) ?? []), rec]);
   }
-  for (const code of scopedCodes) {
-    const supplier = database.prepare("SELECT supplier_id FROM sku WHERE code_1c=?").get(code) as { supplier_id: string } | undefined;
-    if (supplier && !groups.has(supplier.supplier_id)) groups.set(supplier.supplier_id, []);
-  }
+  const scopedSkus = database.prepare(`SELECT code_1c,supplier_id FROM sku WHERE 1=1${scope.supplier ? " AND supplier_id=?" : ""}${scope.category ? " AND category=?" : ""}`)
+    .all(...[scope.supplier, scope.category].filter(value => value !== undefined)) as { code_1c: string; supplier_id: string }[];
+  for (const sku of scopedSkus) if ((scope.full_catalog || !scopedCodes.size || scopedCodes.has(sku.code_1c)) && !groups.has(sku.supplier_id)) groups.set(sku.supplier_id, []);
   const proposals: Record<string, unknown>[] = [];
   const tasks: Record<string, unknown>[] = [];
   for (const [supplierId, rows] of groups) {
@@ -116,40 +123,45 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
       if (existing) proposals.push(existing);
       continue;
     }
-    const old = database.prepare("SELECT id,payload,sources,version FROM proposal WHERE kind='supplier_order' AND subject_id=? AND state='needs_review' ORDER BY created_at DESC,rowid DESC LIMIT 1")
-      .get(supplierId) as { id: string; payload: string; sources: string; version: number } | undefined;
+    const oldProposals = database.prepare("SELECT id,payload,sources,version FROM proposal WHERE kind='supplier_order' AND subject_id=? AND state='needs_review' AND (org_id=? OR org_id IS NULL) ORDER BY created_at DESC,rowid DESC")
+      .all(supplierId, run.org_id ?? ctx.org_id ?? "ORG-1") as { id: string; payload: string; sources: string; version: number }[];
+    const old = oldProposals[0];
     const id = `PR-${randomUUID()}`;
     const taskId = `TK-${randomUUID()}`;
-    const currentLines = rows.map((rec) => ({ recommendation_id: rec.id, code_1c: rec.code_1c, name: rec.name,
+    const currentLines = rows.map((rec) => ({ recommendation_id: rec.id, code_1c: rec.code_1c, name: rec.name, unit: rec.unit?.trim() || "шт",
       qty: rec.qty_adjusted ?? rec.qty_recommended, unit_cost: rec.unit_cost, rationale_ru: rec.rationale_ru,
       components: JSON.parse(rec.components) as Record<string, unknown> }));
     const carried = old && scopedCodes.size ? ((JSON.parse(old.payload) as { lines: typeof currentLines }).lines ?? [])
       .filter((line) => !scopedCodes.has(line.code_1c)) : [];
     const lines = [...carried, ...currentLines];
     if (!lines.length) {
-      if (old) {
-        database.prepare("UPDATE proposal SET state='stale',version=version+1 WHERE id=? AND state='needs_review'").run(old.id);
-        bumpStateVersion(database);
-        if (run.agent_run_id) await recordAction(run.agent_run_id, { kind: "status_change", subject_ref: old.id,
-          summary_ru: `Предложение ${old.id} устарело: потребность исчезла`, sources: [`proposal:${old.id}`, `run:${run_id}`],
-          autonomy: "auto", idempotency_key: `proposal:stale:${old.id}:${run_id}` }, database);
+      if (oldProposals.length) {
+        inTx(database, () => {
+          database.prepare("UPDATE proposal SET state='stale',version=version+1 WHERE kind='supplier_order' AND subject_id=? AND state='needs_review' AND (org_id=? OR org_id IS NULL)")
+            .run(supplierId, run.org_id ?? ctx.org_id ?? "ORG-1");
+          bumpStateVersion(database);
+        });
+        if (run.agent_run_id) for (const prior of oldProposals) await recordAction(run.agent_run_id, { kind: "status_change", subject_ref: prior.id,
+          summary_ru: `Предложение ${prior.id} устарело: потребность исчезла`, sources: [`proposal:${prior.id}`, `run:${run_id}`],
+          autonomy: "auto", idempotency_key: `proposal:stale:${prior.id}:${run_id}` }, database);
       }
       continue;
     }
     const priced = lines.filter((line) => line.unit_cost !== null);
     const total = priced.reduce((sum, line) => sum.add(Money.of(line.unit_cost!).mul(line.qty)), Money.of("0"));
     const moneyAtStake = priced.length ? total.toJSON() : null;
-    const rationale = `Заказ ${supplierId}: ${lines.length} позиций, ${lines.reduce((sum, line) => sum + line.qty, 0)} шт. ${priced.length === lines.length ? `Стоимость ${total.amount} KZT.` : `Стоимость известна для ${priced.length} из ${lines.length} позиций; неизвестные цены требуют проверки.`} Подтвердите точный состав и количество перед передачей.`;
+    const rationale = `Заказ ${supplierId}: ${lines.length} позиций. ${priced.length === lines.length ? `Стоимость ${total.amount} KZT.` : `Стоимость известна для ${priced.length} из ${lines.length} позиций; неизвестные цены требуют проверки.`} Подтвердите точный состав и количество перед передачей.`;
     const sources = [...new Set([...rows.map((row) => `recommendation:${row.id}`), ...carried.map((line) => `recommendation:${line.recommendation_id}`)])];
-    const proposal = { id, kind: "supplier_order", subject_type: "supplier", subject_id: supplierId, subject_version: old ? old.version + 1 : 1,
+    const proposal = { id, org_id: run.org_id ?? ctx.org_id ?? "ORG-1", kind: "supplier_order", subject_type: "supplier", subject_id: supplierId, subject_version: old ? old.version + 1 : 1,
       payload: JSON.stringify({ run_id, supplier_id: supplierId, lines, cost_known_lines: priced.length }),
       affects: JSON.stringify(lines.map(line => line.code_1c)), supersedes_id: old?.id ?? null, state: "needs_review",
       rationale_ru: rationale, sources: JSON.stringify(sources), money_at_stake: moneyAtStake ? JSON.stringify(moneyAtStake) : null,
       version: old ? old.version + 1 : 1, created_at: new Date().toISOString() };
     inTx(database, () => {
-      if (old) database.prepare("UPDATE proposal SET state='stale',version=version+1 WHERE id=? AND state='needs_review'").run(old.id);
-      database.prepare(`INSERT INTO proposal (id,kind,subject_type,subject_id,subject_version,payload,affects,supersedes_id,state,rationale_ru,sources,money_at_stake,version,created_at)
-        VALUES (@id,@kind,@subject_type,@subject_id,@subject_version,@payload,@affects,@supersedes_id,@state,@rationale_ru,@sources,@money_at_stake,@version,@created_at)`).run(proposal);
+      database.prepare("UPDATE proposal SET state='stale',version=version+1 WHERE kind='supplier_order' AND subject_id=? AND state='needs_review' AND (org_id=? OR org_id IS NULL)")
+        .run(supplierId, proposal.org_id);
+      database.prepare(`INSERT INTO proposal (id,org_id,kind,subject_type,subject_id,subject_version,payload,affects,supersedes_id,state,rationale_ru,sources,money_at_stake,version,created_at)
+        VALUES (@id,@org_id,@kind,@subject_type,@subject_id,@subject_version,@payload,@affects,@supersedes_id,@state,@rationale_ru,@sources,@money_at_stake,@version,@created_at)`).run(proposal);
       for (const rec of rows) database.prepare("UPDATE recommendation SET proposal_id=? WHERE id=?").run(id, rec.id);
       for (const line of carried) database.prepare("UPDATE recommendation SET proposal_id=? WHERE id=?").run(id, line.recommendation_id);
       database.prepare("INSERT INTO task (id,title,state,owner_role,proposal_id,updated_at) VALUES (?,?,?,?,?,?)")
@@ -159,9 +171,9 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
     proposals.push(proposal);
     tasks.push({ id: taskId, proposal_id: id, state: "needs_review" });
     if (run.agent_run_id) {
-      if (old) await recordAction(run.agent_run_id, { kind: "status_change", subject_ref: old.id,
-        summary_ru: `Предложение ${old.id} заменено новой версией ${id}`, sources: [`proposal:${old.id}`, `proposal:${id}`],
-        autonomy: "auto", idempotency_key: `proposal:stale:${old.id}:${run_id}` }, database);
+      for (const prior of oldProposals) await recordAction(run.agent_run_id, { kind: "status_change", subject_ref: prior.id,
+        summary_ru: `Предложение ${prior.id} заменено новой версией ${id}`, sources: [`proposal:${prior.id}`, `proposal:${id}`],
+        autonomy: "auto", idempotency_key: `proposal:stale:${prior.id}:${run_id}` }, database);
       await recordAction(run.agent_run_id, { kind: "recommendation_prepared", subject_ref: supplierId,
         summary_ru: `Подготовлены рекомендации ${supplierId}: ${lines.length} позиций`, rationale_ru: rationale,
         sources, autonomy: "auto", idempotency_key: `recommendation:${run_id}:${supplierId}` }, database);
@@ -186,7 +198,7 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
 export class ProposalConflictError extends Error { readonly status = 409; }
 export class ProposalNotFoundError extends Error { readonly status = 404; }
 type Proposal = { id: string; kind: string; state: string; version: number; payload: string; subject_id: string | null; subject_version: number | null; rationale_ru: string | null; sources: string };
-type OrderLine = { recommendation_id: string; code_1c: string; qty: number; unit_cost: string | null; rationale_ru: string };
+type OrderLine = { recommendation_id: string; code_1c: string; qty: number; unit?: string; unit_cost: string | null; rationale_ru: string };
 
 /** A human adjustment changes the proposal version while retaining the engine's original quantity. */
 export async function adjustRecommendation(id: string, qty: number, reason: string, version: number, ctx: CalcContext = {}) {
@@ -211,7 +223,8 @@ export async function adjustRecommendation(id: string, qty: number, reason: stri
     payload.total_qty = payload.lines.reduce((sum, item) => sum + item.qty, 0);
     payload.total_cost = moneyAtStake;
     payload.cost_known_lines = priced.length;
-    const rationale = `${proposal.rationale_ru ?? ""} Корректировка ${rec.code_1c}: ${rec.qty_adjusted ?? rec.qty_recommended} → ${qty} шт; причина: ${reason.trim()}.`.trim();
+    const unit = line.unit ?? (database.prepare("SELECT unit FROM sku WHERE code_1c=?").get(rec.code_1c) as { unit: string | null } | undefined)?.unit ?? "шт";
+    const rationale = `${proposal.rationale_ru ?? ""} Корректировка ${rec.code_1c}: ${rec.qty_adjusted ?? rec.qty_recommended} → ${qty} ${unit}; причина: ${reason.trim()}.`.trim();
     const updated = database.prepare("UPDATE recommendation SET qty_adjusted=?,adjust_reason=?,state='adjusted',version=version+1 WHERE id=? AND version=?")
       .run(qty, reason.trim(), id, version);
     if (updated.changes !== 1) throw new ProposalConflictError(`recommendation ${id} is stale`);
@@ -222,7 +235,7 @@ export async function adjustRecommendation(id: string, qty: number, reason: stri
     const orgId = ctx.org_id ?? (database.prepare("SELECT id FROM organization LIMIT 1").get() as { id: string } | undefined)?.id ?? "ORG-1";
     const runId = run?.agent_run_id ?? startRun({ org_id: orgId, trigger_type: "goal", trigger_ref: id }, database, false);
     recordAction(runId, { kind: "recommendation_adjusted", subject_ref: id, code_1c: rec.code_1c,
-      summary_ru: `Количество ${rec.code_1c} изменено на ${qty} шт`, rationale_ru: reason.trim(),
+      summary_ru: `Количество ${rec.code_1c} изменено на ${qty} ${unit}`, rationale_ru: reason.trim(),
       sources: [`recommendation:${id}`, `proposal:${proposal.id}`], autonomy: "escalated", result: "done",
       idempotency_key: `recommendation:adjust:${id}:${version + 1}` }, database, false);
     if (!run?.agent_run_id) finishRun(runId, "done", database, false);

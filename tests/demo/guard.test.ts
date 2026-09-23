@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NextRequest } from "next/server";
 import { middleware } from "../../src/middleware";
-import { allowApiRequest, guardedProviderFetch, hasAccess, issueAccessCookie, remainingDailyCalls, reserveLiveCall } from "../../src/server/demo_guard";
+import { allowApiRequest, guardedProviderFetch, hasAccess, issueAccessCookie, remainingDailyCalls, reserveLiveCall, reserveLiveTurn } from "../../src/server/demo_guard";
 
 let temporary: string;
 const previous = { ...process.env };
@@ -62,6 +62,13 @@ describe("demo access", () => {
 });
 
 describe("persistent daily live budget", () => {
+  it("counts one voice unit per user turn, including duplicate reservations", () => {
+    const today = Date.UTC(2026, 8, 23, 12);
+    expect(reserveLiveTurn("turn-one", today)).toEqual({ allowed: true, remaining: 1 });
+    expect(reserveLiveTurn("turn-one", today)).toEqual({ allowed: true, remaining: 1 });
+    expect(reserveLiveTurn("turn-two", today)).toEqual({ allowed: true, remaining: 0 });
+    expect(reserveLiveTurn("turn-three", today)).toEqual({ allowed: false, remaining: 0 });
+  });
   it("denies the third live reservation and resets on the next UTC day", () => {
     const today = Date.UTC(2026, 8, 23, 12);
     expect(remainingDailyCalls(today)).toBe(2);
