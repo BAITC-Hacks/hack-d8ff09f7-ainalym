@@ -127,6 +127,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       }
       if (controller.signal.aborted || sessionGeneration !== generation.current || !turn.current.isCurrent(callEpoch)) return;
       if (output.ok && typeof output.state_version === "number") {
+        window.dispatchEvent(new CustomEvent("ainalym:voice-tool-result", { detail: { request_id: call.call_id, tool: call.name, result: output } }));
         void fetch("/api/state", { cache: "no-store" }).then(async response => {
           if (!response.ok) return;
           const snapshot = await response.json();
