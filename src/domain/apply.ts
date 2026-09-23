@@ -77,7 +77,8 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
       sources: gaps.map((row) => `${row.code_1c}: ${row.reason}`) }, { database, org_id: orgId, run_id: agentRunId });
     applied.tasks.push(task);
     await recordAction(agentRunId, { kind: "escalation", subject_ref: task.id,
-      summary_ru: `Требуются данные для ${gaps.length} SKU ${supplierId}`, rationale_ru: gaps.map((row) => `${row.code_1c}: ${row.reason}`).join("; "),
+      summary_ru: `Требуются данные для ${gaps.length} SKU ${supplierId}`,
+      rationale_ru: `${gaps.slice(0, 5).map((row) => `${row.code_1c}: ${row.reason}`).join("; ")}${gaps.length > 5 ? `; и ещё ${gaps.length - 5} SKU` : ""}`,
       sources: gaps.map((row) => row.code_1c), autonomy: "escalated", result: "needs_owner", idempotency_key: `source-gap:${id}:${supplierId}` });
   }
   await finishRun(agentRunId, "done");
@@ -94,7 +95,10 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
   const recommendations = database.prepare(`SELECT r.id,r.code_1c,r.supplier_id,r.qty_recommended,r.qty_adjusted,r.rationale_ru,r.proposal_id,r.components,s.name,s.unit_cost
     FROM recommendation r JOIN sku s ON s.code_1c=r.code_1c WHERE r.run_id=? ORDER BY r.supplier_id,r.code_1c`).all(run_id) as Rec[];
   const groups = new Map<string, Rec[]>();
+  const staleStock = recommendations.filter((rec) => (JSON.parse(rec.components) as { stock_stale?: boolean }).stock_stale);
+  const staleStockIds = new Set(staleStock.map((rec) => rec.id));
   for (const rec of recommendations) {
+    if (staleStockIds.has(rec.id)) continue;
     if ((rec.qty_adjusted ?? rec.qty_recommended) <= 0) continue;
     groups.set(rec.supplier_id, [...(groups.get(rec.supplier_id) ?? []), rec]);
   }
@@ -125,6 +129,9 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
       if (old) {
         database.prepare("UPDATE proposal SET state='stale',version=version+1 WHERE id=? AND state='needs_review'").run(old.id);
         bumpStateVersion(database);
+        if (run.agent_run_id) await recordAction(run.agent_run_id, { kind: "status_change", subject_ref: old.id,
+          summary_ru: `Предложение ${old.id} устарело: потребность исчезла`, sources: [`proposal:${old.id}`, `run:${run_id}`],
+          autonomy: "auto", idempotency_key: `proposal:stale:${old.id}:${run_id}` });
       }
       continue;
     }
@@ -151,6 +158,9 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
     proposals.push(proposal);
     tasks.push({ id: taskId, proposal_id: id, state: "needs_review" });
     if (run.agent_run_id) {
+      if (old) await recordAction(run.agent_run_id, { kind: "status_change", subject_ref: old.id,
+        summary_ru: `Предложение ${old.id} заменено новой версией ${id}`, sources: [`proposal:${old.id}`, `proposal:${id}`],
+        autonomy: "auto", idempotency_key: `proposal:stale:${old.id}:${run_id}` });
       await recordAction(run.agent_run_id, { kind: "recommendation_prepared", subject_ref: supplierId,
         summary_ru: `Подготовлены рекомендации ${supplierId}: ${lines.length} позиций`, rationale_ru: rationale,
         sources, autonomy: "auto", idempotency_key: `recommendation:${run_id}:${supplierId}` });
@@ -158,6 +168,13 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
         summary_ru: `Нужно решение по заказу ${supplierId}`, rationale_ru: rationale,
         sources, autonomy: "escalated", result: "needs_owner", idempotency_key: `escalation:${id}` });
     }
+  }
+  for (const rec of staleStock) {
+    const title = `Уточнить текущий остаток ${rec.code_1c} (${run_id})`;
+    const existing = database.prepare("SELECT id,state FROM task WHERE title=?").get(title) as { id: string; state: string } | undefined;
+    if (existing) { tasks.push(existing); continue; }
+    tasks.push(await createTask({ title, state: "needs_review", sources: [`recommendation:${rec.id}`, `sku:${rec.code_1c}`, "stock_month"] },
+      { database, org_id: ctx.org_id, run_id: run.agent_run_id ?? undefined }));
   }
   return { proposals, tasks, affected: [...new Set([...recommendations.map((row) => row.code_1c), ...scopedCodes])] };
 }

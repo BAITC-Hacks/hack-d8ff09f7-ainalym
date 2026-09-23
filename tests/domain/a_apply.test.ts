@@ -70,4 +70,14 @@ describe("calculation to supplier approval", () => {
     expect(result.unresolved).toEqual([expect.objectContaining({ code_1c: "CODE-1", reason: expect.stringMatching(/stock source missing/) })]);
     expect(result.tasks).toHaveLength(1);
   });
+
+  it("escalates a provisional worker result instead of proposing its quantity", async () => {
+    const database = fixture();
+    database.prepare("INSERT INTO calc_run (id,scope,started_at,finished_at) VALUES ('RUN-X','{}','2025-01-01','2025-01-01')").run();
+    database.prepare("INSERT INTO recommendation (id,run_id,code_1c,supplier_id,qty_recommended,components) VALUES ('REC-X','RUN-X','CODE-1','SE',10,'{\"stock_stale\":true}')").run();
+    const result = await applyRecommendations("RUN-X", { database });
+    expect(result.proposals).toHaveLength(0);
+    expect(result.tasks).toHaveLength(1);
+    expect(database.prepare("SELECT count(*) AS n FROM proposal").get()).toEqual({ n: 0 });
+  });
 });

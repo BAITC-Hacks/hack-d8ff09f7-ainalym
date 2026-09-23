@@ -49,7 +49,7 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
   if (params.lead_time_days < 1 || params.review_days < 0 || params.growth_cap < 0 || params.outlier.min_units < 0 || sku.moq < 1) throw new RangeError("invalid engine parameters");
   const months = database.prepare("SELECT ym,qty_file,qty_regular,stockout FROM sales_month WHERE code_1c=? AND ym<=? ORDER BY ym")
     .all(code_1c, monthOf(asOf)) as Month[];
-  const sales = database.prepare("SELECT id,doc_no,at,qty,source FROM sales_line WHERE code_1c=? AND at<=? AND (doc_type='Расходная накладная' OR doc_type IS NULL) AND CAST(qty AS REAL)>0 ORDER BY at,id")
+  const sales = database.prepare("SELECT id,doc_no,at,qty,source FROM sales_line WHERE code_1c=? AND at<=? AND (doc_type IN ('Расходная накладная','sales_day','judge_message') OR doc_type IS NULL) ORDER BY at,id")
     .all(code_1c, `${asOf}T23:59:59`) as Sale[];
   if (!months.length && !sales.length) throw new Error(`sales source missing for ${code_1c}`);
   const latestStock = database.prepare("SELECT ym,known FROM stock_month WHERE code_1c=? AND ym<=? ORDER BY ym DESC LIMIT 1")
@@ -81,21 +81,23 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
   const threshold = Decimal.max(medianMonth.times(params.outlier.k_month), p95Doc.times(params.outlier.k_doc), params.outlier.min_units);
   const concentratedThreshold = Decimal.max(medianMonth.times("0.20"), p95Doc.times(params.outlier.k_doc), params.outlier.min_units);
   const byMonth = new Map<string, Decimal>();
+  const worldDelta = new Map<string, Decimal>();
   const excludedFromFile = new Map<string, Decimal>();
   const excluded: { doc_no: string; ym: string; qty: number; threshold: number }[] = [];
   for (const doc of docGroups.values()) {
     const state = outlierState.get(`${doc.doc_no}|${doc.ym}`);
-    if (state === "excluded" || (state !== "kept" && (doc.qty.gt(threshold) || doc.qty.gt(concentratedThreshold)))) {
+    if (state === "excluded" || (state !== "kept" && doc.qty.gt(0) && (doc.qty.gt(threshold) || doc.qty.gt(concentratedThreshold)))) {
       excluded.push({ doc_no: doc.doc_no, ym: doc.ym, qty: numeric(doc.qty), threshold: numeric(doc.qty.gt(threshold) ? threshold : concentratedThreshold) });
       if (doc.source !== "judge") excludedFromFile.set(doc.ym, (excludedFromFile.get(doc.ym) ?? new Decimal(0)).plus(doc.qty));
       continue;
     }
     byMonth.set(doc.ym, (byMonth.get(doc.ym) ?? new Decimal(0)).plus(doc.qty));
+    if (doc.source === "world" || doc.source === "judge") worldDelta.set(doc.ym, (worldDelta.get(doc.ym) ?? new Decimal(0)).plus(doc.qty));
   }
   const series = months.map((month) => ({
     ym: month.ym,
-    qty: month.qty_regular !== null ? dec(month.qty_regular) : month.qty_file !== null
-      ? Decimal.max(0, dec(month.qty_file).minus(excludedFromFile.get(month.ym) ?? 0))
+    qty: month.qty_regular !== null ? Decimal.max(0, dec(month.qty_regular).plus(worldDelta.get(month.ym) ?? 0)) : month.qty_file !== null
+      ? Decimal.max(0, dec(month.qty_file).minus(excludedFromFile.get(month.ym) ?? 0).plus(worldDelta.get(month.ym) ?? 0))
       : (byMonth.get(month.ym) ?? new Decimal(0)),
     stockout: month.stockout === 1,
   }));

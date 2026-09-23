@@ -52,6 +52,18 @@ describe("deterministic replenishment need", () => {
     expect(moreSales.components.base_rate).toBeGreaterThan(lessStock.components.base_rate as number);
   });
 
+  it("includes a new world sales day but excludes its one-off judge document", async () => {
+    const database = fixture();
+    const before = await computeNeed("TEST", params, context(database));
+    database.prepare("INSERT INTO sales_line (code_1c,doc_no,doc_type,at,qty,source) VALUES ('TEST','WORLD-1','sales_day','2025-08-20','10','world')").run();
+    const afterSale = await computeNeed("TEST", params, context(database));
+    expect(afterSale.components.base_rate).toBeGreaterThan(before.components.base_rate as number);
+    database.prepare("INSERT INTO sales_line (code_1c,doc_no,doc_type,at,qty,source) VALUES ('TEST','JUDGE-1','judge_message','2025-08-20','5000','judge')").run();
+    const afterOutlier = await computeNeed("TEST", params, context(database));
+    expect(afterOutlier.components.base_rate).toBe(afterSale.components.base_rate);
+    expect(afterOutlier.components.outliers_excluded).toEqual(expect.arrayContaining([expect.objectContaining({ doc_no: "JUDGE-1" })]));
+  });
+
   it("raises the forecast into the SKU's seasonal peak", async () => {
     const database = fixture({ seasonal: true });
     const quiet = await computeNeed("TEST", params, context(database, "2025-03-01"));

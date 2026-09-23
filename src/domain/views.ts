@@ -34,8 +34,11 @@ export async function queueView(_orgId: string, database: DatabaseSync = db()): 
     if (task.proposal_id && proposalIds.has(task.proposal_id)) continue;
     const linked = task.proposal_id ? database.prepare("SELECT state FROM proposal WHERE id=?").get(task.proposal_id) as { state: string } | undefined : undefined;
     if (linked && linked.state !== "needs_review") continue;
-    items.push({ id: task.id, kind: "task", title: task.title, why: task.next_event_at ? `Следующее событие: ${task.next_event_at}` : "Требуется проверка задачи",
-      sources: [`task:${task.id}`], money_at_stake: null, options: [
+    const action = database.prepare("SELECT rationale_ru,sources FROM agent_action WHERE subject_ref=? AND kind='escalation' ORDER BY at DESC LIMIT 1")
+      .get(task.id) as { rationale_ru: string | null; sources: string } | undefined;
+    items.push({ id: task.id, kind: "task", title: task.title,
+      why: action?.rationale_ru ?? (task.next_event_at ? `Следующее событие: ${task.next_event_at}` : task.title),
+      sources: action ? JSON.parse(action.sources) : [`task:${task.id}`], money_at_stake: null, options: [
         { key: "ready_to_handover", label: "Готово к передаче", effect: "Переведёт задачу в состояние готовности" },
         { key: "preparing", label: "Вернуть в работу", effect: "Вернёт задачу к подготовке" },
       ], href: `/tasks/${task.id}`, since: task.updated_at });
