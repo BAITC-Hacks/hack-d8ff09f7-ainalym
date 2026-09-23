@@ -1,0 +1,21 @@
+# L8 — hosted demo closeout (checkpoint 2026-09-23 09:30 UTC)
+
+BEFORE (`0d9406a`): scaffold only; no container, access guard, deploy path, or public reviewer URL.
+AFTER: `Dockerfile:1,11,17,22,26` builds Node 24 with `npm ci`, initializes the mounted `/data/ainalym.db` via ETL `--db`, starts Next, and checks `/api/health`.
+AFTER: `.dockerignore:1` excludes local dependencies, build cache, data, `.env*`, and evidence. `scripts/start_prod.sh:1` builds in a clean temporary copy, then starts with shell runtime env and persistent local data.
+AFTER: `src/server/demo_guard.ts:24,57,65,89,101,130` signs a seven-day cookie, limits 60 API requests/min/IP and five code attempts/min/IP, persists a 500-call default daily UTC budget in SQLite, and exposes a per-request provider fetch wrapper.
+AFTER: `src/middleware.ts:15,30,35` provides the RU/EN code page, access cookie, trusted ingress IP selection, API throttling, and honest 503 on exhausted AI routes. `/api/health` continues to the app route.
+AFTER: `scripts/deploy/hetzner.sh:4,47,94,102` builds standalone on the Mac without `.env*`, uploads a release, transfers the owner-built environment at mode 600, runs Node 24/systemd/Caddy, checks HTTPS health, and rolls back on failure. `scripts/deploy/tunnel.sh:1` is the Mac fallback; `scripts/deploy/first_etl.sh:1` initializes its host volume.
+AFTER: `docs/DEMO_ACCESS.md:1` gives the form text, env handover, restart path, and README «Демо-доступ» copy. Tests: `tests/demo/build.test.ts`, `guard.test.ts`, `database-path.test.ts`.
+
+Runtime env names: `AINALYM_MODE=live`, `DATABASE_PATH`, `DEMO_ACCESS_CODE`, `DEMO_DAILY_LIVE_CALLS`, `OPENAI_API_KEY`, `AI_GATEWAY_API_KEY`; optional `TYPESAFE_API_KEY`, `AI_PROVIDER`, `OPENAI_MODEL`. Local deploy input names: `AINALYM_DEPLOY_ENV_FILE`, `AINALYM_HOST_SSH_KEY`, optional `AINALYM_DOMAIN`. No values belong in git or this file.
+Form fields for owner to paste: URL `<HTTPS DEMO URL>`; access code `<DEMO ACCESS CODE>`; local-live key `<OWNER-CREATED RESTRICTED PROJECT KEY, ≈ $20 LIMIT>`; description «Live AI on a synthetic company; server-held keys; offline mode also runs the full scenario locally per README».
+
+Evidence: `docs/evidence/demo/local-container.md`. `docker build -t ainalym-demo .` GREEN; first-start container ETL produced 3,909 SKUs and 248,915 sales lines on `/data`; Docker health `healthy`; RU/EN code page 307→200, form 303, cookie 200; 61 requests yielded one 429. Clean local standalone and tunnel-start app processes returned health 200 with the same 3,909 SKUs. `npm run check -- demo` passed=9 failed=0; `npm run build`, `npx tsc --noEmit`, `sh -n` GREEN.
+Isolated L1 route probe (pending merge): removing a health-route import from middleware restored route dispatch. With required `/data/ainalym.db`, L1 `dbPath()` redirected app reads to an empty local file: example returned 0 recommendations; diagnostic `/data/demo.db` returned 560 SKUs and 291 recommendations. `organization` count 0 caused `/api/today` HTTP 500. L1 reset launches ETL without `--db`. These are app-lane fixes before the exact offline container scenario can pass.
+Daily cap is proven in isolation, not globally: L3's direct/SDK calls have not adopted `guardedProviderFetch`; L5 has some route reservations. The root must wire every live provider request and verify the UI's unavailable/offline state. External Hetzner HTTPS, real-key Jev decision, mobile-data access, and counter decrement remain unverified; no public URL or production key was used in this lane.
+The requested full-branch secret-pattern grep still names `.env.example` and `package-lock.json`, both already matched at base; the scoped L8 files add no match. The installed `xlsx` dependency reports a high-severity audit advisory; only partner-provided exports are parsed in the tested path.
+
+Next route: L1 honors `DATABASE_PATH`, seeds `organization`, and passes `--db` on reset; merge its route floor, rebuild and repeat `POST /api/demo/example` plus `GET /api/today` with `/data/ainalym.db`. Root then wires L3/L5 fetch budgeting, syncs the README demo wording, and performs the approved live HTTPS/mobile gate before handing form values to the owner.
+Gate: RED
+tip: c121750
