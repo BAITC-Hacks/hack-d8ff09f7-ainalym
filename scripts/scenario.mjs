@@ -94,6 +94,7 @@ try {
     report("M1", "Товар в пути +100 уменьшает чистую потребность до ограничения нулём", Math.abs(drop - 100) < 0.01,
       `Δ=${drop.toFixed(3)}, заказ ${before.need}→${after.need} из-за достаточного запаса`);
     d.prepare("DELETE FROM stock_month WHERE code_1c IN (SELECT code_1c FROM sku WHERE supplier_id='IEK')").run();
+    d.prepare("UPDATE sku SET on_hand_qty=NULL,on_hand_as_of=NULL WHERE supplier_id='IEK'").run();
     let named = false;
     try { await calculate(d, "intransit"); } catch (error) { named = /stock source missing/.test(String(error)); }
     report("M1-source", "Отсутствующий обязательный источник назван", named);

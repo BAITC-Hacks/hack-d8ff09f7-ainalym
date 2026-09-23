@@ -64,8 +64,8 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     .get(code_1c, monthOf(asOf)) as { ym: string; opening_qty: string | null } | undefined;
   const snapshotAge = sku.on_hand_as_of ? (Date.parse(asOf) - Date.parse(sku.on_hand_as_of.slice(0, 10))) / 86_400_000 : Infinity;
   const freshOnHand = sku.on_hand_qty !== null && sku.on_hand_as_of !== null && snapshotAge >= 0 && snapshotAge <= 31;
-  if (!stock || stock.opening_qty === null) throw new Error(`stock source missing for ${code_1c}`);
-  const stockMonth = stock.ym;
+  if ((!stock || stock.opening_qty === null) && !freshOnHand) throw new Error(`stock source missing for ${code_1c}`);
+  const stockMonth = stock?.ym ?? monthOf(sku.on_hand_as_of!);
   const stockStale = !freshOnHand && (!latestStock || latestStock.known !== 1 || latestStock.ym !== stockMonth || monthGap(monthOf(asOf), stockMonth) > 1);
   const transitRows = database.prepare("SELECT po_ref,qty,expected_at,source_file FROM in_transit WHERE code_1c=?").all(code_1c) as
     { po_ref: string; qty: string; expected_at: string | null; source_file: string | null }[];
