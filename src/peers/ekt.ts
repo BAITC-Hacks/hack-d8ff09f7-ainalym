@@ -13,12 +13,17 @@ export type EktProduct = {
 export type EktPage = { page: number; per_page: number; count: number; items: EktProduct[]; source: EktSource; as_of: string };
 export type EktSnapshot = { fetched_at: string | null; complete: boolean; pages_fetched: number; products: Record<string, EktProduct> };
 export type EktMap = Record<string, { id: string; match_kind: string }>;
+export type SkuImages = Record<string, { path: string; source: string; kind: string; fetched_at: string }>;
 
 const base = "https://ekt.kz/api/products";
 const userAgent = "Ainalym-HackAlem/1.0";
 let nextRequestAt = 0;
+let requestCount = 0;
+let requestBudget = Infinity;
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const ektConfigured = () => Boolean(process.env.EKT_API_USER && process.env.EKT_API_PASSWORD);
+export const ektRequestCount = () => requestCount;
+export function setEktRequestBudget(maxRequests: number): void { requestBudget = maxRequests; }
 
 function fileJson<T>(name: string, fallback: T, path?: string): T {
   try { return JSON.parse(readFileSync(path || join(process.cwd(), "fixtures", name), "utf8")) as T; }
@@ -26,6 +31,7 @@ function fileJson<T>(name: string, fallback: T, path?: string): T {
 }
 let snapshotCache: { mtime: number; value: EktSnapshot } | null = null;
 let mapCache: { mtime: number; value: EktMap } | null = null;
+let imageCache: { mtime: number; value: SkuImages } | null = null;
 export function loadSnapshot(path?: string): EktSnapshot {
   const file = path || join(process.cwd(), "fixtures/ekt_snapshot.json");
   let mtime = 0; try { mtime = statSync(file).mtimeMs; } catch { /* missing snapshot */ }
@@ -41,6 +47,13 @@ export function loadMap(): EktMap {
   if (mapCache?.mtime === mtime) return mapCache.value;
   const value = fileJson<EktMap>("ekt_map.json", {});
   mapCache = { mtime, value }; return value;
+}
+export function loadSkuImages(): SkuImages {
+  const file = join(process.cwd(), "fixtures/sku_images.json");
+  let mtime = 0; try { mtime = statSync(file).mtimeMs; } catch { /* missing images */ }
+  if (imageCache?.mtime === mtime) return imageCache.value;
+  const value = fileJson<SkuImages>("sku_images.json", {});
+  imageCache = { mtime, value }; return value;
 }
 
 export function normalizeProduct(raw: Record<string, unknown>, source: EktSource, as_of: string): EktProduct {
@@ -67,11 +80,14 @@ async function request(path: string, budgetMs = 8000): Promise<unknown> {
   if (!ektConfigured()) throw new Error("EKT_API_UNCONFIGURED");
   const deadline = Date.now() + budgetMs;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const wait = Math.max(0, nextRequestAt - Date.now());
+    const slot = Math.max(Date.now(), nextRequestAt);
+    nextRequestAt = slot + 500;
+    const wait = Math.max(0, slot - Date.now());
     if (wait) await sleep(wait);
-    nextRequestAt = Date.now() + 500;
     const remaining = deadline - Date.now();
     if (remaining <= 0) throw new Error("EKT_API_TIMEOUT");
+    if (requestCount >= requestBudget) throw new Error("EKT_API_REQUEST_CAP");
+    requestCount++;
     const authorization = Buffer.from(`${process.env.EKT_API_USER}:${process.env.EKT_API_PASSWORD}`).toString("base64");
     const response = await fetch(`${base}${path}`, { headers: { "User-Agent": userAgent, Authorization: `Basic ${authorization}` }, signal: AbortSignal.timeout(Math.min(8000, remaining)), cache: "no-store" });
     if (response.status >= 500 && attempt === 0) continue;
@@ -98,9 +114,17 @@ export async function fetchDetail(id: string | number, budgetMs = 8000): Promise
   return normalizeProduct(raw, "ekt_api_live", as_of);
 }
 
+const articleIndexes = new WeakMap<EktSnapshot, Map<string, EktProduct>>();
 export function findByArticle(article: string, snapshot = loadSnapshot()): EktProduct | null {
-  const key = article.trim().toLocaleLowerCase();
-  return Object.values(snapshot.products).find(p => p.article?.toLocaleLowerCase() === key || p.supplier_article?.toLocaleLowerCase() === key) || null;
+  let index = articleIndexes.get(snapshot);
+  if (!index) {
+    index = new Map();
+    for (const product of Object.values(snapshot.products)) for (const value of [product.article, product.supplier_article]) {
+      if (value) index.set(value.trim().toLocaleLowerCase(), product);
+    }
+    articleIndexes.set(snapshot, index);
+  }
+  return index.get(article.trim().toLocaleLowerCase()) || null;
 }
 
 export async function ektStatus(): Promise<{ configured: boolean; live_reachable: boolean; last_snapshot_at: string | null; products: number; mapped_skus: number; source: EktSource; as_of: string | null; label: string }> {
