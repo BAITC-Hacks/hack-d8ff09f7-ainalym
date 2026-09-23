@@ -1,4 +1,4 @@
-Done: providers, catalog, replay, decisions API, borderline outlier interpretation, event worker and scheduled checks.
-Undone: drafting, worker/guardrail tests, live L1/L2 integration, optional cut-order items.
-Resumable: worker uses L1 ledger and L2 apply/events seams; rerun gates after those land on main.
-SHA: ccdc4f4 (previous feature commit; this checkpoint commit follows).
+Done: providers, catalog, replay, decisions API, event worker, RU supplier email and run summary artifacts.
+Undone: worker/guardrail tests, live L1/L2 integration, optional cut-order items.
+Resumable: artifacts persist as markdown + JSON under ignored data/artifacts; drafting requires OPENAI_API_KEY.
+SHA: ddbe6cb (previous feature commit; this checkpoint commit follows).
