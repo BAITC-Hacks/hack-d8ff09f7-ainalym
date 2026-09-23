@@ -82,7 +82,7 @@
 .draft { border-top: 1px solid var(--v2-line); }
 .draft summary { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 12px 0; cursor: pointer; list-style: none; font: var(--v2-body); }
 .draft summary::-webkit-details-marker { display: none; }
-.draft summary span:last-child { font: 500 13px/20px var(--v2-font); color: var(--v2-ink); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+.draft summary > span:last-child { font: 500 13px/20px var(--v2-font); color: var(--v2-ink); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
 .fields { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; margin: 4px 0 12px; font: var(--v2-meta); }
 .fields dt { color: var(--v2-muted); } .fields dd { margin: 0; color: var(--v2-ink); overflow-wrap: anywhere; }
 .draft .sheetWrap { max-height: 320px; border: 1px solid var(--v2-line); border-radius: var(--v2-radius-sm); margin-bottom: 12px; }
