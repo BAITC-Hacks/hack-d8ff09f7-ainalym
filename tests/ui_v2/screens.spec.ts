@@ -19,7 +19,7 @@ test.afterEach(async ({ page }) => { await page.unrouteAll({ behavior: "ignoreEr
 
 test.describe("Today / Pulse", () => {
   test("populated", async ({ page }) => {
-    await page.goto("/v2/today");
+    await page.goto("/today");
     await expect(page.getByRole("heading", { level: 1, name: "Сегодня" })).toBeVisible();
     await expect(page.getByText("Стоимость запаса")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText("Требует вашего решения")).toBeVisible();
@@ -30,7 +30,7 @@ test.describe("Today / Pulse", () => {
   test("empty", async ({ page }) => {
     await page.route("**/api/queue", r => r.fulfill({ json: { ok: true, items: [], empty_reason: "Расчёт ещё не запускался — агенты ждут первого события.", state_version: 1 } }));
     await page.route("**/api/today", async r => { const j = await (await r.fetch()).json(); r.fulfill({ json: { ...j, decision: null, lead: "Решений нет — агенты работают.", queue_count: 0 } }); });
-    await page.goto("/v2/today");
+    await page.goto("/today");
     await expect(page.getByText("Решений нет — агенты работают")).toBeVisible();
     await shot(page, "today_empty", vpName(page));
   });
@@ -38,14 +38,14 @@ test.describe("Today / Pulse", () => {
     expectBad = true;
     await page.route("**/api/today", r => r.fulfill({ status: 503, json: { ok: false, code: "provider_unavailable", message: "База данных недоступна: ETL не выполнен." } }));
     await page.route("**/api/queue", r => r.fulfill({ status: 503, json: { ok: false, code: "provider_unavailable", message: "База данных недоступна: ETL не выполнен." } }));
-    await page.goto("/v2/today");
+    await page.goto("/today");
     await expect(page.getByRole("status").filter({ hasText: "Раздел недоступен" }).first()).toBeVisible();
     await shot(page, "today_unavailable", vpName(page));
   });
   test("stale 409 on approve", async ({ page }) => {
     expectBad = true;
     await page.route("**/api/proposals/*/approve", r => r.fulfill({ status: 409, json: { ok: false, code: "stale", message: "proposal is stale" } }));
-    await page.goto("/v2/today");
+    await page.goto("/today");
     const card = page.getByRole("article").filter({ has: page.getByRole("button", { name: "Подготовить заказ" }) }).first();
     const approve = card.getByRole("button", { name: "Подготовить заказ" });
     await expect(approve).toBeEnabled({ timeout: 40_000 });
@@ -54,7 +54,7 @@ test.describe("Today / Pulse", () => {
     await shot(page, "today_stale409", vpName(page));
   });
   test("offline", async ({ page, context }) => {
-    await page.goto("/v2/today");
+    await page.goto("/today");
     await expect(page.getByRole("article").first()).toBeVisible({ timeout: 40_000 });
     await context.setOffline(true);
     await page.evaluate(() => window.dispatchEvent(new Event("offline")));
@@ -66,7 +66,7 @@ test.describe("Today / Pulse", () => {
 
 test.describe("Replenishment", () => {
   test("populated + expanded rationale + keyboard", async ({ page }) => {
-    await page.goto("/v2/replenishment?supplier=SE");
+    await page.goto("/replenishment?supplier=SE");
     await expect(page.getByRole("heading", { level: 1, name: "Пополнение" })).toBeVisible();
     await expect(page.locator("tr[role=button]").first()).toBeVisible({ timeout: 20_000 });
     await expect(page.locator("tr[role=button]").first().locator("td").nth(7)).not.toContainText("не задана", { timeout: 15_000 });
@@ -90,21 +90,21 @@ test.describe("Replenishment", () => {
   });
   test("empty (no run)", async ({ page }) => {
     await page.route("**/api/recommendations", r => r.fulfill({ json: { ok: true, ai: "rules", external: "export_only", groups: [], state_version: 1 } }));
-    await page.goto("/v2/replenishment");
+    await page.goto("/replenishment");
     await expect(page.getByText("Расчёт ещё не запускался")).toBeVisible();
     await shot(page, "replenishment_empty", vpName(page));
   });
   test("unavailable", async ({ page }) => {
     expectBad = true;
     await page.route("**/api/recommendations", r => r.fulfill({ status: 503, json: { ok: false, code: "provider_unavailable", message: "База данных недоступна." } }));
-    await page.goto("/v2/replenishment");
+    await page.goto("/replenishment");
     await expect(page.getByRole("status").filter({ hasText: "Раздел недоступен" })).toBeVisible();
     await shot(page, "replenishment_unavailable", vpName(page));
   });
   test("stale 409 on prepare order", async ({ page }) => {
     expectBad = true;
     await page.route("**/api/proposals/*/approve", r => r.fulfill({ status: 409, json: { ok: false, code: "stale", message: "proposal is stale" } }));
-    await page.goto("/v2/replenishment?supplier=SE");
+    await page.goto("/replenishment?supplier=SE");
     const btn = page.getByRole("button", { name: /Подготовить заказ SE/ });
     await expect(btn).toBeEnabled({ timeout: 20_000 });
     await btn.click();

@@ -7,10 +7,10 @@ import { useApi, useApiSync } from "@/components/shell/api";
 import styles from "./shell.module.css";
 
 const NAV = [
-  { href: "/v2/today", label: "Сегодня", icon: House, count: "queue" as const },
-  { href: "/v2/replenishment", label: "Пополнение", icon: Package, count: "recs" as const },
-  { href: "/v2/skus", label: "Товары", icon: Boxes, count: null },
-  { href: "/v2/money", label: "Деньги", icon: Wallet, count: null },
+  { href: "/today", label: "Сегодня", icon: House, count: "queue" as const },
+  { href: "/replenishment", label: "Пополнение", icon: Package, count: "recs" as const },
+  { href: "/skus", label: "Товары", icon: Boxes, count: null },
+  { href: "/money", label: "Деньги", icon: Wallet, count: null },
 ];
 
 type Today = { queue_count: number; pulse?: { stockout_risk?: { count?: number } } };

@@ -13,7 +13,7 @@ async function getJson(request: import("@playwright/test").APIRequestContext, ur
 
 test.describe("Replenishment proof", () => {
   test("adjust draft → real approve with adjustments → ledger row", async ({ page, request }) => {
-    await page.goto("/v2/replenishment?supplier=SE");
+    await page.goto("/replenishment?supplier=SE");
     const first = page.locator("tr[role=button]").first();
     await expect(first).toBeVisible({ timeout: 20_000 });
     const code = (await first.locator("td").nth(1).innerText()).split("\n")[1].split(" · ")[0].trim();
