@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { db, resetInstance } from "../../src/db/client";
+import { DatabaseSync } from "node:sqlite";
+import { db, migrate, resetInstance } from "../../src/db/client";
 import { applyRecommendations, runCalculation } from "../../src/domain/apply";
 import { queueView } from "../../src/domain/views";
 import { createTask } from "../../src/domain/tasks";
@@ -12,6 +13,11 @@ function fixture() {
   resetInstance();
   process.env.DATABASE_PATH = ":memory:";
   const database = db();
+  seed(database);
+  return database;
+}
+
+function seed(database: DatabaseSync) {
   database.prepare("INSERT INTO organization (id,name,payload) VALUES ('ORG-1','Тест','{}')").run();
   database.prepare("INSERT INTO supplier (id,name,lead_time_days) VALUES ('SE','SE',50)").run();
   database.prepare("INSERT INTO sku (code_1c,supplier_id,name,unit_cost) VALUES ('SE-1','SE','Тест','1.00')").run();
@@ -20,7 +26,6 @@ function fixture() {
     database.prepare("INSERT INTO sales_month (code_1c,ym,qty_file) VALUES ('SE-1',?,'30')").run(ym);
   }
   database.prepare("INSERT INTO stock_month (code_1c,ym,opening_qty) VALUES ('SE-1','2024-12','0')").run();
-  return database;
 }
 
 describe("agent loop ledger", () => {
@@ -46,5 +51,17 @@ describe("agent loop ledger", () => {
     expect(database.prepare("SELECT kind,sources FROM agent_action WHERE subject_ref=?").get(first.proposals[0])).toEqual(expect.objectContaining({ kind: "escalation" }));
     await runScheduledChecks("2025-01-02T00:00:00Z", { database, org_id: "ORG-1" });
     expect(database.prepare("SELECT count(*) AS n FROM agent_action").get()).toEqual({ n: count });
+  });
+
+  it("writes ledger actions to the calculation database", async () => {
+    const singleton = fixture();
+    const isolated = new DatabaseSync(":memory:");
+    try {
+      migrate(isolated);
+      seed(isolated);
+      await runCalculation({}, {}, { database: isolated, org_id: "ORG-1", as_of: "2025-01-01" });
+      expect((isolated.prepare("SELECT count(*) AS n FROM agent_action").get() as { n: number }).n).toBeGreaterThan(0);
+      expect(singleton.prepare("SELECT count(*) AS n FROM agent_action").get()).toEqual({ n: 0 });
+    } finally { isolated.close(); }
   });
 });
