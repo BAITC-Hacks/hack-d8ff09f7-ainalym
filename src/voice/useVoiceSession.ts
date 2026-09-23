@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { VoiceTurnGate } from "./transport";
 
 export type VoiceState = "idle" | "connecting" | "listening" | "checking" | "preparing" | "waiting_review" | "ended" | "unavailable";
@@ -13,6 +14,7 @@ type RealtimeEvent = { type: string; transcript?: string; response?: { id?: stri
 type SessionResponse = { client_secret?: string; expires_at?: number };
 
 export function useVoiceSession(scope: VoiceScope): VoiceSession {
+  const router = useRouter();
   const [state, setState] = useState<VoiceState>("idle");
   const [reason, setReason] = useState<string>();
   const [captions, setCaptions] = useState<Caption[]>([]);
@@ -101,15 +103,19 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       }
       if (controller.signal.aborted || sessionGeneration !== generation.current || !turn.current.isCurrent(callEpoch)) return;
       if (output.ok && typeof output.state_version === "number") {
-        window.dispatchEvent(new CustomEvent("ainalym:state-changed", { detail: { state_version: output.state_version } }));
-        void fetch("/api/state", { cache: "no-store" }).catch(() => undefined);
+        void fetch("/api/state", { cache: "no-store" }).then(async response => {
+          if (!response.ok) return;
+          const snapshot = await response.json();
+          window.dispatchEvent(new CustomEvent("ainalym:state-changed", { detail: snapshot }));
+          router.refresh();
+        }).catch(() => undefined);
       }
       if (call.name === "recommend_for" && output.ok) setState("waiting_review");
       else setState("listening");
       send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: call.call_id, output: JSON.stringify(output) } });
     }
     if (sessionGeneration === generation.current && turn.current.isCurrent(callEpoch)) send({ type: "response.create", response: { tool_choice: "none" } });
-  }, [send]);
+  }, [router, send]);
 
   const start = useCallback(async () => {
     if (peer.current || !scopeRef.current.org_id) return;

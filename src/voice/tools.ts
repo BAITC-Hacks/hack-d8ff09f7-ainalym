@@ -22,6 +22,10 @@ function init() {
     request_id TEXT PRIMARY KEY, tool TEXT NOT NULL, scope_json TEXT NOT NULL, args_json TEXT NOT NULL,
     expires_at INTEGER NOT NULL, state TEXT NOT NULL, result_json TEXT
   )`);
+  db().exec(`CREATE TABLE IF NOT EXISTS voice_change_cursor (
+    org_id TEXT NOT NULL, version INTEGER NOT NULL, last_rowid INTEGER NOT NULL,
+    PRIMARY KEY (org_id, version)
+  )`);
 }
 
 function scopeError(scope: ToolScope, name: ToolName, args: Record<string, unknown>): { code: string; message: string; status: number } | null {
@@ -54,8 +58,11 @@ async function run(name: ToolName, call: ToolCall, origin: string): Promise<{ st
     const since = call.args.since;
     if (since !== undefined && (!Number.isInteger(since) || Number(since) < 0)) return err("invalid", "since must be a state version", 400, version);
     if (typeof since === "number" && since > version) return err("invalid", "since is newer than current state", 400, version);
-    if (typeof since === "number" && since < version) return err("unsupported_since", "Action history cannot be filtered by this state version", 422, version);
-    const rows = since === version ? [] : d.prepare("SELECT id, kind, subject_ref, summary_ru FROM agent_action WHERE org_id = ? ORDER BY at DESC LIMIT 20").all(call.scope.org_id) as { id: string; kind: string; subject_ref: string | null; summary_ru: string }[];
+    const cursor = typeof since === "number" && since < version ? d.prepare("SELECT last_rowid FROM voice_change_cursor WHERE org_id = ? AND version = ?").get(call.scope.org_id, since) as { last_rowid: number } | undefined : undefined;
+    if (typeof since === "number" && since < version && !cursor) return err("unsupported_since", "No saved cursor for that state version", 422, version);
+    const rows = since === version ? [] : typeof since === "number" ? d.prepare("SELECT id, kind, subject_ref, summary_ru FROM agent_action WHERE org_id = ? AND rowid > ? ORDER BY rowid DESC LIMIT 20").all(call.scope.org_id, cursor!.last_rowid) as { id: string; kind: string; subject_ref: string | null; summary_ru: string }[] : d.prepare("SELECT id, kind, subject_ref, summary_ru FROM agent_action WHERE org_id = ? ORDER BY rowid DESC LIMIT 20").all(call.scope.org_id) as { id: string; kind: string; subject_ref: string | null; summary_ru: string }[];
+    const latest = d.prepare("SELECT COALESCE(MAX(rowid), 0) AS n FROM agent_action WHERE org_id = ?").get(call.scope.org_id) as { n: number };
+    d.prepare("INSERT OR IGNORE INTO voice_change_cursor (org_id, version, last_rowid) VALUES (?, ?, ?)").run(call.scope.org_id, version, latest.n);
     const changes = rows.map(row => ({ object: row.kind, id: row.subject_ref ?? row.id, field: "summary_ru", before: null, after: row.summary_ru }));
     const summary_ru = rows.length ? rows.map(row => row.summary_ru).join("; ") : "Подтверждённых действий агента пока нет.";
     return { status: 200, result: { ok: true, summary_ru, changes, state_version: version, labels } };

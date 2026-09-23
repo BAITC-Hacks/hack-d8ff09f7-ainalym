@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { db, resetInstance } from "../../src/db/client";
+import { bumpStateVersion, db, resetInstance } from "../../src/db/client";
 import { executeVoiceTool } from "../../src/voice/tools";
 
 const priorPath = process.env.DATABASE_PATH;
@@ -24,6 +24,13 @@ describe("voice tool bridge", () => {
     expect(response.status).toBe(200);
     expect(response.result.summary_ru).toBe("Расчёт сохранён");
     expect(response.result.changes).toHaveLength(1);
+    const since = response.result.state_version;
+    db().prepare("INSERT INTO agent_action (id, run_id, org_id, kind, summary_ru, at) VALUES (?, ?, ?, ?, ?, ?)")
+      .run("AR-2", "RUN-1", "ORG-1", "order_drafted", "Черновик создан", "2026-09-23T01:00:00Z");
+    bumpStateVersion();
+    const next = await executeVoiceTool("what_changed", { request_id: "call-status-next", scope: { org_id: "ORG-1" }, args: { since } });
+    expect(next.result.summary_ru).toBe("Черновик создан");
+    expect(next.result.changes).toHaveLength(1);
   });
 
   it("executes a duplicate transport delivery only once", async () => {
