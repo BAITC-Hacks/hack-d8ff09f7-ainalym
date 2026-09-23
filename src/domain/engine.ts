@@ -21,6 +21,9 @@ function dec(value: string | number | null | undefined): Decimal { return new De
 function numeric(value: Decimal): number { return +value.toString(); }
 function monthOf(day: string): string { return day.slice(0, 7); }
 function monthIndex(ym: string): number { return parseInt(ym.slice(5, 7), 10); }
+function monthGap(later: string, earlier: string): number {
+  return (parseInt(later.slice(0, 4), 10) - parseInt(earlier.slice(0, 4), 10)) * 12 + monthIndex(later) - monthIndex(earlier);
+}
 function median(values: Decimal[]): Decimal {
   if (!values.length) return new Decimal(0);
   const sorted = [...values].sort((a, b) => a.comparedTo(b));
@@ -57,7 +60,7 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
   const stock = database.prepare("SELECT ym,opening_qty FROM stock_month WHERE code_1c=? AND ym<=? AND known=1 ORDER BY ym DESC LIMIT 1")
     .get(code_1c, monthOf(asOf)) as { ym: string; opening_qty: string | null } | undefined;
   if (!stock || stock.opening_qty === null) throw new Error(`stock source missing for ${code_1c}`);
-  const stockStale = !latestStock || latestStock.known !== 1 || latestStock.ym !== stock.ym;
+  const stockStale = !latestStock || latestStock.known !== 1 || latestStock.ym !== stock.ym || monthGap(monthOf(asOf), stock.ym) > 1;
   const transitRows = database.prepare("SELECT po_ref,qty,expected_at,source_file FROM in_transit WHERE code_1c=?").all(code_1c) as
     { po_ref: string; qty: string; expected_at: string | null; source_file: string | null }[];
   const transit = transitRows.reduce((sum, row) => sum.plus(row.qty), new Decimal(0));

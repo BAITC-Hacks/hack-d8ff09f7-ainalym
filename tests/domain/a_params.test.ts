@@ -29,4 +29,15 @@ describe("policy proposals", () => {
     await expect(decideProposal(proposal.id, 1, "approve", [], { database })).rejects.toMatchObject({ status: 409 });
     expect(paramsForSupplier("SE", database).review_days).toBe(30);
   });
+
+  it("binds an owner's outlier decision and recomputes the affected SKU", async () => {
+    const database = fixture();
+    database.prepare("INSERT INTO sku (code_1c,supplier_id,name) VALUES ('SE-1','SE','Тест')").run();
+    database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty) VALUES ('SE-1','DOC-X','2025-01-15','5000')").run();
+    database.prepare("INSERT INTO proposal (id,kind,subject_type,subject_id,payload,rationale_ru,sources,created_at) VALUES ('PR-X','outlier_review','sku','SE-1',?,?,?,'2025-01-16')")
+      .run(JSON.stringify({ code_1c: "SE-1", doc_no: "DOC-X", ym: "2025-01", state: "kept" }), "Проверить разовый документ", '["sales_line:DOC-X"]');
+    const result = await decideProposal("PR-X", 1, "approve", [], { database });
+    expect(result.recompute_run_id).toMatch(/^RUN-/);
+    expect(database.prepare("SELECT decision,state FROM outlier_doc WHERE code_1c='SE-1'").get()).toEqual({ decision: "owner", state: "kept" });
+  });
 });

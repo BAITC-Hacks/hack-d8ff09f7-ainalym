@@ -93,6 +93,12 @@ describe("deterministic replenishment need", () => {
     await expect(computeNeed("TEST", params, context(database))).rejects.toThrow(/stock/i);
   });
 
+  it("marks an old stock snapshot provisional", async () => {
+    const result = await computeNeed("TEST", params, context(fixture(), "2025-09-23"));
+    expect(result.components.stock_stale).toBe(true);
+    expect(result.rationale_ru).toContain("текущий остаток неизвестен");
+  });
+
   it("records all inputs and arithmetic in components", async () => {
     const result = await computeNeed("TEST", params, context(fixture()));
     expect(result.components).toEqual(expect.objectContaining({ on_hand: 20, in_transit: 0, moq: 1 }));
