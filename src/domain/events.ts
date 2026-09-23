@@ -38,9 +38,12 @@ export async function applyWorldEvent(event: WorldEventRow): Promise<ApplyEventR
   const actions: ActionInput[] = [];
   const escalations: ActionInput[] = [];
   const affected = new Set<string>();
+  const actionKeys = new Set<string>();
   const add = (kind: string, code: string, summary_ru: string) => {
     affected.add(code);
-    actions.push({ kind, code_1c: code, subject_ref: code, summary_ru, world_event_id: event.id, idempotency_key: `${event.id}:${kind}:${code}` });
+    const key = `${event.id}:${kind}:${code}`;
+    if (!actionKeys.has(key)) actions.push({ kind, code_1c: code, subject_ref: code, summary_ru, world_event_id: event.id, idempotency_key: key });
+    actionKeys.add(key);
   };
   try {
     withTx(tx => {
@@ -73,10 +76,11 @@ export async function applyWorldEvent(event: WorldEventRow): Promise<ApplyEventR
             const code = codeFor(item, event);
             requireSku(tx, code);
             const ym = String(item.ym || month(String(item.at || event.at || new Date().toISOString())));
-            const known = item.opening_qty != null ? 1 : 0;
+            const opening = item.opening_qty ?? item.stock ?? item.qty;
+            const known = opening != null ? 1 : 0;
             tx.prepare(`INSERT INTO stock_month(code_1c,ym,opening_qty,known) VALUES (?,?,?,?)
               ON CONFLICT(code_1c,ym) DO UPDATE SET opening_qty=excluded.opening_qty,known=excluded.known`)
-              .run(code, ym, known ? asQty(item.opening_qty) : null, known);
+              .run(code, ym, known ? asQty(opening) : null, known);
             add("recompute", code, "Обновлён остаток склада; требуется пересчёт SKU");
           }
           break;
@@ -87,7 +91,8 @@ export async function applyWorldEvent(event: WorldEventRow): Promise<ApplyEventR
             requireSku(tx, code);
             const po_ref = String(item.po_ref || item.purchase_order || event.id);
             const old = tx.prepare("SELECT id,qty FROM in_transit WHERE code_1c=? AND po_ref=? ORDER BY id DESC LIMIT 1").get(code, po_ref) as { id: number; qty: string } | undefined;
-            const qty = item.delta != null ? new Decimal(old?.qty || 0).plus(String(item.delta)).toString() : asQty(item.qty);
+            const delta = item.delta ?? item.qty_delta;
+            const qty = delta != null ? new Decimal(old?.qty || 0).plus(String(delta)).toString() : asQty(item.qty);
             if (new Decimal(qty).isNegative()) throw new Error("invalid_quantity");
             if (old) tx.prepare("UPDATE in_transit SET qty=?,expected_at=? WHERE id=?").run(qty, item.expected_at ? String(item.expected_at) : null, old.id);
             else tx.prepare("INSERT INTO in_transit(code_1c,po_ref,qty,expected_at,source_file) VALUES (?,?,?,?,?)")

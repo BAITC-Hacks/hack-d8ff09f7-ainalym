@@ -73,6 +73,12 @@ describe("purchase approvals and obligations", () => {
     syncOrderObligations("PO-1");
     expect(one("SELECT state FROM obligation WHERE kind='supplier_prepayment'")?.state).toBe("settled");
   });
+  it("keeps an open prepayment due date stable on a repeated sync", () => {
+    approveOrder("PO-1", 2);
+    q("UPDATE obligation SET due_at='2026-09-23T12:00:00Z' WHERE kind='supplier_prepayment'");
+    syncOrderObligations("PO-1");
+    expect(one("SELECT due_at FROM obligation WHERE kind='supplier_prepayment'")?.due_at).toBe("2026-09-23T12:00:00Z");
+  });
 });
 
 describe("money derived from ledger rows", () => {
@@ -116,6 +122,16 @@ describe("world events and SKU drilldown", () => {
     expect((await applyWorldEvent(e)).affected_codes).toEqual(["SE-1"]);
     expect((await applyWorldEvent(e)).applied).toBe(false);
     expect(one("SELECT count(*) AS n FROM sales_line WHERE code_1c='SE-1'")?.n).toBe(1);
+  });
+  it("records one action for multiple lines of the same SKU", async () => {
+    const e = event("WE-LINES", "sales_day", "SE-1", { lines: [{ qty: 2, at: "2026-09-23" }, { qty: 3, at: "2026-09-23" }] });
+    const result = await applyWorldEvent(e);
+    expect(result.actions).toHaveLength(1);
+    expect(one("SELECT qty_lines FROM sales_month WHERE code_1c='SE-1'")?.qty_lines).toBe("5");
+  });
+  it("keeps a returned quantity as a signed sales line", async () => {
+    await applyWorldEvent(event("WE-RETURN", "sales_day", "SE-1", { qty: -2, at: "2026-09-23" }));
+    expect(one("SELECT qty FROM sales_line WHERE code_1c='SE-1'")?.qty).toBe("-2");
   });
   it("updates the stock snapshot without treating blank as zero", async () => {
     await applyWorldEvent(event("WE-2", "stock_snapshot", "SE-1", { ym: "2026-09", opening_qty: null }));
