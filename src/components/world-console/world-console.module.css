@@ -1,4 +1,4 @@
-.page { display: grid; gap: 28px; }
+.page { --muted: var(--v2-muted); --ink: var(--v2-ink); --line: var(--v2-line); --wash: var(--v2-wash); --panel: var(--v2-card); --accent: var(--v2-ink); --ring: var(--v2-ring); --t-meta: var(--v2-metric-label); --t-label: var(--v2-body-strong); --t-section: var(--v2-h2); --t-display: var(--v2-display); --tracking-display: var(--v2-display-tracking); --radius-control: var(--v2-r-control); --control-h: var(--v2-control-h); --button-h: var(--v2-control-h); display: grid; gap: 28px; }
 .pageHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
 .pageHead > div { display: grid; gap: 12px; }
 .eyebrow { color: var(--muted); font: var(--t-caption); letter-spacing: .08em; }
