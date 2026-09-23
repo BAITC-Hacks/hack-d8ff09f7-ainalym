@@ -33,6 +33,9 @@ describe("worker with replenishment domains", () => {
     expect((db().prepare("SELECT COUNT(*) AS n FROM agent_run WHERE trigger_type='world_event' AND state='done'").get() as { n: number }).n).toBe(2);
     expect((db().prepare("SELECT COUNT(*) AS n FROM agent_action WHERE kind='recompute' AND world_event_id IS NOT NULL").get() as { n: number }).n).toBeGreaterThanOrEqual(2);
     expect((db().prepare("SELECT COUNT(*) AS n FROM agent_action WHERE world_event_id IS NOT NULL").get() as { n: number }).n).toBeGreaterThan(2);
+    const workerActions = db().prepare("SELECT idempotency_key FROM agent_action WHERE idempotency_key LIKE 'worker:%:recompute:%'").all() as { idempotency_key: string }[];
+    expect(workerActions).toHaveLength(2);
+    expect(new Set(workerActions.map(row => row.idempotency_key)).size).toBe(2);
     expect((await tick()).processed).toBe(0);
     expect((db().prepare("SELECT COUNT(*) AS n FROM calc_run").get() as { n: number }).n).toBe(2);
   });

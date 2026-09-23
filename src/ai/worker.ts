@@ -44,7 +44,7 @@ async function recordDecision(runId: string, eventId: string, question: string, 
     summary_ru: `Решение ${question}: ${result.answer ?? result.result_state}`,
     rationale_ru: `provider=${result.provider}; model=${result.model_version}; state=${result.result_state}`,
     sources: [result.id, ...Object.keys(result.evidence_versions)], provider: result.provider, model_version: result.model_version,
-    autonomy: "auto", idempotency_key: `${eventId}:decision:${question}:${subject}`,
+    autonomy: "auto", idempotency_key: `worker:${eventId}:decision:${question}:${subject}`,
   });
   if (result.result_state === "provider_error") throw new Error(`provider_error:${question}`);
 }
@@ -56,7 +56,7 @@ async function proposeOutlierReview(row: EventRow, runId: string, subject: strin
       kind: "escalation", subject_ref: subject, world_event_id: row.id,
       summary_ru: `Пограничный документ ${subject} требует ручной проверки исходных данных`,
       sources: [row.id, decisionId], autonomy: "escalated", result: "needs_owner",
-      idempotency_key: `${row.id}:outlier_missing_inputs:${subject}`,
+      idempotency_key: `worker:${row.id}:outlier_missing_inputs:${subject}`,
     });
     return;
   }
@@ -79,7 +79,7 @@ async function proposeOutlierReview(row: EventRow, runId: string, subject: strin
     kind: "escalation", subject_ref: proposalId, world_event_id: row.id, code_1c: row.code_1c || undefined,
     summary_ru: `Требуется решение по разовому документу ${subject}`,
     sources: [row.id, decisionId, proposalId], autonomy: "escalated", result: "needs_owner",
-    idempotency_key: `${row.id}:outlier_review:${subject}`,
+    idempotency_key: `worker:${row.id}:outlier_review:${subject}`,
   });
 }
 
@@ -104,7 +104,7 @@ async function maybeSemanticDecisions(row: EventRow, payload: Record<string, unk
         rationale_ru: `provider=${judgment.provider}; model=${judgment.model_version || "none"}`,
         sources: judgment.decision_record_id ? [judgment.decision_record_id] : [row.id],
         provider: judgment.provider, model_version: judgment.model_version,
-        idempotency_key: `${row.id}:decision:one_off_order`,
+        idempotency_key: `worker:${row.id}:decision:one_off_order`,
       });
       if (judgment.result_state === "provider_error") throw new Error("provider_error:one_off_order");
       if (judgment.decision_record_id) review = {
@@ -156,7 +156,7 @@ async function recomputeAffected(row: EventRow, codes: string[], runId: string):
       kind: "recompute", subject_ref: code, code_1c: code, world_event_id: row.id,
       summary_ru: `Пересчитана потребность ${code}: ${result.need} шт`, rationale_ru: result.rationale_ru,
       sources: [row.id, `sku:${code}`, "sales_month", "stock_month", "in_transit"],
-      idempotency_key: `${row.id}:recompute:${code}`,
+      idempotency_key: `worker:${row.id}:recompute:${code}`,
     });
     const sku = d.prepare("SELECT supplier_id,name,category FROM sku WHERE code_1c=?").get(code) as { supplier_id: string; name: string; category: string | null } | undefined;
     if (sku?.supplier_id === "IEK" && !sku.category) {
@@ -168,12 +168,12 @@ async function recomputeAffected(row: EventRow, codes: string[], runId: string):
     kind: "status_change", subject_ref: calcId, world_event_id: row.id,
     summary_ru: `Созданы предложения поставщикам: ${applied.proposals.length}`,
     sources: applied.proposals.map(p => p && typeof p === "object" && "id" in p ? String(p.id) : calcId),
-    idempotency_key: `${row.id}:proposals`,
+    idempotency_key: `worker:${row.id}:proposals`,
   });
   const summary = await summarizeChanges(calcId);
   await recordAction(runId, {
     kind: "status_change", subject_ref: calcId, world_event_id: row.id, summary_ru: summary,
-    sources: [calcId], idempotency_key: `${row.id}:change_summary`,
+    sources: [calcId], idempotency_key: `worker:${row.id}:change_summary`,
   });
   return calcId;
 }
@@ -200,7 +200,7 @@ async function runEvent(id: string): Promise<ProcessResult> {
     if (!applied.applied && applied.reason !== "replayed") throw new Error(applied.reason || "event_not_applied");
     await recordAction(runId, {
       kind: "status_change", subject_ref: row.id, world_event_id: row.id,
-      summary_ru: `Событие ${row.kind} применено`, sources: [row.source_id], idempotency_key: `${row.id}:applied`,
+      summary_ru: `Событие ${row.kind} применено`, sources: [row.source_id], idempotency_key: `worker:${row.id}:applied`,
     });
     if (review) await proposeOutlierReview(row, runId, review.subject, review.answer, review.decisionId, review.at);
     await recomputeAffected(row, applied.affected_codes, runId);
@@ -216,7 +216,7 @@ async function runEvent(id: string): Promise<ProcessResult> {
     await recordAction(runId, {
       kind: "escalation", subject_ref: row.id, world_event_id: row.id,
       summary_ru: `Событие требует проверки: ${reason}`, rationale_ru: reason,
-      sources: [row.source_id], autonomy: "escalated", result: "failed", idempotency_key: `${row.id}:failed`,
+      sources: [row.source_id], autonomy: "escalated", result: "failed", idempotency_key: `worker:${row.id}:failed`,
     });
     withTx(tx => {
       tx.prepare("UPDATE world_event SET state='failed',run_id=?,processed_at=? WHERE id=?").run(runId, new Date().toISOString(), id);
@@ -245,7 +245,7 @@ export async function runScheduledChecks(now: Date = new Date()): Promise<string
     const runId = await startRun({ org_id: org, trigger_type: "scheduled_check", trigger_ref: task.id });
     await recordAction(runId, {
       kind: "escalation", subject_ref: task.id, summary_ru: `Срок проверки: ${task.title}`,
-      sources: [task.id], autonomy: "escalated", result: "needs_owner", idempotency_key: `scheduled:${task.id}:${task.next_event_at}`,
+      sources: [task.id], autonomy: "escalated", result: "needs_owner", idempotency_key: `worker:scheduled:${task.id}:${task.next_event_at}`,
     });
     withTx(tx => {
       tx.prepare("UPDATE task SET next_event_at=NULL,updated_at=? WHERE id=?").run(now.toISOString(), task.id);
