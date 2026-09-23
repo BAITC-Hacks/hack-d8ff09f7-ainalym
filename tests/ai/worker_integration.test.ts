@@ -75,6 +75,10 @@ describe("worker with replenishment domains", () => {
       expect(db().prepare("SELECT state FROM agent_run WHERE id=(SELECT run_id FROM world_event WHERE id='WE-THROW')").get()).toEqual({ state: "done" });
       expect((db().prepare("SELECT COUNT(*) n FROM proposal WHERE kind='supplier_order' AND state='needs_review'").get() as { n: number }).n).toBeGreaterThan(0);
       expect((db().prepare("SELECT COUNT(*) n FROM decision_record WHERE question_id='change_summary' AND provider='rules'").get() as { n: number }).n).toBeGreaterThan(0);
+      expect(db().prepare("SELECT task_class,model_version FROM decision_record WHERE question_id='change_summary' ORDER BY at DESC LIMIT 1").get())
+        .toEqual({ task_class: "fast", model_version: "rules-v1" });
+      expect(db().prepare("SELECT task_class,model_version FROM agent_action WHERE kind='decision' AND subject_ref=(SELECT subject_ref FROM decision_record WHERE question_id='change_summary' ORDER BY at DESC LIMIT 1) ORDER BY at DESC LIMIT 1").get())
+        .toEqual({ task_class: "fast", model_version: "rules-v1" });
     } finally { decision.mockRestore(); }
   });
 });

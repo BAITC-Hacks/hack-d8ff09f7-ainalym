@@ -1,9 +1,16 @@
 import { createHash, randomUUID } from "node:crypto";
 import { db, stateVersion, withTx, bumpStateVersion } from "../db/client";
 import { catalogQuestion } from "./catalog";
-import { decideChoice, selectedProvider, type ChoiceResult } from "./provider";
+import { decideChoice, selectedProvider, type ChoiceResult, type TaskRoute } from "./provider";
+
+export const decisionRoute = { taskClass: "reasoning", reasoningEffort: "high" } satisfies TaskRoute;
+export function routeForQuestion(questionId: string): TaskRoute {
+  return ["category_hint", "urgency_override_reason", "change_summary", "supplier_terms_hint"].includes(questionId)
+    ? { taskClass: "fast" } : decisionRoute;
+}
 
 export interface DecisionRecord extends ChoiceResult {
+  task_class: "reasoning" | "fast";
   id: string;
   question_id: string;
   subject_ref: string;
@@ -21,6 +28,7 @@ function ensureColumns(): void {
     ["evidence_versions", "TEXT NOT NULL DEFAULT '{}'"],
     ["rubric_version", "TEXT NOT NULL DEFAULT ''"],
     ["cache_key", "TEXT NOT NULL DEFAULT ''"],
+    ["task_class", "TEXT NOT NULL DEFAULT 'reasoning'"],
   ]) if (!existing.has(name)) d.exec(`ALTER TABLE decision_record ADD COLUMN ${name} ${ddl}`);
   d.exec("CREATE INDEX IF NOT EXISTS decision_record_cache ON decision_record(cache_key)");
 }
@@ -77,6 +85,7 @@ function fromRow(row: Record<string, unknown>): DecisionRecord {
     answer: row.answer == null ? null : String(row.answer),
     distribution: JSON.parse(String(row.distribution)), provider: String(row.provider),
     model_version: String(row.model_version), result_state: row.result_state as DecisionRecord["result_state"],
+    task_class: row.task_class === "fast" ? "fast" : "reasoning",
     mode: row.mode as DecisionRecord["mode"],
     evidence_versions: JSON.parse(String(row.evidence_versions || "{}")), rubric_version: String(row.rubric_version || ""),
     cache_key: String(row.cache_key || ""), at: String(row.at),
@@ -93,6 +102,7 @@ export async function decide(question_id: string, subject_ref: string, context: 
   const versions = versionsFor(subject_ref, input);
   const startState = stateVersion();
   const rubric = question?.rubric_version ?? "unsupported";
+  const route = routeForQuestion(question_id);
   const hint = modelHint(selectedProvider());
   const missingRequired = question && (question.required_input_context ?? []).some(key => input[key] === undefined || input[key] === null || input[key] === "");
   if (hint && question && !missingRequired) {
@@ -106,10 +116,10 @@ export async function decide(question_id: string, subject_ref: string, context: 
     result = { answer: null, distribution: {}, provider: "catalog", model_version: "none", result_state: "insufficient" };
   } else {
     const providerContext = mode === "replay" ? { ...input, _replay_subject_ref: subject_ref } : input;
-    try { result = await decideChoice(question, providerContext); }
+    try { result = await decideChoice(question, providerContext, route); }
     catch { result = { answer: null, distribution: {}, provider: selectedProvider(), model_version: "none", result_state: "provider_error" }; }
     if (result.result_state === "provider_error" && options.fallback_to_rules) {
-      result = await decideChoice(question, input, "rules");
+      result = await decideChoice(question, input, route, "rules");
       mode = "rules";
     }
   }
@@ -120,15 +130,15 @@ export async function decide(question_id: string, subject_ref: string, context: 
   }
   const key = cacheKey(question_id, subject_ref, versions, input, rubric, result.model_version);
   const record: DecisionRecord = {
-    ...result, id: `DR-${randomUUID()}`, question_id, subject_ref, evidence_versions: versions,
+    ...result, task_class: route.taskClass, id: `DR-${randomUUID()}`, question_id, subject_ref, evidence_versions: versions,
     rubric_version: rubric, mode, cache_key: key, at: new Date().toISOString(),
   };
   withTx(tx => {
     tx.prepare(`INSERT INTO decision_record
-      (id, question_id, subject_ref, answer, distribution, provider, model_version, result_state, mode, at, evidence_versions, rubric_version, cache_key)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+      (id, question_id, subject_ref, answer, distribution, provider, model_version, task_class, result_state, mode, at, evidence_versions, rubric_version, cache_key)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
         record.id, question_id, subject_ref, record.answer, JSON.stringify(record.distribution), record.provider,
-        record.model_version, record.result_state, mode, record.at, JSON.stringify(versions), rubric, key,
+        record.model_version, record.task_class, record.result_state, mode, record.at, JSON.stringify(versions), rubric, key,
       );
     bumpStateVersion(tx);
   });

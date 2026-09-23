@@ -54,6 +54,10 @@ describe("supplier reply consequence", () => {
     const proposal = db().prepare("SELECT id,version,state,payload FROM proposal WHERE kind='supplier_split'").get() as
       { id: string; version: number; state: string; payload: string };
     expect(proposal.state).toBe("needs_review");
+    expect(db().prepare("SELECT task_class,model_version FROM decision_record WHERE id=(SELECT json_extract(payload,'$.decision.decision_record_id') FROM proposal WHERE id=?)").get(proposal.id))
+      .toEqual({ task_class: "reasoning", model_version: "rules-v1" });
+    expect(db().prepare("SELECT task_class,model_version FROM agent_action WHERE subject_ref=? ORDER BY at DESC LIMIT 1").get(proposal.id))
+      .toEqual({ task_class: "reasoning", model_version: "rules-v1" });
     expect((db().prepare("SELECT COUNT(*) AS n FROM proposal WHERE kind='supplier_split'").get() as { n: number }).n).toBe(1);
     expect((await queueView("partner")).items.find(item => item.id === proposal.id)).toMatchObject({
       title: expect.stringContaining("Разделить поставку"), href: `/review/${proposal.id}`,

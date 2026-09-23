@@ -46,7 +46,7 @@ async function recordDecision(runId: string, eventId: string, question: string, 
     kind: "decision", subject_ref: subject, world_event_id: eventId,
     summary_ru: `Решение ${question}: ${result.answer ?? result.result_state}`,
     rationale_ru: result.provider === "rules" ? "Решение принято по установленным правилам." : "Решение принято по данным события.",
-    sources: [result.id, ...Object.keys(result.evidence_versions)], provider: result.provider, model_version: result.model_version,
+    sources: [result.id, ...Object.keys(result.evidence_versions)], provider: result.provider, model_version: result.model_version, task_class: result.task_class,
     autonomy: "auto", idempotency_key: `worker:${eventId}:decision:${question}:${subject}`,
   });
   if (result.result_state === "provider_error") throw new Error(`provider_error:${question}`);
@@ -110,7 +110,7 @@ async function maybeSemanticDecisions(row: EventRow, payload: Record<string, unk
         summary_ru: `Проверка разового заказа: ${judgment.answer ?? judgment.result_state}`,
         rationale_ru: judgment.provider === "rules" ? "Документ проверен по установленным правилам." : "Документ проверен по данным продаж.",
         sources: judgment.decision_record_id ? [judgment.decision_record_id] : [row.id],
-        provider: judgment.provider, model_version: judgment.model_version,
+        provider: judgment.provider, model_version: judgment.model_version, task_class: judgment.task_class,
         idempotency_key: `worker:${row.id}:decision:one_off_order`,
       });
       if (judgment.result_state === "provider_error") throw new Error("provider_error:one_off_order");
