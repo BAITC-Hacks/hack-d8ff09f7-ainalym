@@ -111,7 +111,7 @@ function Replenishment() {
   return (
     <div className={styles.page}>
       <p className={styles.eyebrow}>Закупки{run && <> · расчёт от {new Date(run.started_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · {fmtInt(run.skus)} SKU просчитано</>}</p>
-      <div className={styles.head}>
+      <div className={`v2-priority-card v2-hero-card ${styles.head}`}>
         <h1 className={styles.display}>Пополнение</h1>
         <div className={styles.headStack}>
           <CartButton suppliers={cartSuppliers} onClick={() => setCartOpen(true)} />
