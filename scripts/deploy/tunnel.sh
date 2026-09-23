@@ -10,7 +10,7 @@ command -v caffeinate >/dev/null
 
 export AINALYM_MODE=live
 export PORT=3000
-export HOSTNAME=127.0.0.1
+export AINALYM_BIND_HOST=127.0.0.1
 export DEMO_PROXY=cloudflare
 
 scripts/start_prod.sh >/dev/null 2>&1 &

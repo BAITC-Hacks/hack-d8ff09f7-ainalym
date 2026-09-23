@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GET as appHealth } from "./app/api/health/route";
 import {
   ACCESS_COOKIE,
   ACCESS_DAYS,
@@ -41,11 +40,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": "1", "Cache-Control": "no-store" } });
   }
 
-  if (path === "/api/health") {
-    const health = await appHealth();
-    const payload = await health.json();
-    return NextResponse.json({ ...payload, demo_guard: active ? "on" : "off", remaining_daily_budget: active ? remainingDailyCalls() : null }, { status: health.status, headers: { "Cache-Control": "no-store" } });
-  }
+  if (path === "/api/health") return NextResponse.next();
   if (!active) return NextResponse.next();
 
   const code = process.env.DEMO_ACCESS_CODE!;
