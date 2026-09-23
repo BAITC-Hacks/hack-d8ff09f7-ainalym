@@ -1,9 +1,8 @@
-# L4a checkpoint 7 — landed feed + cross-lane routes
-Done: shell, labels, Pulse, all state mechanisms, money; independent approval/labels/focus review GREEN within its stated scope.
-Done: L6 rows response, structured numeric compose, worker failure honesty; L4b /replenishment and /orders links; absent SKU catalogue has an explicit unavailable notice.
-Checks: UI passed=29 failed=0; scoped ESLint, TypeScript, production build pass.
-Evidence: real Play processed one fixture event; focus stayed on Play; +100 compose applied once and replay had no additional effect (isolated rules database).
-Undone: today/queue/modes/state/calc/ledger routes + persistent ledger still absent at merged main ed943f1; full integration remains externally-unverified. Gate: RED.
-Resumable: merge L1, use its corrected isolated reset, verify Play→persisted ledger→queue without reload; confirm result axes and proposal versions.
-Review: L4A_REVIEW_FOLLOWUP.md; precise reset and integration findings: L4A_INTEGRATION_FINDINGS.md.
-sha: predecessor adc7cdb; this feed checkpoint is the commit owning this file; main merged through ed943f1.
+# L4a checkpoint 8 — final renders and evidence
+Done: tier 1 + tier 2 implementation, response-bound labels/approvals, focus-preserving decisions, real L6 compose/play/replay, L4b route links.
+Done: final Pulse 1440×900 + 390×844 captures, phone feed, money 1728×920, bounded independent review and all counterexample fixes.
+Checks: UI passed=29 failed=0; scoped lint + TypeScript + production build pass; browser no horizontal overflow at the three target widths.
+Evidence: docs/evidence/ui/today_verification.md and L4A_REVIEW_FOLLOWUP.md; source/path manifest and closeout follow.
+Undone: full Play→ledger→queue acceptance, timing/CLS/screen-reader measurements; L1 routes/persisted ledger unavailable. Gate: RED.
+Resumable: merge L1 and its corrected custom-path reset; run rules-only canonical event through Pulse and inspect persisted ledger/queue without reload.
+sha: prior implementation f146d90; final evidence checkpoint = commit owning this file; main merged through ed943f1.
