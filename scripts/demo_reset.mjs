@@ -51,6 +51,19 @@ if (!d.prepare("SELECT id FROM purchase_order WHERE id=?").get(demoPo)) {
     d.exec("COMMIT");
   } catch (error) { d.exec("ROLLBACK"); throw error; }
 }
+// Synthetic invoice fixture subject: real IEK catalog codes, illustrative prices and quantities.
+const invoicePo = "PO-DEMO-IEK-DOCUMENTS";
+if (!d.prepare("SELECT id FROM purchase_order WHERE id=?").get(invoicePo)) {
+  const skus = d.prepare("SELECT code_1c FROM sku WHERE supplier_id='IEK' AND article IS NOT NULL AND article<>'' ORDER BY code_1c LIMIT 10").all();
+  if (skus.length !== 10) throw new Error("IEK document fixture needs 10 catalog rows");
+  d.exec("BEGIN");
+  try {
+    d.prepare("INSERT INTO purchase_order(id,supplier_id,state,total_qty,cost_known_lines) VALUES (?,'IEK','approved',280,10)").run(invoicePo);
+    const insertLine = d.prepare("INSERT INTO purchase_order_line(po_id,code_1c,qty,unit_cost,rationale_ru) VALUES (?,?,?,?,?)");
+    skus.forEach((sku, index) => insertLine.run(invoicePo, sku.code_1c, index === 0 ? 100 : 20, String(1000 + index * 125), "Синтетический демонстрационный заказ для приёмки документов"));
+    d.exec("COMMIT");
+  } catch (error) { d.exec("ROLLBACK"); throw error; }
+}
 const worldPath = join(root, "fixtures", "world_events.jsonl");
 if (existsSync(worldPath)) {
   const lines = readFileSync(worldPath, "utf8").split(/\r?\n/).filter(Boolean);
