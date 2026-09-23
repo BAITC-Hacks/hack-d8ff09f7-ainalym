@@ -29,6 +29,8 @@ export function migrate(d: DatabaseSync = db()): void {
   d.exec(sql);
   const columns = new Set((d.prepare("PRAGMA table_info(sku)").all() as { name: string }[]).map((row) => row.name));
   for (const name of ["on_hand_qty", "on_hand_as_of"]) if (!columns.has(name)) d.exec(`ALTER TABLE sku ADD COLUMN ${name} TEXT`);
+  const salesMonthColumns = new Set((d.prepare("PRAGMA table_info(sales_month)").all() as { name: string }[]).map((row) => row.name));
+  if (!salesMonthColumns.has("stockout_kind")) d.exec("ALTER TABLE sales_month ADD COLUMN stockout_kind TEXT");
   const recommendationColumns = new Set((d.prepare("PRAGMA table_info(recommendation)").all() as { name: string }[]).map(row => row.name));
   if (!recommendationColumns.has("adjust_reason")) d.exec("ALTER TABLE recommendation ADD COLUMN adjust_reason TEXT");
   const orderLineColumns = new Set((d.prepare("PRAGMA table_info(purchase_order_line)").all() as { name: string }[]).map(row => row.name));

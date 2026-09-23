@@ -99,7 +99,7 @@ describe("world event worker", () => {
     } finally { if (previous === undefined) delete process.env.AI_PROVIDER; else process.env.AI_PROVIDER = previous; }
   });
 
-  it("fails a borderline event before applying source data when its provider is unavailable", async () => {
+  it("uses rules for a borderline decision when its provider is unavailable", async () => {
     const previous = {
       AI_PROVIDER: process.env.AI_PROVIDER, TYPESAFE_API_KEY: process.env.TYPESAFE_API_KEY,
       AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
@@ -112,10 +112,11 @@ describe("world event worker", () => {
         VALUES ('WE-PROVIDER-ERROR','OWN',1,'judge_message','SE-BORDER','PROVIDER-ERROR','2025-01-15','Разовый заказ',?,'pending')`)
         .run(JSON.stringify({ qty: 100, threshold: 100, doc_no: "DOC-PROVIDER-ERROR", at: "2025-01-15" }));
       const result = await processEvent("WE-PROVIDER-ERROR");
-      expect(result.reason).toBe("provider_error:one_off_order");
-      expect(mocks.apply).not.toHaveBeenCalled();
+      expect(result.reason).toBeUndefined();
+      expect(mocks.apply).toHaveBeenCalledOnce();
       expect((db().prepare("SELECT COUNT(*) AS n FROM sales_line WHERE doc_no='DOC-PROVIDER-ERROR'").get() as { n: number }).n).toBe(0);
-      expect((db().prepare("SELECT state FROM world_event WHERE id='WE-PROVIDER-ERROR'").get() as { state: string }).state).toBe("failed");
+      expect((db().prepare("SELECT state FROM world_event WHERE id='WE-PROVIDER-ERROR'").get() as { state: string }).state).toBe("processed");
+      expect(db().prepare("SELECT provider,mode FROM decision_record WHERE subject_ref='DOC-PROVIDER-ERROR'").get()).toEqual({ provider: "rules", mode: "rules" });
     } finally {
       for (const [key, value] of Object.entries(previous)) if (value === undefined) delete process.env[key]; else process.env[key] = value;
     }
