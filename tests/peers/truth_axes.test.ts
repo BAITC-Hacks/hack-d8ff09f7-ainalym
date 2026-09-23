@@ -25,5 +25,7 @@ it("attaches all truth axes to the supplier channel", () => {
   const d = db();
   d.prepare("INSERT INTO supplier (id,name,lead_time_days) VALUES (?,?,?)").run("IEK", "IEK", 1);
   d.prepare("INSERT INTO purchase_order (id,supplier_id) VALUES (?,?)").run("PO-1", "IEK");
-  expect(supplierChannel("PO-1").channel).toMatchObject({ provenance: "synthetic", ai: "none", external: "local_simulator" });
+  const result = supplierChannel("PO-1");
+  expect(result).toMatchObject({ provenance: "synthetic", ai: "none", external: "local_simulator" });
+  expect(result.channel).toMatchObject({ provenance: "synthetic", ai: "none", external: "local_simulator" });
 });
