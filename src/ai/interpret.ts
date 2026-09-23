@@ -130,7 +130,7 @@ export async function summarizeChanges(run_id: string): Promise<string> {
   for (const [unit, group] of byUnit) {
     const judgment = await decide("change_summary", `${run_id}:${unit}`, { previous: { qty: group.before }, current: { qty: group.after } }, { fallback_to_rules: true });
     if (run.agent_run_id) await recordAction(run.agent_run_id, {
-      kind: "decision", subject_ref: run_id,
+      kind: "decision", subject_ref: `${run_id}:${unit}`,
       summary_ru: `Изменение расчёта (${unit}): ${judgment.answer ?? judgment.result_state}`,
       rationale_ru: judgment.provider === "rules" ? "Изменение проверено по установленным правилам." : "Изменение проверено по расчётам.",
       sources: [...group.sources, run_id, judgment.id], provider: judgment.provider, model_version: judgment.model_version, task_class: judgment.task_class,
