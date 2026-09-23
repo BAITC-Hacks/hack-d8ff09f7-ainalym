@@ -4,7 +4,7 @@ import { HttpError } from "@/server/http";
 /** The same recommendation detail is returned by GET and a successful adjustment. */
 export function recommendationById(id: string) {
   const database = db();
-  const row = database.prepare(`SELECT r.*, s.name, s.moq, s.unit_cost, s.category, f.base_rate
+  const row = database.prepare(`SELECT r.*, s.name, s.unit, s.moq, s.unit_cost, s.category, f.base_rate
     FROM recommendation r LEFT JOIN sku s ON s.code_1c=r.code_1c
     LEFT JOIN forecast f ON f.id=r.forecast_id WHERE r.id=?`).get(id) as Record<string, unknown> | undefined;
   if (!row) throw new HttpError(404, "not_found", "Recommendation not found");

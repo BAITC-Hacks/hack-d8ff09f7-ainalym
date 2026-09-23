@@ -12,7 +12,7 @@ export interface EngineParams {
 export interface NeedResult { forecast: Record<string, unknown>; need: number; rationale_ru: string; components: Record<string, unknown>; flags?: string[] }
 export interface EngineContext { database?: DatabaseSync; as_of?: string }
 
-type Sku = { code_1c: string; supplier_id: string; name: string; moq: number; months_with_sales: number | null; median_month_qty: string | null; p95_doc_qty: string | null;
+type Sku = { code_1c: string; supplier_id: string; name: string; unit: string | null; moq: number; months_with_sales: number | null; median_month_qty: string | null; p95_doc_qty: string | null;
   on_hand_qty: string | null; on_hand_as_of: string | null };
 type Month = { ym: string; qty_file: string | null; qty_regular: string | null; stockout: number };
 type Sale = { doc_no: string | null; at: string; qty: string; id: number; source: string };
@@ -48,8 +48,10 @@ function monthsBack(ym: string, count: number): string[] {
 export async function computeNeed(code_1c: string, params: EngineParams, ctx: EngineContext = {}): Promise<NeedResult> {
   const database = ctx.database ?? db();
   const asOf = (ctx.as_of ?? new Date().toISOString()).slice(0, 10);
-  const sku = database.prepare("SELECT code_1c,supplier_id,name,moq,months_with_sales,median_month_qty,p95_doc_qty,on_hand_qty,on_hand_as_of FROM sku WHERE code_1c=?").get(code_1c) as Sku | undefined;
+  const sku = database.prepare("SELECT code_1c,supplier_id,name,unit,moq,months_with_sales,median_month_qty,p95_doc_qty,on_hand_qty,on_hand_as_of FROM sku WHERE code_1c=?").get(code_1c) as Sku | undefined;
   if (!sku) throw new Error(`SKU ${code_1c} is missing`);
+  const unit = sku.unit?.trim() || "шт";
+  const orderRule = sku.supplier_id === "IEK" ? "минимум" : "кратность";
   if (params.lead_time_days < 1 || params.review_days < 0 || params.growth_cap < 0 || params.outlier.min_units < 0 || sku.moq < 1) throw new RangeError("invalid engine parameters");
   const months = database.prepare("SELECT ym,qty_file,qty_regular,stockout FROM sales_month WHERE code_1c=? AND ym<=? ORDER BY ym")
     .all(code_1c, monthOf(asOf)) as Month[];
@@ -84,7 +86,7 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
       on_hand: numeric(onHand), on_hand_as_of: freshOnHand ? sku.on_hand_as_of : `${stockMonth}-01`, in_transit: numeric(transit),
       approved_order_qty: numeric(approvedSupply), approved_order_sources: approvedRows,
       transit_rows: transitRows.length, forecast_qty: 0, safety: 0, raw_need: 0, net_need: numeric(onHand.negated().minus(transit)),
-      moq: sku.moq, urgency: "none", outliers_excluded: [], stockout_months: [] };
+      moq: sku.moq, unit, order_rule: orderRule, urgency: "none", outliers_excluded: [], stockout_months: [] };
     return { forecast: { horizon_months: (params.lead_time_days + params.review_days) / 30, base_rate: 0, season: {}, growth: 1,
       stockout_uplift: 0, safety: 0, method_ru: "Нет продаж за период" }, need: 0,
       rationale_ru: `Код 1С ${code_1c}: нет продаж за период — заказ не требуется`, flags, components };
@@ -200,7 +202,8 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
   const safety = z.times(sigmaDaily).times(new Decimal(params.lead_time_days).sqrt());
   const netNeed = forecastQty.plus(safety).minus(onHand).minus(transit).minus(approvedSupply);
   const rawNeed = Decimal.max(0, netNeed);
-  const need = numeric(rawNeed.div(sku.moq).ceil().times(sku.moq));
+  const need = rawNeed.isZero() ? 0 : numeric(sku.supplier_id === "IEK"
+    ? Decimal.max(rawNeed.ceil(), sku.moq) : rawNeed.div(sku.moq).ceil().times(sku.moq));
   const dailyRate = baseRate.times(growth).div(30);
   const coverDays = dailyRate.gt(0) ? onHand.plus(transit).plus(approvedSupply).div(dailyRate) : null;
   const urgency = need === 0 ? "none" : !coverDays || coverDays.lt(params.lead_time_days) ? "critical" : coverDays.lt(horizonDays) ? "soon" : "normal";
@@ -214,10 +217,10 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     outliers_excluded: excluded, median_month_qty: numeric(medianMonth), p95_doc_qty: numeric(p95Doc), outlier_threshold: numeric(threshold),
     safety: numeric(safety.toDecimalPlaces(3)), on_hand: numeric(onHand), on_hand_as_of: freshOnHand ? sku.on_hand_as_of : `${stockMonth}-01`, in_transit: numeric(transit),
     in_transit_sources: transitRows, approved_order_qty: numeric(approvedSupply), approved_order_sources: approvedRows,
-    net_need: numeric(netNeed.toDecimalPlaces(6)), raw_need: numeric(rawNeed.toDecimalPlaces(3)), moq: sku.moq, urgency,
+    net_need: numeric(netNeed.toDecimalPlaces(6)), raw_need: numeric(rawNeed.toDecimalPlaces(3)), moq: sku.moq, unit, order_rule: orderRule, urgency,
     raw_observed_forecast: baseRate.gt(0) ? numeric(forecastQty.times(rawObservedRate).div(baseRate).toDecimalPlaces(3)) : 0,
     days_of_cover: coverDays ? numeric(coverDays.toDecimalPlaces(1)) : null,
   };
-  const rationale_ru = `Код 1С ${code_1c}: регулярный спрос ${components.base_rate} шт/мес; сезонность ${ownSeason ? "SKU" : "поставщика"}, рост ×${components.growth}; прогноз на ${horizonDays} дн ${components.forecast_qty} + запас ${components.safety} − остаток ${components.on_hand} − в пути ${components.in_transit} − утверждённый заказ ${components.approved_order_qty} шт = потребность ${need} шт (кратность ${sku.moq}). Без продаж из-за отсутствия остатка: ${stockoutMonths.join(", ") || "нет"}; исключены разовые документы: ${excluded.map((doc) => doc.doc_no).join(", ") || "нет"}.${stockStale ? ` Последний подтверждённый остаток ${stockMonth}; текущий остаток неизвестен, заказ требует уточнения.` : ""}`;
+  const rationale_ru = `Код 1С ${code_1c}: регулярный спрос ${components.base_rate} ${unit}/мес; сезонность ${ownSeason ? "артикула" : "поставщика"}, рост ×${components.growth}; прогноз на ${horizonDays} дн ${components.forecast_qty} + запас ${components.safety} − остаток ${components.on_hand} − в пути ${components.in_transit} − утверждённый заказ ${components.approved_order_qty} ${unit} = потребность ${need} ${unit} (${orderRule} ${sku.moq} ${unit}). Без продаж из-за отсутствия остатка: ${stockoutMonths.join(", ") || "нет"}; исключены разовые документы: ${excluded.map((doc) => doc.doc_no).join(", ") || "нет"}.${stockStale ? ` Последний подтверждённый остаток ${stockMonth}; текущий остаток неизвестен, заказ требует уточнения.` : ""}`;
   return { forecast: { horizon_months: horizonDays / 30, base_rate: components.base_rate, season: components.season, growth: components.growth, stockout_uplift: components.stockout_uplift, safety: components.safety, method_ru: "Сезонный спрос × рост; цензурирование дефицита; исключение разовых документов" }, need, rationale_ru, components };
 }

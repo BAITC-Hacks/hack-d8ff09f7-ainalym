@@ -18,7 +18,7 @@ export async function GET(request: Request): Promise<Response> {
       const value = query[param as keyof typeof query];
       if (value) { clauses.push(`${column} = ?`); args.push(value); }
     }
-    const rows = db().prepare(`SELECT r.*, s.name, s.moq, s.unit_cost, s.category, f.base_rate
+    const rows = db().prepare(`SELECT r.*, s.name, s.unit, s.moq, s.unit_cost, s.category, f.base_rate
       FROM recommendation r JOIN sku s ON s.code_1c = r.code_1c
       LEFT JOIN forecast f ON f.id = r.forecast_id WHERE ${clauses.join(" AND ")}
       ORDER BY r.supplier_id, r.urgency, r.code_1c`).all(...args);
@@ -41,7 +41,7 @@ export async function GET(request: Request): Promise<Response> {
         version: row.version, state: row.state, proposal_id: row.proposal_id, adjust_reason: row.adjust_reason,
         on_hand: row.on_hand, in_transit: row.in_transit,
         forecast_qty: components.forecast_qty == null ? row.base_rate : String(components.forecast_qty), qty_recommended: row.qty_recommended,
-        qty_adjusted: row.qty_adjusted, moq: row.moq, urgency: row.urgency, rationale_ru: row.rationale_ru, components,
+        qty_adjusted: row.qty_adjusted, moq: row.moq, unit: row.unit, urgency: row.urgency, rationale_ru: row.rationale_ru, components,
         outliers_excluded: outliers, stockout_months: stockouts,
         ekt_url: product?.product_url ?? null, ekt_price: product?.price ?? null, ekt_currency: product?.currency ?? null,
         ekt_stock_total: product?.stock_total ?? null, ekt_source: product?.source ?? null, ekt_as_of: product?.as_of ?? null });

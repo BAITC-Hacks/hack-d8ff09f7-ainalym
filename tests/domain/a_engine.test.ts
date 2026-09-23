@@ -52,6 +52,26 @@ describe("deterministic replenishment need", () => {
     expect(base.need - supplied.need).toBe(2);
   });
 
+  it("uses metre units, an IEK minimum, and an SE multiple", async () => {
+    const database = fixture();
+    database.prepare("UPDATE sku SET unit='м',moq=10 WHERE code_1c='TEST'").run();
+    const baseline = await computeNeed("TEST", params, context(database));
+    const onHand = Number(baseline.components.on_hand) + Number(baseline.components.net_need) - 12.1;
+    database.prepare("UPDATE stock_month SET opening_qty=? WHERE code_1c='TEST'").run(String(onHand));
+    const iek = await computeNeed("TEST", params, context(database));
+    expect(iek.need).toBe(13);
+    expect(iek.rationale_ru).toContain("потребность 13 м (минимум 10 м)");
+    database.prepare("UPDATE stock_month SET opening_qty=? WHERE code_1c='TEST'").run(String(onHand + 6));
+    const belowMinimum = await computeNeed("TEST", params, context(database));
+    expect(belowMinimum.need).toBe(10);
+    database.prepare("UPDATE stock_month SET opening_qty=? WHERE code_1c='TEST'").run(String(onHand));
+    database.prepare("INSERT INTO supplier (id,name,lead_time_days) VALUES ('SE','SE',40)").run();
+    database.prepare("UPDATE sku SET supplier_id='SE' WHERE code_1c='TEST'").run();
+    const se = await computeNeed("TEST", params, context(database));
+    expect(se.need).toBe(20);
+    expect(se.rationale_ru).toContain("потребность 20 м (кратность 10 м)");
+  });
+
   it("responds to sales and stock changes independently", async () => {
     const database = fixture();
     const before = await computeNeed("TEST", params, context(database));

@@ -11,8 +11,8 @@ import { createTask } from "./tasks";
 export interface CalcScope { supplier?: string; category?: string; codes?: string[] }
 export interface CalcContext extends EngineContext { org_id?: string; agent_run_id?: string; world_event_id?: string }
 export interface ApplyResult { proposals: Record<string, unknown>[]; tasks: Record<string, unknown>[]; affected: string[] }
-type Sku = { code_1c: string; supplier_id: string; name: string; unit_cost: string | null; moq: number };
-type Rec = { id: string; code_1c: string; supplier_id: string; qty_recommended: number; qty_adjusted: number | null; rationale_ru: string; proposal_id: string | null; unit_cost: string | null; name: string; components: string };
+type Sku = { code_1c: string; supplier_id: string; name: string; unit: string | null; unit_cost: string | null; moq: number };
+type Rec = { id: string; code_1c: string; supplier_id: string; qty_recommended: number; qty_adjusted: number | null; rationale_ru: string; proposal_id: string | null; unit_cost: string | null; name: string; unit: string | null; components: string };
 type Run = { id: string; agent_run_id: string | null; scope: string };
 
 function inTx<T>(database: DatabaseSync, fn: () => T): T {
@@ -34,7 +34,7 @@ function reasonRu(error: unknown): string {
 export async function runCalculation(scope: CalcScope = {}, overrides: Partial<EngineParams> = {}, ctx: CalcContext = {}) {
   const database = ctx.database ?? db();
   const orgId = ctx.org_id ?? "ORG-1";
-  const query = `SELECT code_1c,supplier_id,name,unit_cost,moq FROM sku WHERE 1=1${scope.supplier ? " AND supplier_id=?" : ""}${scope.category ? " AND category=?" : ""} ORDER BY supplier_id,code_1c`;
+  const query = `SELECT code_1c,supplier_id,name,unit,unit_cost,moq FROM sku WHERE 1=1${scope.supplier ? " AND supplier_id=?" : ""}${scope.category ? " AND category=?" : ""} ORDER BY supplier_id,code_1c`;
   const skus = (database.prepare(query).all(...[scope.supplier, scope.category].filter((value) => value !== undefined)) as Sku[])
     .filter((sku) => !scope.codes || scope.codes.includes(sku.code_1c));
   const computed: { sku: Sku; result: NeedResult; params: EngineParams }[] = [];
@@ -70,7 +70,7 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
   });
   for (const { sku, result } of computed) {
     await recordAction(agentRunId, { kind: "recompute", subject_ref: sku.code_1c, code_1c: sku.code_1c, world_event_id: ctx.world_event_id,
-      summary_ru: `Пересчитана потребность ${sku.code_1c}: ${result.need} шт`, rationale_ru: result.rationale_ru,
+      summary_ru: `Пересчитана потребность ${sku.code_1c}: ${result.need} ${sku.unit?.trim() || "шт"}`, rationale_ru: result.rationale_ru,
       sources: [`sku:${sku.code_1c}`, "sales_month", "sales_line", "stock_month", "in_transit"], autonomy: "auto",
       idempotency_key: ctx.world_event_id ? `worker:${ctx.world_event_id}:recompute:${sku.code_1c}` : `recompute:${id}:${sku.code_1c}` }, database);
     if ((result.components.outliers_excluded as unknown[]).length) await recordAction(agentRunId, {
@@ -101,7 +101,7 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
   if (!run) throw new Error(`calculation run ${run_id} is missing`);
   const scope = JSON.parse(run.scope) as CalcScope;
   const scopedCodes = new Set(scope.codes ?? []);
-  const recommendations = database.prepare(`SELECT r.id,r.code_1c,r.supplier_id,r.qty_recommended,r.qty_adjusted,r.rationale_ru,r.proposal_id,r.components,s.name,s.unit_cost
+  const recommendations = database.prepare(`SELECT r.id,r.code_1c,r.supplier_id,r.qty_recommended,r.qty_adjusted,r.rationale_ru,r.proposal_id,r.components,s.name,s.unit,s.unit_cost
     FROM recommendation r JOIN sku s ON s.code_1c=r.code_1c WHERE r.run_id=? ORDER BY r.supplier_id,r.code_1c`).all(run_id) as Rec[];
   const groups = new Map<string, Rec[]>();
   const staleStock = recommendations.filter((rec) => (JSON.parse(rec.components) as { stock_stale?: boolean }).stock_stale);
@@ -128,7 +128,7 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
       .get(supplierId) as { id: string; payload: string; sources: string; version: number } | undefined;
     const id = `PR-${randomUUID()}`;
     const taskId = `TK-${randomUUID()}`;
-    const currentLines = rows.map((rec) => ({ recommendation_id: rec.id, code_1c: rec.code_1c, name: rec.name,
+    const currentLines = rows.map((rec) => ({ recommendation_id: rec.id, code_1c: rec.code_1c, name: rec.name, unit: rec.unit?.trim() || "шт",
       qty: rec.qty_adjusted ?? rec.qty_recommended, unit_cost: rec.unit_cost, rationale_ru: rec.rationale_ru,
       components: JSON.parse(rec.components) as Record<string, unknown> }));
     const carried = old && scopedCodes.size ? ((JSON.parse(old.payload) as { lines: typeof currentLines }).lines ?? [])
@@ -147,7 +147,7 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
     const priced = lines.filter((line) => line.unit_cost !== null);
     const total = priced.reduce((sum, line) => sum.add(Money.of(line.unit_cost!).mul(line.qty)), Money.of("0"));
     const moneyAtStake = priced.length ? total.toJSON() : null;
-    const rationale = `Заказ ${supplierId}: ${lines.length} позиций, ${lines.reduce((sum, line) => sum + line.qty, 0)} шт. ${priced.length === lines.length ? `Стоимость ${total.amount} KZT.` : `Стоимость известна для ${priced.length} из ${lines.length} позиций; неизвестные цены требуют проверки.`} Подтвердите точный состав и количество перед передачей.`;
+    const rationale = `Заказ ${supplierId}: ${lines.length} позиций. ${priced.length === lines.length ? `Стоимость ${total.amount} KZT.` : `Стоимость известна для ${priced.length} из ${lines.length} позиций; неизвестные цены требуют проверки.`} Подтвердите точный состав и количество перед передачей.`;
     const sources = [...new Set([...rows.map((row) => `recommendation:${row.id}`), ...carried.map((line) => `recommendation:${line.recommendation_id}`)])];
     const proposal = { id, kind: "supplier_order", subject_type: "supplier", subject_id: supplierId, subject_version: old ? old.version + 1 : 1,
       payload: JSON.stringify({ run_id, supplier_id: supplierId, lines, cost_known_lines: priced.length }),
@@ -194,7 +194,7 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
 export class ProposalConflictError extends Error { readonly status = 409; }
 export class ProposalNotFoundError extends Error { readonly status = 404; }
 type Proposal = { id: string; kind: string; state: string; version: number; payload: string; subject_id: string | null; subject_version: number | null; rationale_ru: string | null; sources: string };
-type OrderLine = { recommendation_id: string; code_1c: string; qty: number; unit_cost: string | null; rationale_ru: string };
+type OrderLine = { recommendation_id: string; code_1c: string; qty: number; unit?: string; unit_cost: string | null; rationale_ru: string };
 
 /** A human adjustment changes the proposal version while retaining the engine's original quantity. */
 export async function adjustRecommendation(id: string, qty: number, reason: string, version: number, ctx: CalcContext = {}) {
@@ -219,7 +219,8 @@ export async function adjustRecommendation(id: string, qty: number, reason: stri
     payload.total_qty = payload.lines.reduce((sum, item) => sum + item.qty, 0);
     payload.total_cost = moneyAtStake;
     payload.cost_known_lines = priced.length;
-    const rationale = `${proposal.rationale_ru ?? ""} Корректировка ${rec.code_1c}: ${rec.qty_adjusted ?? rec.qty_recommended} → ${qty} шт; причина: ${reason.trim()}.`.trim();
+    const unit = line.unit ?? (database.prepare("SELECT unit FROM sku WHERE code_1c=?").get(rec.code_1c) as { unit: string | null } | undefined)?.unit ?? "шт";
+    const rationale = `${proposal.rationale_ru ?? ""} Корректировка ${rec.code_1c}: ${rec.qty_adjusted ?? rec.qty_recommended} → ${qty} ${unit}; причина: ${reason.trim()}.`.trim();
     const updated = database.prepare("UPDATE recommendation SET qty_adjusted=?,adjust_reason=?,state='adjusted',version=version+1 WHERE id=? AND version=?")
       .run(qty, reason.trim(), id, version);
     if (updated.changes !== 1) throw new ProposalConflictError(`recommendation ${id} is stale`);
@@ -230,7 +231,7 @@ export async function adjustRecommendation(id: string, qty: number, reason: stri
     const orgId = ctx.org_id ?? (database.prepare("SELECT id FROM organization LIMIT 1").get() as { id: string } | undefined)?.id ?? "ORG-1";
     const runId = run?.agent_run_id ?? startRun({ org_id: orgId, trigger_type: "goal", trigger_ref: id }, database, false);
     recordAction(runId, { kind: "recommendation_adjusted", subject_ref: id, code_1c: rec.code_1c,
-      summary_ru: `Количество ${rec.code_1c} изменено на ${qty} шт`, rationale_ru: reason.trim(),
+      summary_ru: `Количество ${rec.code_1c} изменено на ${qty} ${unit}`, rationale_ru: reason.trim(),
       sources: [`recommendation:${id}`, `proposal:${proposal.id}`], autonomy: "escalated", result: "done",
       idempotency_key: `recommendation:adjust:${id}:${version + 1}` }, database, false);
     if (!run?.agent_run_id) finishRun(runId, "done", database, false);

@@ -90,6 +90,13 @@ describe("1C file export boundary", () => {
     expect(response.headers.get("content-disposition")).toBe(disposition);
   });
 
+  it("exports the metre unit for a cable order", () => {
+    db().prepare("UPDATE sku SET unit='м' WHERE code_1c='03001_'").run();
+    const files = exportOrder("PO-1");
+    const row = readFileSync(files.csv_path, "utf8").replace(/^\ufeff/, "").trim().split(/\r?\n/)[1].split(";");
+    expect(row[3]).toBe("м");
+  });
+
   it("refuses export before human approval", async () => {
     db().prepare("UPDATE purchase_order SET state = 'draft' WHERE id = 'PO-1'").run();
     expect(() => exportOrder("PO-1")).toThrow("po_not_approved");
