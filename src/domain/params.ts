@@ -52,10 +52,10 @@ export async function proposeParamChange(supplierId: string, changes: Partial<En
     JSON.stringify({ supplier_id: supplierId, changes }), JSON.stringify([supplierId]), "needs_review", rationale,
     JSON.stringify([`supplier:${supplierId}`, `supplier_version:${current.version}`]), new Date().toISOString());
   bumpStateVersion(database);
-  const runId = await startRun({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id });
+  const runId = await startRun({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id }, database);
   await recordAction(runId, { kind: "escalation", subject_ref: id, summary_ru: `Нужно утвердить параметры ${supplierId}`,
     rationale_ru: rationale, sources: [`supplier:${supplierId}`], autonomy: "escalated", result: "needs_owner",
-    idempotency_key: `param_change:${id}` });
-  await finishRun(runId, "done");
+    idempotency_key: `param_change:${id}` }, database);
+  await finishRun(runId, "done", database);
   return { id, proposed, replayed: false };
 }

@@ -165,6 +165,9 @@ export async function applyRecommendations(run_id: string, ctx: CalcContext = {}
       await recordAction(run.agent_run_id, { kind: "recommendation_prepared", subject_ref: supplierId,
         summary_ru: `Подготовлены рекомендации ${supplierId}: ${lines.length} позиций`, rationale_ru: rationale,
         sources, autonomy: "auto", idempotency_key: `recommendation:${run_id}:${supplierId}` }, database);
+      await recordAction(run.agent_run_id, { kind: "status_change", subject_ref: taskId,
+        summary_ru: `Создана задача проверить заказ ${supplierId}`, rationale_ru: `Задача связана с предложением ${id}.`,
+        sources: [`proposal:${id}`, ...sources], autonomy: "auto", idempotency_key: `task:create:${taskId}` }, database);
       await recordAction(run.agent_run_id, { kind: "escalation", subject_ref: id,
         summary_ru: `Нужно решение по заказу ${supplierId}`, rationale_ru: rationale,
         sources, autonomy: "escalated", result: "needs_owner", idempotency_key: `escalation:${id}` }, database);
@@ -215,12 +218,12 @@ export async function adjustRecommendation(id: string, qty: number, reason: stri
     return proposal.version + 1;
   });
   const run = database.prepare("SELECT agent_run_id FROM calc_run WHERE id=?").get(rec.run_id) as { agent_run_id: string | null } | undefined;
-  const runId = run?.agent_run_id ?? await startRun({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id });
+  const runId = run?.agent_run_id ?? await startRun({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id }, database);
   await recordAction(runId, { kind: "decision", subject_ref: id, code_1c: rec.code_1c,
     summary_ru: `Количество ${rec.code_1c} изменено на ${qty} шт`, rationale_ru: reason.trim(),
     sources: [`recommendation:${id}`, `proposal:${proposal.id}`], autonomy: "escalated", result: "done",
-    idempotency_key: `recommendation:adjust:${id}:${version + 1}` });
-  if (!run?.agent_run_id) await finishRun(runId, "done");
+    idempotency_key: `recommendation:adjust:${id}:${version + 1}` }, database);
+  if (!run?.agent_run_id) await finishRun(runId, "done", database);
   return { id, code_1c: rec.code_1c, qty_recommended: rec.qty_recommended, qty_adjusted: qty,
     version: version + 1, proposal_id: proposal.id, proposal_version: proposalVersion,
     affected: { recommendations: [id], proposals: [proposal.id] }, state_version: stateVersion(database) };
@@ -307,13 +310,17 @@ export async function decideProposal(id: string, proposalVersion: number, decisi
     bumpStateVersion(database);
   });
   const run = payload.run_id ? database.prepare("SELECT agent_run_id FROM calc_run WHERE id=?").get(payload.run_id) as { agent_run_id: string | null } | undefined : undefined;
-  const runId = run?.agent_run_id ?? await startRun({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id });
+  const runId = run?.agent_run_id ?? await startRun({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id }, database);
   await recordAction(runId, { kind: "decision", subject_ref: id,
     summary_ru: decision === "approve" ? `Одобрено предложение ${id}` : `Отклонено предложение ${id}`,
     rationale_ru: proposal.rationale_ru ?? undefined, sources: JSON.parse(proposal.sources),
     autonomy: "escalated", result: "done", idempotency_key: `decision:${id}:${proposalVersion}`,
-    po_id: poId ?? undefined });
-  if (!run?.agent_run_id) await finishRun(runId, "done");
+    po_id: poId ?? undefined }, database);
+  if (poId) await recordAction(runId, { kind: "order_drafted", subject_ref: poId, po_id: poId,
+    summary_ru: `Подготовлен черновик заказа ${poId}`, rationale_ru: `Основание — утверждённое предложение ${id}, версия ${proposalVersion}.`,
+    sources: [`proposal:${id}`, ...JSON.parse(proposal.sources) as string[]], autonomy: "auto",
+    idempotency_key: `order:draft:${poId}` }, database);
+  if (!run?.agent_run_id) await finishRun(runId, "done", database);
   const linkedTask = database.prepare("SELECT id,state,version FROM task WHERE proposal_id=?").get(id) as { id: string; state: string; version: number } | undefined;
   if (linkedTask?.state === "needs_review") await transitionTask(linkedTask.id, decision === "approve" ? "ready_to_handover" : "preparing", linkedTask.version, { database, org_id: ctx.org_id });
   if (decision === "approve" && proposal.kind === "clarification" && payload.task_id) await createTask({ title: `Подготовить уточнение по ${payload.task_id}`,

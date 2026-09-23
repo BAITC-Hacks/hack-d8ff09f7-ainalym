@@ -25,7 +25,8 @@ export async function createTask(input: { title: string; state?: TaskState; owne
   bumpStateVersion(database);
   const runId = ctx.run_id ?? await startRun({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id }, database);
   await recordAction(runId, { kind: "status_change", subject_ref: id, summary_ru: `Создана задача: ${input.title}`,
-    rationale_ru: `Начальное состояние: ${state}`, sources: input.sources ?? [], autonomy: "auto", idempotency_key: `task:create:${id}` }, database);
+    rationale_ru: `Начальное состояние: ${state}`, sources: input.sources?.length ? input.sources : [`task:${id}`],
+    autonomy: "auto", idempotency_key: `task:create:${id}` }, database);
   if (!ctx.run_id) await finishRun(runId, "done", database);
   return { id, state, version: 1, affected: { tasks: [id], proposals: input.proposal_id ? [input.proposal_id] : [] } };
 }

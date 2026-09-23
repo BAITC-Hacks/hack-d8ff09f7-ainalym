@@ -69,6 +69,8 @@ describe("review queue and versioned approval", () => {
     expect(body.po_id).toMatch(/^PO-/);
     expect(database.prepare("SELECT state FROM purchase_order WHERE id=?").get(body.po_id)).toEqual({ state: "draft" });
     expect(database.prepare("SELECT count(*) AS n FROM obligation WHERE po_id=?").get(body.po_id)).toEqual({ n: 0 });
+    expect(database.prepare("SELECT kind,subject_ref,autonomy FROM agent_action WHERE kind='order_drafted' AND po_id=?").get(body.po_id))
+      .toEqual({ kind: "order_drafted", subject_ref: body.po_id, autonomy: "auto" });
     approveOrder(body.po_id, 1);
     expect(database.prepare("SELECT count(*) AS n FROM obligation WHERE po_id=?").get(body.po_id)).toEqual({ n: 2 });
     expect((await post(id, 1)).status).toBe(409);
