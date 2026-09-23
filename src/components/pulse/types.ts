@@ -1,0 +1,20 @@
+import type { TruthAxes } from "@/components/labels";
+export type Money = { amount: string; currency: string };
+export type Source = string | { id?: string; ref?: string; label?: string; title?: string; kind?: string; href?: string; version?: number };
+export type Labelled = TruthAxes & { axes?: TruthAxes; labels?: TruthAxes };
+export type MoneyView = Labelled & {
+  cash: Money[];
+  committed_by_supplier: (Money & { supplier_id: string; lines: number; cost_known_lines: number })[];
+  next_60d: { out: (Money & { at: string; po_id: string; kind?: string })[] };
+  stock_value?: (Money & { cost_known_share: number; cost_unknown_count?: number }) | null;
+  risks: (string | { id?: string; code?: string; count?: number; label_ru?: string; title?: string; message?: string; reason?: string; supplier_id?: string; po_id?: string })[];
+  empty_reason?: string;
+};
+export type QueueItem = Labelled & { id: string; kind: string; title: string; why: string; sources: Source[]; money_at_stake?: Money | Money[] | null; options: { key: string; label: string; effect?: string }[]; href: string; since: string; proposal_version?: number; version?: number; consequence?: string; prepared?: string[]; supplier_id?: string };
+export type QueueResponse = { items: QueueItem[]; empty_reason?: string };
+export type Commitment = { id: string; kind: "po" | "run"; title: string; next_event: string; amount?: Money | null; owner: string; state: string; href?: string };
+export type TodayResponse = Labelled & { lead: string; decision: QueueItem | null; queue_count: number; pulse: { money: MoneyView | null; stockout_risk: { count: number; top: { code_1c: string; name: string; days_of_cover: number; lead_time_days: number }[] }; agents?: { auto: number; needs_you: number; ratio?: string | number } } | null; commitments: Commitment[]; background: (string | { id?: string; title?: string; summary_ru?: string; state?: string; at?: string; next_check_at?: string })[]; feed_next: unknown[]; empty_reason?: string };
+export type LedgerRow = Labelled & { id: string; run_id: string; summary_ru: string; rationale_ru?: string; at: string; autonomy: "auto" | "escalated"; result: "done" | "needs_owner" | "failed"; sources: Source[]; subject_ref?: string; code_1c?: string; po_id?: string; provider?: string; kind?: string; href?: string };
+export type LedgerResponse = { rows?: LedgerRow[]; actions?: LedgerRow[]; items?: LedgerRow[]; stats: { auto: number; needs_you: number }; empty_reason?: string };
+export type WorldEvent = Labelled & { id: string; seq: number; kind: string; actor_id?: string; code_1c?: string; text: string; at: string; state: string; run_id?: string; source_id?: string };
+export type FeedResponse = { events: WorldEvent[]; empty_reason?: string };
