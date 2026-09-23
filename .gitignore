@@ -54,3 +54,4 @@ next-env.d.ts
 # Hosted E2E transient output (may contain application state)
 /test-results/
 /playwright-report/
+.playwright/
