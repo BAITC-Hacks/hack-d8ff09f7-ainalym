@@ -72,6 +72,8 @@ export default function LandingPage() {
           </div>
         </section>
 
+        <ProductClips />
+
         <section id="how" className={styles.section} aria-labelledby="how-title">
           <div className={styles.sectionHead}>
             <p className={styles.kicker}>Как это работает</p>
@@ -88,8 +90,6 @@ export default function LandingPage() {
             ))}
           </ol>
         </section>
-
-        <ProductClips />
 
         <section id="proof" className={styles.section} aria-labelledby="proof-title">
           <div className={styles.sectionHead}>

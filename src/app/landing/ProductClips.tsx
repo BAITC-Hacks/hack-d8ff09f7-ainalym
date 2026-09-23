@@ -18,7 +18,7 @@ const CLIPS = [
   { id: "purchases", title: "Закупки", value: "Расчёт пополнения сразу превращается в корзину.", detail: "Количество, сумма и предоплата — перед вами." },
   { id: "order", title: "Заказ поставщику", value: "Проверьте состав заказа и утвердите его сами.", detail: "Позиции и суммы уже собраны — решение за вами." },
   { id: "money", title: "Деньги", value: "Выплаты поставщикам на 60 дней вперёд.", detail: "Видно, когда нужны деньги и каких данных не хватает." },
-  { id: "assistant", title: "Помощник", value: "Спросите, что срочно заказать, — получите список.", detail: "Ответ по данным склада помогает выбрать следующий шаг." },
+  { id: "assistant", title: "ИИ-Помощник", value: "Спросите, что срочно заказать, — получите список.", detail: "Ответ по данным склада помогает выбрать следующий шаг." },
 ] as const;
 
 function ClipCard({ clip, index, motion }: { clip: typeof CLIPS[number]; index: number; motion: boolean }) {
@@ -69,6 +69,7 @@ function ClipCard({ clip, index, motion }: { clip: typeof CLIPS[number]; index: 
             ref={video}
             className={styles.clipVideo}
             data-playing={hasFrame || undefined}
+            autoPlay={visible && !paused && !hovered}
             muted
             loop
             playsInline
