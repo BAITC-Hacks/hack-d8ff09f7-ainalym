@@ -2272,5 +2272,185 @@
     "source": "https://www.iek.ru/products/catalog/search?q=KKM16-012-220-00",
     "kind": "official",
     "fetched_at": "2026-09-23T10:12:51.481Z"
+  },
+  "category:IEK:0302": {
+    "path": "/sku/category/iek-0302.jpg",
+    "source": "https://higgsfield.ai/?jobId=f5c9444a-2ae7-4190-867b-badc1a002996",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:05:46.922Z"
+  },
+  "category:SE:1": {
+    "path": "/sku/category/se-1.jpg",
+    "source": "https://higgsfield.ai/?jobId=48770be1-8b79-4256-b746-cbd16e7ebc65",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:05:47.894Z"
+  },
+  "category:SE:3": {
+    "path": "/sku/category/se-3.jpg",
+    "source": "https://higgsfield.ai/?jobId=0dfb08ee-54fd-47d3-8a22-ce7eac7c13b2",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:05:49.109Z"
+  },
+  "category:IEK:1303": {
+    "path": "/sku/category/iek-1303.jpg",
+    "source": "https://higgsfield.ai/?jobId=fcfd6e08-4eaa-4232-b4f5-ac697e7e3e5c",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:05:50.087Z"
+  },
+  "category:SE:2": {
+    "path": "/sku/category/se-2.jpg",
+    "source": "https://higgsfield.ai/?jobId=d4a9552c-bd88-4803-9625-6c9d6e1a724b",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:05:50.773Z"
+  },
+  "category:IEK:2801": {
+    "path": "/sku/category/iek-2801.jpg",
+    "source": "https://higgsfield.ai/?jobId=4f7f9282-7e36-4296-bf35-f2a1bf2f42e1",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:05:51.696Z"
+  },
+  "category:IEK:1302": {
+    "path": "/sku/category/iek-1302.jpg",
+    "source": "https://higgsfield.ai/?jobId=4669c73c-89cf-4ee4-acb1-6c37bf917eab",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:05:52.586Z"
+  },
+  "category:IEK:2803": {
+    "path": "/sku/category/iek-2803.jpg",
+    "source": "https://higgsfield.ai/?jobId=c96d15bb-bb16-4d80-b75f-99fce6263675",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:05:53.503Z"
+  },
+  "category:IEK:2703": {
+    "path": "/sku/category/iek-2703.jpg",
+    "source": "https://higgsfield.ai/?jobId=37510f41-f8c8-4f4c-ab24-4de2bc615685",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:05:54.381Z"
+  },
+  "category:IEK:0811": {
+    "path": "/sku/category/iek-0811.jpg",
+    "source": "https://higgsfield.ai/?jobId=25209239-ab2f-4765-91a5-d542e746909a",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:05:55.333Z"
+  },
+  "category:IEK:1201": {
+    "path": "/sku/category/iek-1201.jpg",
+    "source": "https://higgsfield.ai/?jobId=6795d869-efe4-4e9f-8d1e-d1db2488b15b",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:05:56.361Z"
+  },
+  "category:IEK:0105": {
+    "path": "/sku/category/iek-0105.jpg",
+    "source": "https://higgsfield.ai/?jobId=ba1a7f2b-9410-4789-9a8a-b0838df498f1",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:05:57.785Z"
+  },
+  "category:IEK:2802": {
+    "path": "/sku/category/iek-2802.jpg",
+    "source": "https://higgsfield.ai/?jobId=aaa65faf-e8c5-473a-bea0-347c3c85fee4",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:05:58.710Z"
+  },
+  "category:IEK:2004": {
+    "path": "/sku/category/iek-2004.jpg",
+    "source": "https://higgsfield.ai/?jobId=ae741a84-36e5-4d09-89bb-cc181ebddb63",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:05:59.658Z"
+  },
+  "category:IEK:2401": {
+    "path": "/sku/category/iek-2401.jpg",
+    "source": "https://higgsfield.ai/?jobId=504bd27b-12f0-405c-b635-aadd889690ff",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:00.574Z"
+  },
+  "category:IEK:2502": {
+    "path": "/sku/category/iek-2502.jpg",
+    "source": "https://higgsfield.ai/?jobId=d0209343-37b7-4108-bf43-a2c4a92eb224",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:02.058Z"
+  },
+  "category:IEK:2506": {
+    "path": "/sku/category/iek-2506.jpg",
+    "source": "https://higgsfield.ai/?jobId=0899ac9d-49eb-49fe-aec8-984517f01805",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:03.072Z"
+  },
+  "category:IEK:0107": {
+    "path": "/sku/category/iek-0107.jpg",
+    "source": "https://higgsfield.ai/?jobId=990dedef-3f19-46e9-8b18-4a4524be1407",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:03.929Z"
+  },
+  "category:IEK:0103": {
+    "path": "/sku/category/iek-0103.jpg",
+    "source": "https://higgsfield.ai/?jobId=06f65052-6f64-4bb7-958d-7e8660c42f86",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:04.875Z"
+  },
+  "category:IEK:1306": {
+    "path": "/sku/category/iek-1306.jpg",
+    "source": "https://higgsfield.ai/?jobId=16bea248-31ea-42cf-a900-f46e7ed751d5",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:05.763Z"
+  },
+  "category:IEK:2514": {
+    "path": "/sku/category/iek-2514.jpg",
+    "source": "https://higgsfield.ai/?jobId=2c250c4a-8ffd-402e-b079-8d26c570fcad",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:06.740Z"
+  },
+  "category:IEK:0201": {
+    "path": "/sku/category/iek-0201.jpg",
+    "source": "https://higgsfield.ai/?jobId=32f80218-b9e7-4a95-9cd2-7d52046f0cfe",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:07.649Z"
+  },
+  "category:IEK:0108": {
+    "path": "/sku/category/iek-0108.jpg",
+    "source": "https://higgsfield.ai/?jobId=b0836816-d97c-4a05-8767-ad046fd30f7e",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:08.771Z"
+  },
+  "category:IEK:2403": {
+    "path": "/sku/category/iek-2403.jpg",
+    "source": "https://higgsfield.ai/?jobId=074bac28-1b3d-4ff3-8fea-b22af74812f1",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:09.687Z"
+  },
+  "category:IEK:2901": {
+    "path": "/sku/category/iek-2901.jpg",
+    "source": "https://higgsfield.ai/?jobId=01f863c3-d5ae-40cd-b326-1e4d120f157e",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:10.586Z"
+  },
+  "category:IEK:0808": {
+    "path": "/sku/category/iek-0808.jpg",
+    "source": "https://higgsfield.ai/?jobId=7221582d-3ec9-44f3-a964-fe5a0ba338b8",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:11.491Z"
+  },
+  "category:IEK:1309": {
+    "path": "/sku/category/iek-1309.jpg",
+    "source": "https://higgsfield.ai/?jobId=8ccf4989-bb0c-4944-94c0-d27c5f449780",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:12.393Z"
+  },
+  "category:IEK:1501": {
+    "path": "/sku/category/iek-1501.jpg",
+    "source": "https://higgsfield.ai/?jobId=eff61861-9c63-4166-82cb-c6fb2122a0c2",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:13.419Z"
+  },
+  "category:IEK:2601": {
+    "path": "/sku/category/iek-2601.jpg",
+    "source": "https://higgsfield.ai/?jobId=1a7beeeb-6949-40cd-af1f-d54ca0db962b",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:14.427Z"
+  },
+  "category:IEK:0104": {
+    "path": "/sku/category/iek-0104.jpg",
+    "source": "https://higgsfield.ai/?jobId=86b5fd5f-c434-4de5-bd52-998f6ecdd224",
+    "kind": "category",
+    "fetched_at": "2026-09-23T10:06:15.372Z"
   }
 }
