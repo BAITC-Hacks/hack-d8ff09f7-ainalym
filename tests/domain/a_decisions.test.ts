@@ -48,6 +48,16 @@ describe("review queue and versioned approval", () => {
     expect(today.lead).toBeTruthy();
   });
 
+  it("puts priced decisions ahead of an unresolved source task", async () => {
+    const database = fixture();
+    await runCalculation({}, {}, { database, as_of: "2025-01-01" });
+    database.prepare("INSERT INTO task (id,title,state,updated_at) VALUES ('TK-GAP','Уточнить остаток','needs_review','2024-01-01')").run();
+    const queue = await queueView("ORG-1", database);
+    expect(queue.items.map((item) => item.kind)).toEqual(["proposal", "task"]);
+    expect(queue.items[0].money_at_stake).toEqual(expect.objectContaining({ currency: "KZT" }));
+    expect(queue.items[1].why).toContain("Уточнить остаток");
+  });
+
   it("returns 409 for stale version and prepares a local order for the exact current version", async () => {
     const database = fixture();
     const result = await runCalculation({}, {}, { database, as_of: "2025-01-01" });
