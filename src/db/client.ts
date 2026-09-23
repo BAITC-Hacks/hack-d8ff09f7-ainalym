@@ -21,6 +21,8 @@ export function db(): DatabaseSync {
 export function migrate(d: DatabaseSync = db()): void {
   const sql = readFileSync(join(process.cwd(), "src", "db", "schema.sql"), "utf8");
   d.exec(sql);
+  const columns = new Set((d.prepare("PRAGMA table_info(sku)").all() as { name: string }[]).map((row) => row.name));
+  for (const name of ["on_hand_qty", "on_hand_as_of"]) if (!columns.has(name)) d.exec(`ALTER TABLE sku ADD COLUMN ${name} TEXT`);
 }
 
 export function withTx<T>(fn: (d: DatabaseSync) => T): T {

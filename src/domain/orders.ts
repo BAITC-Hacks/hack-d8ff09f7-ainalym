@@ -1,6 +1,7 @@
 import Decimal from "decimal.js";
 import { db, bumpStateVersion, withTx } from "../db/client";
 import { syncOrderObligations } from "./obligations";
+import { Money } from "./money";
 
 type Order = Record<string, unknown>;
 
@@ -28,10 +29,10 @@ export function approveOrder(id: string, version: number): Order {
     if (!lines.length) throw new Error("order_has_no_lines");
     const known = lines.filter(l => l.unit_cost !== null);
     const total = known.length === lines.length
-      ? lines.reduce((a, l) => a.plus(new Decimal(String(l.unit_cost)).times(Number(l.qty))), new Decimal(0)).toDecimalPlaces(2).toFixed(2)
+      ? Money.of(lines.reduce((a, l) => a.plus(new Decimal(String(l.unit_cost)).times(String(l.qty))), new Decimal(0)).toDecimalPlaces(2)).amount
       : null;
     d.prepare("UPDATE purchase_order SET state='approved',total_qty=?,total_cost=?,cost_known_lines=?,version=version+1 WHERE id=? AND version=?")
-      .run(lines.reduce((n, l) => n + Number(l.qty), 0), total, known.length, id, version);
+      .run(lines.reduce((n, l) => n + parseInt(String(l.qty), 10), 0), total, known.length, id, version);
     syncOrderObligations(id, d);
     bumpStateVersion(d);
     return d.prepare("SELECT * FROM purchase_order WHERE id=?").get(id) as Order;

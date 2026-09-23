@@ -1,6 +1,6 @@
-# L6 checkpoint — peer view
-done: world API, judge page, supplier channel, CSV/XLSX export seam, /peers view.
-done: peer tests 7/7; build GREEN; local HTTP play/compose/dedupe/export GREEN; screenshots in docs/evidence/peers.
-undone: L1/L2/L3 integration gate and /api/orders/:id/export handoff; npm run check script not yet on main.
-resumable: merge main at checkpoint, then rerun full gate and align event payloads with landed worker.
+# L6 checkpoint — closeout ready
+done: world play/compose, judge and supplier channels, 1C file export, peer view; local partner flow reached recommendation and proposal.
+done: checks 9/9 and build GREEN; HTTP replay deduped; exported XLSX read back; exact Draft/Sent/Confirmed labels and reply preserved; refreshed desktop/mobile evidence and closeout saved.
+undone: full 45-event replay (WE-003 payload.stocks fails in L2b); persisted ledger (L1 stub); /api/orders/:id/export route.
+resumable: L2b maps L9 stock and judge payloads; L1 lands ledger and route; root reruns integration gate.
 sha: HEAD (the commit containing this checkpoint).

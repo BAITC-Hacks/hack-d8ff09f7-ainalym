@@ -1,8 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db, resetInstance } from "../../src/db/client";
 import { composeEvent } from "../../src/world/compose";
 import { feed } from "../../src/world/feed";
 import { play } from "../../src/world/play";
+import { POST as composeRoute } from "../../src/app/api/world/compose/route";
+
+vi.mock("../../src/ai/worker", () => ({
+  tick: vi.fn(async () => ({ runs: [], processed: 0 })),
+  processEvent: vi.fn(async () => ({ run_id: null, actions: 0, escalations: 0, reason: "noop" })),
+}));
 
 beforeEach(() => {
   process.env.DATABASE_PATH = ":memory:";
@@ -43,5 +49,22 @@ describe("world feed", () => {
       .run("WE-OTHER", "ORG-OTHER", "judge_message", "other", "pending");
     expect(feed({}).rows).toEqual([]);
     expect(() => feed({ org_id: "ORG-OTHER" })).toThrow("unknown_org");
+  });
+
+  it("uses the scripted demo org when ETL has not inserted an organization row", () => {
+    db().prepare("DELETE FROM organization").run();
+    db().prepare("INSERT INTO world_event (id,org_id,seq,kind,source_id,state) VALUES (?,?,?,?,?,?)")
+      .run("WE-1", "partner", 1, "sales_day", "SALES-1", "scripted");
+    expect(feed({}).rows[0].org_id).toBe("partner");
+    expect(() => feed({ org_id: "foreign" })).toThrow("unknown_org");
+  });
+
+  it("keeps supplier replies inside the stateful supplier channel", async () => {
+    const response = await composeRoute(new Request("http://localhost/api/world/compose", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ kind: "supplier_reply", po_id: "PO-FAKE", text: "Confirmed" }),
+    }));
+    expect(response.status).toBe(403);
+    expect(db().prepare("SELECT COUNT(*) AS n FROM world_event").get()).toMatchObject({ n: 0 });
   });
 });

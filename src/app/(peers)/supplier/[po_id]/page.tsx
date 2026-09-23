@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Chip } from "@/components/labels";
 import { supplierChannel } from "@/peers/supplier";
 import { WorldError } from "@/world/feed";
 import SupplierActions from "./SupplierActions";
@@ -17,7 +18,7 @@ export default async function SupplierPage({ params }: { params: Promise<{ po_id
       <div><p className={styles.eyebrow}>Демо-канал поставщика · {order.supplier_id}</p><h1 className={styles.title}>Заказ {order.id}</h1><p className={styles.subtitle}>Подготовленное письмо поставщику. Передача за пределы приложения не выполняется.</p></div>
       <Link className={styles.link} href="/peers">Мир и экспорт</Link>
     </div>
-    <span className={styles.badge}>{channel.label}</span>
+    <Chip>{channel.label}</Chip>
     <section className={styles.panel} aria-labelledby="letter-title">
       <h2 id="letter-title">Письмо для {order.supplier_name}</h2>
       <div className={styles.meta}><span>Кому: {order.supplier_name}</span><span>Тема: Заказ на пополнение {order.id}</span>{order.eta && <span>Ожидаемая дата: {order.eta}</span>}</div>

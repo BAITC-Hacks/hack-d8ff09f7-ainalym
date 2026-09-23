@@ -16,14 +16,17 @@ afterEach(() => resetInstance());
 
 describe("controlled supplier channel", () => {
   it("holds a draft, records a local send, and preserves the reply verbatim", async () => {
-    expect(supplierChannel("PO-1").channel.state).toBe("draft");
+    expect(supplierChannel("PO-1").channel).toMatchObject({ state: "draft", label: "Draft", external: "local_simulator" });
     const sent = await supplierReply("PO-1", { action: "send_demo" });
     expect(sent.channel.state).toBe("sent");
+    expect(sent.channel.label).toBe("Sent (controlled demo channel)");
     expect(db().prepare("SELECT COUNT(*) AS n FROM world_event").get()).toMatchObject({ n: 0 });
     const first = await supplierReply("PO-1", { action: "confirm", text: "Получено. Подтверждаем 20 шт." });
     const second = await supplierReply("PO-1", { action: "confirm", text: "Получено. Подтверждаем 20 шт." });
     expect(first.channel.state).toBe("confirmed");
+    expect(first.channel.label).toBe("Confirmed");
     expect(first.event?.text).toBe("Получено. Подтверждаем 20 шт.");
+    expect(first.event?.payload).toMatchObject({ po_id: "PO-1", confirmation: true });
     expect(second.replayed).toBe(true);
     expect(db().prepare("SELECT COUNT(*) AS n FROM world_event").get()).toMatchObject({ n: 1 });
   });
