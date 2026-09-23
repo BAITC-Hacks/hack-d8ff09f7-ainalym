@@ -141,6 +141,19 @@
 .stepTitle { margin-top: 18px; font-size: 22px; line-height: 1.25; font-weight: 600; letter-spacing: -0.015em; color: var(--text); }
 .stepText { margin-top: 10px; color: var(--text-2); font-size: 16px; line-height: 1.55; text-wrap: pretty; }
 
+/* Evidence: data and editable demo assumptions stay distinguishable. */
+.proof { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 48px; border-block: 1px solid var(--hair); }
+.proofItem { min-width: 0; padding: 28px 20px; border-left: 1px solid var(--hair); }
+.proofItem:first-child { padding-left: 0; border-left: 0; }
+.proofItem dt { color: var(--text-2); font-size: 14px; line-height: 1.5; }
+.proofItem dd { margin: 16px 0 12px; color: var(--dawn); font-size: clamp(28px, 3vw, 40px); line-height: 1.1; letter-spacing: -0.035em; font-weight: 600; font-variant-numeric: tabular-nums; }
+.proofItem .proofNames { font-size: 24px; line-height: 1.25; letter-spacing: -0.02em; }
+.proofNames span { display: block; }
+.proofUnit { font-size: 16px; letter-spacing: 0; font-weight: 400; }
+.proofItem p { color: var(--text-2); font-size: 14px; line-height: 1.5; }
+.proofNote { max-width: 850px; margin-top: 20px; color: var(--text-2); font-size: 14px; line-height: 1.6; }
+.proofNote + .split { margin-top: 80px; }
+
 /* Honest calculation */
 .split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(40px, 6vw, 96px); align-items: start; }
 .facts {
@@ -190,11 +203,19 @@
 .footer .footerMeta:first-of-type { margin-left: auto; }
 
 @media (max-width: 1024px) {
+  .proof { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .proofItem:nth-child(3) { padding-left: 0; border-left: 0; }
+  .proofItem:nth-child(n + 3) { border-top: 1px solid var(--hair); }
   .steps { gap: 24px; }
   .step { padding-right: 0; }
   .split { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 640px) {
+  .proofItem { padding: 24px 0 24px 16px; }
+  .proofItem .proofNames { font-size: 20px; }
+  .proofItem dd { font-size: 30px; }
+  .proofUnit { display: block; margin-top: 4px; }
+  .proofNote + .split { margin-top: 56px; }
   .clips { grid-template-columns: minmax(0, 1fr); gap: 24px; margin-top: 36px; }
   .clipCaption { padding: 18px 20px 22px; }
   .clipHeading { gap: 8px; }

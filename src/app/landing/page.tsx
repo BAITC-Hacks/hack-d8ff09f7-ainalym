@@ -13,7 +13,7 @@ const DEMO_HREF = "/";
 const METHODOLOGY_HREF = "https://github.com/BAITC-Hacks/hack-d8ff09f7-ainalym/blob/main/README.md#методика-расчёта";
 
 const STEPS = [
-  { step: "01", title: "Файлы 1С", text: "Продажи, остатки и товар в пути — исходные данные для закупки. Обмен с 1С — файловый обмен." },
+  { step: "01", title: "Файлы 1С", text: "Продажи, остатки и товар в пути — исходные данные для закупки. 1С — файловый обмен." },
   { step: "02", title: "Расчёт", text: "Ainalym учитывает сезонность, срок поставки и разовые продажи. По каждому товару видно, сколько заказать и почему." },
   { step: "03", title: "Заказ поставщику", text: "Вы проверяете количество и утверждаете черновик. Файл заказа и письмо готовы к вашей отправке." },
 ];
@@ -45,6 +45,7 @@ export default function LandingPage() {
         <nav className={styles.navLinks} aria-label="Разделы">
           <a className={styles.navLink} href="#how">Как это работает</a>
           <a className={styles.navLink} href="#product">Возможности</a>
+          <a className={styles.navLink} href="#proof">Данные демо</a>
         </nav>
       </header>
 
@@ -90,12 +91,40 @@ export default function LandingPage() {
 
         <ProductClips />
 
-        <section className={styles.section} aria-labelledby="honest-title">
+        <section id="proof" className={styles.section} aria-labelledby="proof-title">
+          <div className={styles.sectionHead}>
+            <p className={styles.kicker}>На чём можно проверить</p>
+            <h2 id="proof-title" className={styles.sectionTitle}>Знакомый ассортимент. Конкретные условия расчёта.</h2>
+            <p className={styles.sectionLead}>В демо — обезличенные данные дистрибьютора электротоваров. Откройте товар и проследите путь от продаж до рекомендации.</p>
+          </div>
+          <dl className={styles.proof}>
+            <div className={styles.proofItem}>
+              <dt>Товаров в демо</dt>
+              <dd>3 909</dd>
+              <p>Ассортимент из файлов партнёра</p>
+            </div>
+            <div className={styles.proofItem}>
+              <dt>Поставщики</dt>
+              <dd className={styles.proofNames}>IEK <span>Systeme Electric</span></dd>
+              <p>Расчёт по каждому поставщику</p>
+            </div>
+            <div className={styles.proofItem}>
+              <dt>Срок поставки</dt>
+              <dd>40–50 <span className={styles.proofUnit}>дней</span></dd>
+              <p>IEK — 40, Systeme Electric — 50</p>
+            </div>
+            <div className={styles.proofItem}>
+              <dt>Оплата в демо</dt>
+              <dd>30 / 70 <span className={styles.proofUnit}>%</span></dd>
+              <p>30 % — предоплата, 70 % — к поставке</p>
+            </div>
+          </dl>
+          <p className={styles.proofNote}>Сроки поставки и схема оплаты — настройки демо, а не подтверждённые условия поставщиков. Суммы считаются там, где известна себестоимость; по IEK она не задана.</p>
           <div className={styles.split}>
             <div className={styles.sectionHead}>
               <p className={styles.kicker}>Честный расчёт</p>
-              <h2 id="honest-title" className={styles.sectionTitle}>Цифрам можно верить, потому что их можно проверить</h2>
-              <p className={styles.sectionLead}>Расчёт смотрит на то же, на что смотрит опытный закупщик, и показывает, откуда взялось каждое число.</p>
+              <h2 id="honest-title" className={styles.sectionTitle}>У каждой рекомендации есть причина</h2>
+              <p className={styles.sectionLead}>Остаток, товар в пути, сезонность и история продаж видны в объяснении. Вы можете проверить расчёт до утверждения заказа.</p>
             </div>
             <ul className={styles.facts}>
               {HONEST.map(({ icon: Icon, title, text }) => (
