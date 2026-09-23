@@ -60,3 +60,39 @@ test("sku: both chips get data-backed answers with links onto the shell", async 
   await expect(card.getByRole("link", { name: /Открыть карточку/ })).toHaveAttribute("href", `${PREFIX}/skus/${SKU}`);
   await page.screenshot({ path: `${OUT}/05_sku_answers.png` });
 });
+
+// ASSIST-2 — /assistant is the full-width conversation surface (transcript, inline cards, quick actions, mic).
+test("assistant page: chip → inline card, typed «почему 130200122» → SKU card, mobile layout", async ({ page }) => {
+  const OUT2 = "docs/evidence/v2/assist2";
+  mkdirSync(OUT2, { recursive: true });
+  await go(page, `${PREFIX}/assistant`);
+  const surface = page.getByRole("region", { name: "ИИ-ассистент" });
+  await expect(surface.getByRole("heading", { name: "ИИ-ассистент", level: 1 })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "ИИ-ассистент" })).toHaveCount(0);
+  await expect(surface.getByRole("button", { name: "Говорить с ассистентом" })).toBeVisible();
+  await page.screenshot({ path: `${OUT2}/01_assistant_empty_1440.png` });
+  await surface.getByRole("button", { name: "Что нужно от меня?" }).click();
+  const queue = surface.getByRole("article", { name: "Что нужно от меня?" });
+  await expect(queue).toBeVisible({ timeout: 20_000 });
+  expect(await queue.innerText()).not.toMatch(TECH);
+  await page.keyboard.press("Control+k");
+  await expect(surface.getByRole("textbox", { name: "Вопрос ассистенту" })).toBeFocused();
+  await page.keyboard.type("почему 130200122");
+  await page.keyboard.press("Enter");
+  const sku = surface.getByRole("article", { name: "почему 130200122" });
+  await expect(sku).toBeVisible({ timeout: 20_000 });
+  expect(await sku.innerText()).not.toMatch(TECH);
+  await expect(sku.getByRole("link", { name: /Открыть карточку 130200122_/ })).toHaveAttribute("href", `${PREFIX}/skus/130200122_`);
+  await page.screenshot({ path: `${OUT2}/02_assistant_cards_1440.png`, fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(surface.getByRole("button", { name: "Говорить с ассистентом" })).toBeVisible();
+  await page.screenshot({ path: `${OUT2}/03_assistant_390.png` });
+  // The dock still works on other pages and shares the same conversation.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await go(page, `${PREFIX}/money`);
+  await page.keyboard.press("Control+j");
+  const dock = page.getByRole("dialog", { name: "ИИ-ассистент" });
+  await expect(dock).toBeVisible();
+  await expect(dock.getByRole("article", { name: "почему 130200122" })).toBeVisible();
+  await page.screenshot({ path: `${OUT2}/04_dock_shared_thread.png` });
+});

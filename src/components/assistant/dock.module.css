@@ -1,7 +1,8 @@
 /* Assistant dock — Linear-style side sheet on the Fable (v2) tokens: one accent, hairlines, tight rhythm, no page shift. */
 .navTrigger { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 40px; padding: 8px 12px; border: 0; border-radius: var(--v2-radius-sm); background: transparent; color: var(--v2-ink); font: 400 15px/20px var(--v2-font); cursor: pointer; text-align: left; transition: background var(--v2-fast) var(--v2-ease); }
 .navTrigger:hover { background: rgba(20,20,19,.06); }
-.navTrigger[aria-expanded="true"] { background: rgba(20,20,19,.09); font-weight: 500; }
+.navTrigger[aria-expanded="true"], .navTrigger[data-active="1"] { background: rgba(20,20,19,.09); font-weight: 500; }
+a.navTrigger { text-decoration: none; }
 .navLabel { display: inline-flex; align-items: center; gap: 8px; }
 .navTrigger kbd { font: 500 11px/18px var(--v2-font); color: var(--v2-muted); padding: 0 5px; border: 1px solid var(--v2-line-strong); border-radius: 4px; }
 
@@ -18,7 +19,6 @@
 .sheet a { color: var(--v2-ink); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--v2-line-strong); }
 .sheet a:hover { text-decoration-color: var(--v2-ink); }
 @keyframes slide { from { transform: translateX(16px); opacity: 0; } to { transform: none; opacity: 1; } }
-.page { position: static; width: 100%; height: 100dvh; max-width: none; border: 0; box-shadow: none; animation: none; }
 
 .head { display: flex; align-items: center; gap: 8px; height: 52px; flex: none; padding: 0 10px 0 16px; border-bottom: 1px solid var(--v2-line); }
 .spark { color: var(--v2-ink-2); flex: none; }
@@ -31,13 +31,23 @@
 .body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .intro { margin: 0; color: var(--v2-ink-2); font: var(--v2-meta); }
 .status { margin: 0; color: var(--v2-muted); font: var(--v2-meta); }
+.say { margin: 0; padding: 8px 12px; border-radius: 12px; background: var(--v2-card); border: 1px solid var(--v2-line); font: var(--v2-body); overflow-wrap: anywhere; }
+.sayUser { background: var(--v2-well); border-color: transparent; margin-left: 32px; }
+.who { display: block; font: var(--v2-caption); color: var(--v2-muted); margin-bottom: 2px; }
+.live { display: flex; align-items: center; gap: 10px; min-height: 28px; font: var(--v2-caption); color: var(--v2-ink-2); }
+.live canvas { width: 96px; flex: none; }
+.mic { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--v2-well); color: var(--v2-ink); cursor: pointer; transition: background var(--v2-fast) var(--v2-ease); }
+.mic:hover { background: var(--v2-line); }
+.mic:disabled { color: var(--v2-muted); cursor: default; }
+.mic[data-state="listening"], .mic[data-state="speaking"] { background: var(--v2-accent); color: var(--v2-on-accent); }
+.mic[data-state="thinking"] { background: var(--v2-ink-2); color: var(--v2-canvas); }
 
 .foot { flex: none; border-top: 1px solid var(--v2-line); padding: 10px 12px 12px; display: grid; gap: 8px; background: var(--v2-card); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { height: 28px; padding: 0 10px; border: 1px solid var(--v2-line); border-radius: 999px; background: var(--v2-card); color: var(--v2-ink); font: 400 13px/26px var(--v2-font); cursor: pointer; white-space: nowrap; transition: background var(--v2-fast) var(--v2-ease), border-color var(--v2-fast) var(--v2-ease); }
 .chip:hover { border-color: var(--v2-line-strong); background: var(--v2-well); }
 .chip:disabled { opacity: .55; cursor: default; }
-.composer { display: flex; align-items: flex-end; gap: 8px; border: 1px solid var(--v2-line-strong); border-radius: var(--v2-radius-sm); background: var(--v2-card); padding: 5px 5px 5px 10px; transition: border-color var(--v2-fast) var(--v2-ease); }
+.composer { display: flex; align-items: flex-end; gap: 8px; border: 1px solid var(--v2-line-strong); border-radius: var(--v2-radius-sm); background: var(--v2-card); padding: 5px; transition: border-color var(--v2-fast) var(--v2-ease); }
 .composer:focus-within { border-color: var(--v2-ink); }
 .composer textarea { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; resize: none; font: var(--v2-body); color: var(--v2-ink); min-height: 22px; max-height: 120px; padding: 4px 0; }
 .composer textarea::placeholder { color: var(--v2-muted); }
@@ -48,7 +58,7 @@
 .linkBtn { border: 0; background: transparent; padding: 2px 4px; color: var(--v2-muted); font: var(--v2-caption); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; border-radius: 4px; }
 .linkBtn:hover { color: var(--v2-ink); }
 
-.navTrigger:focus-visible, .iconBtn:focus-visible, .chip:focus-visible, .send:focus-visible, .linkBtn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.navTrigger:focus-visible, .iconBtn:focus-visible, .chip:focus-visible, .send:focus-visible, .mic:focus-visible, .linkBtn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
 @media (max-width: 767px) { .sheet { width: 100vw; border-left: 0; } .iconBtn, .chip { min-height: 36px; } }
 @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }

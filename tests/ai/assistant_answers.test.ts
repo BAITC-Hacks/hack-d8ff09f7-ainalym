@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { db, resetInstance } from "../../src/db/client";
-import { answerInContext, detectKind } from "../../src/server/assistant_answers";
+import { answerInContext, detectKind, mentionedSku, resolveSkuCode } from "../../src/server/assistant_answers";
 import { pageContext, suggestedPrompts } from "../../src/components/assistant/context";
 
 const LEAK = /LLM|provider|провайдер|HTTP|JSON|rules|state_version|ETL|adapter|stack|undefined|null/i;
@@ -13,6 +13,8 @@ beforeEach(() => {
   d.prepare("INSERT INTO supplier(id,name,lead_time_days) VALUES ('SE','SE',50)").run();
   d.prepare("INSERT INTO sku(code_1c,supplier_id,name,unit_cost,moq) VALUES ('130300027_','SE','Автомат ВА47-29 1P 16А','12.50',1)").run();
   d.prepare("INSERT INTO sku(code_1c,supplier_id,name,unit_cost) VALUES ('SE-2','SE','Розетка','2.00')").run();
+  d.prepare("INSERT INTO supplier(id,name,lead_time_days) VALUES ('IEK','IEK',30)").run();
+  d.prepare("INSERT INTO sku(code_1c,supplier_id,article,name,unit_cost,moq) VALUES ('130200122_','IEK','YNN10-812-10DP-K07','Шина N нулевая 8х12мм ШНИ 10 КС IEK','3.10',20)").run();
   d.prepare("INSERT INTO agent_run(id,org_id,trigger_type,started_at) VALUES ('AR-1','partner','calc_request','2026-09-23')").run();
   d.prepare("INSERT INTO calc_run(id,started_at,agent_run_id) VALUES ('RUN-1','2026-09-23','AR-1')").run();
   d.prepare(`INSERT INTO proposal(id,kind,subject_type,subject_id,payload,money_at_stake,created_at) VALUES ('PR-1','supplier_order','supplier','SE',?,'{"amount":"145.00","currency":"KZT"}','2026-09-23')`)
@@ -75,5 +77,28 @@ describe("keyless assistant answers", () => {
     expect(detectKind("почему заказ такой", pageContext("/v2/supplier/PO-1", "/v2"))).toBe("why_order");
     const answer = await answerInContext({ text: "погода в Астане", context: pageContext("/v2/money", "/v2"), base: "/v2", org_id: "partner" });
     expect(answer).toMatchObject({ ok: false, reply_ru: "Не могу ответить по этим данным. Попробуйте открыть карточку товара." });
+  });
+  it("resolves SKU references like the voice lane: trim → exact → code + «_» → prefix → article/name", () => {
+    expect(resolveSkuCode("130200122")).toBe("130200122_");
+    expect(resolveSkuCode(" 130200122_ ")).toBe("130200122_");
+    expect(resolveSkuCode("1302001")).toBe("130200122_");
+    expect(resolveSkuCode("YNN10-812-10DP-K07")).toBe("130200122_");
+    expect(resolveSkuCode("нулевая 8х12")).toBe("130200122_");
+    expect(resolveSkuCode("999999999")).toBeUndefined();
+    expect(mentionedSku("почему 130200122")).toBe("130200122_");
+    expect(mentionedSku("если +100 в пути")).toBeUndefined();
+  });
+  it("typed «почему 130200122» on the assistant page resolves to the SKU card", async () => {
+    const context = pageContext("/v2/assistant", "/v2");
+    const answer = await answerInContext({ text: "почему 130200122", context, base: "/v2", org_id: "partner" });
+    expect(answer.ok).toBe(true);
+    expect(answer.kind).toBe("why_qty");
+    expect(answer.reply_ru).toContain("Шина N нулевая");
+    expect(answer.reply_ru).not.toMatch(LEAK);
+    expect(answer.items?.map(i => i.href)).toContain("/v2/skus/130200122_");
+    const bare = await answerInContext({ text: "130200122", context, base: "/v2", org_id: "partner" });
+    expect(bare.kind).toBe("why_qty");
+    const byName = await answerInContext({ text: "почему шина n нулевая", context, base: "/v2", org_id: "partner" });
+    expect(byName.kind).toBe("why_qty");
   });
 });

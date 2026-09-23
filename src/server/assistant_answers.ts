@@ -38,6 +38,32 @@ export function detectKind(text: string, context: AssistantContext): AnswerKind 
   return "unknown";
 }
 
+const like = (value: string) => value.replace(/[\\%_]/g, ch => `\\${ch}`);
+/** Resolves a typed or spoken SKU reference to a stored code (same order as the voice lane): trim → exact → code + "_" → prefix → article/name. */
+export function resolveSkuCode(raw: string): string | undefined {
+  const text = (raw ?? "").trim();
+  const code = text.replace(/\s+/g, "");
+  if (!code || code.length > 80) return undefined;
+  const d = db();
+  const one = (sql: string, ...args: string[]) => (d.prepare(sql).get(...args) as { code_1c: string } | undefined)?.code_1c;
+  return one("SELECT code_1c FROM sku WHERE code_1c = ?", code)
+    ?? one("SELECT code_1c FROM sku WHERE code_1c = ?", `${code}_`)
+    ?? one("SELECT code_1c FROM sku WHERE code_1c LIKE ? ESCAPE '\\' ORDER BY code_1c LIMIT 1", `${like(code)}%`)
+    ?? one("SELECT code_1c FROM sku WHERE article = ? OR article = ? LIMIT 1", code, text)
+    ?? (text.length >= 4 ? byNameOrArticle(text) : undefined);
+}
+/** Case-insensitive Cyrillic-safe match on article or name (SQLite LIKE only folds ASCII). */
+function byNameOrArticle(text: string): string | undefined {
+  const needle = text.toLowerCase();
+  const rows = db().prepare("SELECT code_1c, article, name FROM sku ORDER BY code_1c").all() as { code_1c: string; article: string | null; name: string }[];
+  return rows.find(row => (row.article ?? "").toLowerCase().includes(needle) || row.name.toLowerCase().includes(needle))?.code_1c;
+}
+/** A SKU mentioned in free text: a 7–12 digit code, with or without the trailing underscore («почему 130200122» → 130200122_). */
+export function mentionedSku(text: string): string | undefined {
+  for (const match of text.matchAll(/(?<!\d)(\d{7,12}_?)(?!\d)/g)) { const hit = resolveSkuCode(match[1]); if (hit) return hit; }
+  return undefined;
+}
+
 function latestRec(code: string): Rec | undefined {
   return db().prepare("SELECT id, run_id, code_1c, supplier_id, qty_recommended, qty_adjusted, urgency, rationale_ru, components, proposal_id FROM recommendation WHERE code_1c = ? ORDER BY rowid DESC LIMIT 1").get(code) as Rec | undefined;
 }
@@ -181,13 +207,22 @@ function changed(orgId: string): Answer {
 
 export async function answerInContext(ask: Ask): Promise<Answer> {
   const base = ask.base && /^\/[a-z0-9_-]*$/i.test(ask.base) ? ask.base.replace(/\/$/, "") : "/v2";
-  const kind = detectKind(ask.text, ask.context);
-  const { code_1c, po_id } = ask.context.entity;
+  const mentioned = mentionedSku(ask.text);
+  let context: AssistantContext = mentioned ? { ...ask.context, entity: { ...ask.context.entity, code_1c: mentioned } } : ask.context;
+  let kind = detectKind(ask.text, context);
+  if (kind === "unknown" && mentioned) kind = "why_qty";
+  if (kind === "unknown") {
+    // «почему <название или артикул>» — look the position up by article or name.
+    const rest = ask.text.replace(/^(почему|объясни|расскажи про|что с|покажи|сколько заказать)\s+/i, "").trim();
+    const byName = rest !== ask.text.trim() && rest.length >= 4 ? resolveSkuCode(rest) : undefined;
+    if (byName) { context = { ...context, entity: { ...context.entity, code_1c: byName } }; kind = "why_qty"; }
+  }
+  const { code_1c, po_id } = context.entity;
   switch (kind) {
     case "why_qty": return whyQty(code_1c!, base);
     case "what_if_transit": return whatIfTransit(code_1c!, ask.text, base);
     case "why_order": return whyOrder(po_id!, base);
-    case "urgent": return urgent(ask.context, base);
+    case "urgent": return urgent(context, base);
     case "pay_week": return payWeek(ask.org_id, base, ask.asOf ?? new Date());
     case "needs_me": return needsMe(ask.org_id, base);
     case "changed": return changed(ask.org_id);

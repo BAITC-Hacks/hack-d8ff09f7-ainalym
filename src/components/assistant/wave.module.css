@@ -1,0 +1,3 @@
+/* Live sound wave — Fable accent bars on the canvas; thinking uses ink at low alpha. */
+.wave { display: block; width: 100%; height: 56px; --wave-accent: var(--v2-accent, #dfe61c); --wave-ink: var(--v2-ink, #141413); }
+.mini { height: 24px; }
