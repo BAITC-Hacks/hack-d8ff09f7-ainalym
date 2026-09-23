@@ -26,7 +26,7 @@ export function supplierChannel(poId: string) {
   const payload = peer ? JSON.parse(peer.payload) as { reply_text?: string; event_id?: string } : {};
   return {
     order, lines,
-    channel: { state, label: LABELS[state], external: "local_simulator" as const, as_of: peer?.as_of ?? null, reply_text: payload.reply_text ?? null, event_id: payload.event_id ?? null },
+    channel: { state, label: LABELS[state], provenance: "synthetic" as const, ai: "none" as const, external: "local_simulator" as const, as_of: peer?.as_of ?? null, reply_text: payload.reply_text ?? null, event_id: payload.event_id ?? null },
     state_version: stateVersion(),
   };
 }
