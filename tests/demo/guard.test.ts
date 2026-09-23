@@ -40,12 +40,17 @@ describe("demo access", () => {
     expect(hasAccess(cookie, "test")).toBe(true);
     expect((await middleware(new NextRequest("http://localhost:3000/", { headers: { cookie: `ainalym_demo_access=${cookie}` } }))).status).toBe(200);
     expect(hasAccess(issueAccessCookie("test", 0), "test", 8 * 86_400_000)).toBe(false);
+    const unsafe = await middleware(new NextRequest("http://localhost:3000/__demo_access", {
+      method: "POST", body: new URLSearchParams({ code: "test", next: "/\\outside.invalid" }),
+    }));
+    expect(unsafe.headers.get("location")).toBe("http://localhost:3000/");
   });
 
-  it("limits API requests to a refillable 60 per IP", () => {
-    for (let i = 0; i < 60; i++) expect(allowApiRequest("test-ip", 1000)).toBe(true);
-    expect(allowApiRequest("test-ip", 1000)).toBe(false);
-    expect(allowApiRequest("test-ip", 2000)).toBe(true);
+  it("limits all API requests to a refillable 60 per IP", async () => {
+    const request = () => new NextRequest("http://localhost:3000/api/decisions", { headers: { "x-real-ip": "test-api-ip" } });
+    for (let i = 0; i < 60; i++) expect((await middleware(request())).status).toBe(401);
+    expect((await middleware(request())).status).toBe(429);
+    expect(allowApiRequest("test-api-ip", Date.now() + 1000)).toBe(true);
   });
 });
 

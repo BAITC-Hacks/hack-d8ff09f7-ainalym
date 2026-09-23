@@ -18,7 +18,9 @@ function ipFor(request: NextRequest): string {
 }
 
 function safeNext(value: string | null): string {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/";
+  if (!value?.startsWith("/") || value.startsWith("//") || /[\\\u0000-\u001f]/.test(value)) return "/";
+  const url = new URL(value, "http://demo.invalid");
+  return url.origin === "http://demo.invalid" ? url.pathname + url.search : "/";
 }
 
 function escapeHtml(value: string): string {
@@ -33,6 +35,10 @@ function codePage(next: string, failed = false): NextResponse {
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const active = guardEnabled();
+
+  if (active && path.startsWith("/api/") && !allowApiRequest(ipFor(request))) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": "1", "Cache-Control": "no-store" } });
+  }
 
   if (path === "/api/health") {
     const health = await appHealth();
@@ -66,9 +72,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(destination);
   }
 
-  if (path.startsWith("/api/") && !allowApiRequest(ipFor(request))) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": "1", "Cache-Control": "no-store" } });
-  }
   if (process.env.AINALYM_MODE === "live" && request.method === "POST" &&
       ["/api/decisions", "/api/drafts", "/api/voice/session", "/api/assistant/message"].includes(path) &&
       remainingDailyCalls() === 0) return providerUnavailable();
