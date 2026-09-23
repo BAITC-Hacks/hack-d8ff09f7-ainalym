@@ -1,8 +1,8 @@
-# L4c checkpoint 5 — tier-2 notifications
-done: read-only /api/notifications over L1 repositories; bell on /sales and /documents; native dialog, focus return, confirmed attention count.
-checks: UI suite and build/type check passed after latest main merge; API test proves reads preserve proposal state and state_version.
+# L4c checkpoint 6 — tier-2 API search
+done: /api/search over L1 SKU/order/run repositories; search dialog on list pages; exported SearchResults for L4a's ⌘K integration.
+checks: npm run check -- ui passed=62 failed=0; build/type check passed after L1 merge; query-race + SQL-text + identity/read-only tests pass.
 deps: none.
-undone: search checkpoint; landing last; global bell mount belongs to L4a (exported NotificationsBell seam).
-resumable: notifications report unresolved work, never claim a read/unread write; see L4C_INTEGRATION_NOTES.md.
-Gate: RED — integrated modes/source metadata and actual spoken-result gate remain incomplete.
+undone: landing last; global ⌘K results/bell remain L4a-owned seams; source metadata absent; real spoken-result gate external.
+resumable: L1 modes/state/reset/ledger now merged; integrated core browser recheck is underway. g-chords already implemented by L4a and kept intact.
+Gate: RED — source metadata absent and actual spoken-result gate unrun; integrated core evidence update follows.
 sha: this checkpoint commit (git log -1 --format=%H -- docs/agent_handoffs/L4C_CHECKPOINT.md).
