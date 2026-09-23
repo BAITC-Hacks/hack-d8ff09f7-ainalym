@@ -147,7 +147,7 @@ export default function LandingPage() {
 
         <section className={styles.closing} aria-labelledby="closing-title">
           {/* eslint-disable-next-line @next/next/no-img-element -- same cached poster as the hero */}
-          <img className={styles.closingImage} src={POSTER_SRC} alt="" width={1920} height={1072} loading="lazy" decoding="async" />
+          <img className={styles.closingImage} src={POSTER_SRC} alt="" width={1600} height={900} loading="lazy" decoding="async" />
           <div className={styles.closingInner}>
             <h2 id="closing-title" className={styles.closingTitle}>Расчёт готовит Ainalym. Решение принимаете вы.</h2>
             <p className={styles.closingLead}>Проверьте рекомендации, поправьте количество и утвердите заказ. Отправка поставщику — в ваших руках.</p>
