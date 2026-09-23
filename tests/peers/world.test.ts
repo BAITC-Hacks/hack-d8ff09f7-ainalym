@@ -1,9 +1,14 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db, resetInstance } from "../../src/db/client";
 import { composeEvent } from "../../src/world/compose";
 import { feed } from "../../src/world/feed";
 import { play } from "../../src/world/play";
 import { POST as composeRoute } from "../../src/app/api/world/compose/route";
+
+vi.mock("../../src/ai/worker", () => ({
+  tick: vi.fn(async () => ({ runs: [], processed: 0 })),
+  processEvent: vi.fn(async () => ({ run_id: null, actions: 0, escalations: 0, reason: "noop" })),
+}));
 
 beforeEach(() => {
   process.env.DATABASE_PATH = ":memory:";
