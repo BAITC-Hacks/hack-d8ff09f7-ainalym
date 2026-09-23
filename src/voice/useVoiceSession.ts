@@ -136,7 +136,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
           router.refresh();
         }).catch(() => undefined);
       }
-      if (call.name === "recommend_for" && output.ok) setState("waiting_review");
+      if (call.name === "recommend_for" && output.ok && Array.isArray(output.proposal_ids) && output.proposal_ids.length > 0) setState("waiting_review");
       else setState("listening");
       send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: call.call_id, output: JSON.stringify(output) } });
     }
