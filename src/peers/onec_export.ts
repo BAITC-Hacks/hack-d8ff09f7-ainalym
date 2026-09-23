@@ -33,7 +33,7 @@ export function exportOrder(poId: string) {
     return { peer_record_id: peer!.id, po_id: poId, csv_path: existing.csv_path, xlsx_path: existing.xlsx_path, state: "exported" as const, replayed: true, label: EXPORT_LABEL, provenance: "partner_anonymised" as const, ai: "none" as const, external: "export_only" as const, state_version: stateVersion() };
   }
   if (order.state !== "approved" && order.state !== "exported") throw new WorldError("po_not_approved", 403);
-  const lines = db().prepare("SELECT l.code_1c, s.article, s.name, l.qty, s.moq, (SELECT r.urgency FROM recommendation r WHERE r.code_1c = l.code_1c AND r.run_id = po.run_id ORDER BY r.rowid DESC LIMIT 1) AS urgency, COALESCE(l.rationale_ru, (SELECT r.rationale_ru FROM recommendation r WHERE r.code_1c = l.code_1c AND r.run_id = po.run_id ORDER BY r.rowid DESC LIMIT 1)) AS rationale_ru FROM purchase_order_line l JOIN purchase_order po ON po.id = l.po_id JOIN sku s ON s.code_1c = l.code_1c WHERE l.po_id = ? ORDER BY l.id")
+  const lines = db().prepare("SELECT l.code_1c, s.article, s.name, l.qty, s.moq, r.urgency, COALESCE(l.rationale_ru, r.rationale_ru) AS rationale_ru FROM purchase_order_line l JOIN sku s ON s.code_1c = l.code_1c LEFT JOIN recommendation r ON r.id = l.recommendation_id AND r.code_1c = l.code_1c WHERE l.po_id = ? ORDER BY l.id")
     .all(poId) as unknown as ExportLine[];
   if (!lines.length) throw new WorldError("empty_po", 422);
   const rows: (string | number)[][] = [HEADERS, ...lines.map((line) => [line.code_1c, line.article ?? "", line.name, line.qty, line.moq, urgencyLabelRu(line.urgency), line.rationale_ru ?? ""] as (string | number)[])];

@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
+import { databasePath } from "../src/db/path.mjs";
 
 const allowed = new Set(["domain", "ai", "ui", "voice", "peers", "skeleton", "etl", "demo"]);
 const filter = process.argv[2];
@@ -15,7 +16,7 @@ const output = join(temp, "vitest.json");
 const counts = { passed: 0, failed: 0, skipped: 0, externallyUnverified: 0 };
 try {
   const args = ["vitest", "run", ...(filter ? [`tests/${filter}`] : []), "--reporter=./scripts/vitest_reporter.mjs"];
-  const result = spawnSync("npx", args, { cwd: process.cwd(), encoding: "utf8", env: { ...process.env, DATABASE_PATH: ":memory:", AINALYM_CHECK_REPORT: output } });
+  const result = spawnSync("npx", args, { cwd: process.cwd(), encoding: "utf8", env: { ...process.env, AINALYM_ETL_DATABASE_PATH: databasePath(), DATABASE_PATH: ":memory:", AINALYM_CHECK_REPORT: output } });
   let report;
   try {
     if (!existsSync(output)) throw new Error("missing Vitest report");
