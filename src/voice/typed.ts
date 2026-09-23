@@ -6,7 +6,7 @@ export function keywordIntent(text: string, scope: ToolScope): Intent {
   const lower = text.toLowerCase();
   const mentionedSupplier = /\biek\b|иэк/i.test(text) ? "IEK" : /\bse\b|\bсэ\b/i.test(text) ? "SE" : scope.supplier_id;
   const category = lower.match(/(?:категори[яиюе]|category)\s*[№#:]?\s*([\dа-яa-z_-]+)/i)?.[1];
-  const code = scope.code_1c ?? text.match(/\b\d{7,}[_\w-]*\b/)?.[0];
+  const code = scope.code_1c ?? text.match(/(?:код(?:а|у)?(?:\s*1[сc])?|sku)\s*[:№#]?\s*([\p{L}\p{N}_-]{3,})/iu)?.[1] ?? text.match(/\b\d{5,}[_\w-]*\b/)?.[0];
   if (/(?:почему|объясни|обоснован|по коду|прогноз.*товар|sku)/i.test(lower) && code) return { tool: "explain_sku", args: { code_1c: code } };
   if (/(?:что измен|что нового|изменения|что сделал|последние действия)/i.test(lower)) return { tool: "what_changed", args: {} };
   if (/(?:что.*(?:нужно|требует).*меня|очеред|согласован|утверд|мои задачи|решения)/i.test(lower)) return { tool: "what_needs_me", args: {} };

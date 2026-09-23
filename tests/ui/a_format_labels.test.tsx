@@ -5,9 +5,14 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { formatMoney, sumByCurrency } from "@/components/pulse/format";
 import { TruthAxisLabels, ModeChip, TaskStateChip, AgentsLabel, WorldLabel } from "@/components/labels";
 import { MoneyStrip } from "@/components/pulse/MoneyStrip";
+import { AgentLedger } from "@/components/pulse/AgentLedger";
 import { Commitments } from "@/components/pulse/Commitments";
 afterEach(cleanup);
 describe("a_money and result truth", () => {
+  it("shows historical ledger axes without opening an explanation", () => {
+    render(<AgentLedger loading={false} error={null} reload={() => {}} data={{ stats: { auto: 1, needs_you: 0 }, rows: [{ id: "ACT-test", run_id: "RUN-test", summary_ru: "Пересчитана потребность", at: "2026-09-23T08:00:00Z", autonomy: "auto", result: "done", sources: [], provenance: "partner_anonymised", ai: "rules", external: "export_only" }] }} />);
+    for (const label of ["Данные партнёра · обезличены", "Правила без LLM", "Экспорт для 1С (файл)"]) expect(screen.getByText(label).closest("details:not([open])")).toBeNull();
+  });
   it("preserves decimal precision and never combines currencies", () => {
     expect(sumByCurrency([{ amount: "9007199254740993.01", currency: "KZT" }, { amount: "0.09", currency: "KZT" }, { amount: "20.00", currency: "CNY" }])).toEqual([{ amount: "9007199254740993.10", currency: "KZT" }, { amount: "20.00", currency: "CNY" }]);
     expect(formatMoney({ amount: "1234.50", currency: "KZT" })).toBe("1\u2009234,50\u2009₸");

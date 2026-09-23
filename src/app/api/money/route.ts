@@ -1,8 +1,12 @@
-import { db, stateVersion } from "@/db/client";
 import { moneyView } from "@/domain/cashflow";
+import { orgId } from "@/server/context";
+import { handle, ok } from "@/server/http";
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const orgId = url.searchParams.get("org_id") || (db().prepare("SELECT id FROM organization LIMIT 1").get() as { id?: string } | undefined)?.id || "partner";
-  return Response.json({ ok: true, ...(await moneyView(orgId)), state_version: stateVersion() });
+export const runtime = "nodejs";
+
+export async function GET(request: Request): Promise<Response> {
+  return handle(async () => {
+    const selectedOrg = new URL(request.url).searchParams.get("org_id") || orgId();
+    return ok(await moneyView(selectedOrg));
+  });
 }
