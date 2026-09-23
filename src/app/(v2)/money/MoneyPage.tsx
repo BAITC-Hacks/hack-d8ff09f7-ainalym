@@ -34,7 +34,7 @@ export function MoneyPage() {
   const byDay = groupByDay(outflows);
   const maxDay = Math.max(1, ...byDay.map(d => d.total));
   return <>
-    {error && <StaleBanner>Обновление не удалось — показываю последний снимок (версия состояния {data.state_version}).</StaleBanner>}
+    {error && <StaleBanner>Обновление не удалось — показываю последние известные данные.</StaleBanner>}
     <PageHead crumbs={[{ label: "Финансы" }]} title="Деньги" badges={<><Pill tone={cashKnown ? "good" : "warn"}>{cashKnown ? "касса задана" : "касса не задана"}</Pill><Pill tone={unknownLines ? "warn" : "good"}>{unknownLines ? `${fmtNum(unknownLines)} строк без себестоимости` : "себестоимость полная"}</Pill></>}
       sub={<>Обязательства по утверждённым заказам · условия: предоплата 30 % при утверждении, остаток к ETA · {data.ai === "rules" ? "Правила без LLM" : data.ai}</>} />
     <Kpis items={[
@@ -88,7 +88,7 @@ export function MoneyPage() {
             <p><b>Обязательства</b> — <code>purchase_order_line.qty × sku.unit_cost</code> по заказам в состоянии «утверждено» / «передано».</p>
             <p><b>Себестоимость</b> — «СС реал» из файла SE; у IEK не передаётся ({costRisk ? fmtNum(costRisk.count) : "—"} позиций без цены).</p>
             <p><b>Склад</b> — остатки на {fmtDate("2026-09-22")} × себестоимость там, где она известна.</p>
-            <p><Truth>Данные партнёра · обезличены</Truth> · <Truth>Экспорт для 1С (файл)</Truth> · версия состояния {data.state_version}</p>
+            <p><Truth>Данные партнёра · обезличены</Truth> · <Truth>Экспорт для 1С (файл)</Truth></p>
           </div>
         </Section>
       </aside>

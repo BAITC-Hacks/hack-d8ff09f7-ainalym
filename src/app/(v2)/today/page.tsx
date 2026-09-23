@@ -76,7 +76,7 @@ export default function TodayPage() {
           </>}
         </aside>
       </div>
-      <footer className={styles.foot}><TruthStrip ai={d?.ai} external={d?.external} note={d ? `Версия состояния ${d.state_version}` : undefined} /></footer>
+      <footer className={styles.foot}><TruthStrip ai={d?.ai} external={d?.external} /></footer>
     </div>
   );
 }

@@ -131,7 +131,7 @@ function Replenishment() {
         </div>
       )}
       <p className={styles.keys}><kbd>/</kbd> поиск · <kbd>j</kbd>/<kbd>k</kbd> по строкам · <kbd>Enter</kbd> раскрыть · <kbd>Esc</kbd> закрыть</p>
-      <footer className={styles.foot}><TruthStrip ai={recs.data?.ai} external={recs.data?.external} note={recs.data ? `Версия состояния ${recs.data.state_version}` : undefined} /></footer>
+      <footer className={styles.foot}><TruthStrip ai={recs.data?.ai} external={recs.data?.external} /></footer>
     </div>
   );
 }

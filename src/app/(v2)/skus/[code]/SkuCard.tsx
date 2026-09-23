@@ -51,12 +51,12 @@ function SkuBody({ data, reload, rail, stale }: { data: SkuResponse; reload: () 
   const qty = rec ? rec.qty_adjusted ?? rec.qty_recommended : null;
   const need = comp.forecast_qty !== undefined && comp.safety !== undefined ? comp.forecast_qty + comp.safety - Number(rec?.on_hand ?? 0) - Number(rec?.in_transit ?? 0) : null;
   return <>
-    {stale && <StaleBanner>Обновление не удалось — показываю последний снимок (версия состояния {data.state_version}).</StaleBanner>}
+    {stale && <StaleBanner>Обновление не удалось — показываю последние известные данные.</StaleBanner>}
     <PageHead crumbs={[{ href: "/replenishment", label: "Пополнение" }, { label: sku.supplier_name ?? sku.supplier_id }, { label: sku.code_1c }]}
       title={<span className={styles.titleRow}>{(data.image_url ?? sku.image_url) ? <img className={styles.productImage} src={(data.image_url ?? sku.image_url) as string} alt="" width={56} height={56} loading="lazy" /> : null}<span>{sku.name}</span></span>}
       badges={<>{urgency && <Pill tone={urgency.tone}>{urgency.label}</Pill>}<Pill>{sku.supplier_name ?? sku.supplier_id}</Pill></>}
       sub={<>Код 1С {sku.code_1c}{sku.article && <> · артикул {sku.article}</>}{sku.category && <> · категория {sku.category}</>} · кратность {fmtNum(sku.moq)}</>}
-      actions={<><a className={styles.linkBtn} href={`/api/skus/${encodeURIComponent(sku.code_1c)}`} target="_blank" rel="noreferrer">JSON</a></>} />
+      />
     <Kpis items={[
       { label: "Остаток", value: sku.on_hand_qty === null ? "не задан" : fmtQty(sku.on_hand_qty, unit), meta: sku.on_hand_as_of ? `на ${fmtDate(sku.on_hand_as_of)}${comp.stock_stale ? " · устарел" : ""}` : "остатков в файле нет", tone: sku.on_hand_qty === null ? "warn" : undefined },
       { label: "В пути", value: fmtQty(rec?.in_transit ?? in_transit.reduce((a, t) => a + Number(t.qty), 0), unit), meta: in_transit.length ? `${in_transit.length} поставк${in_transit.length === 1 ? "а" : "и"} · ETA ${fmtDate(in_transit[0].expected_at)}` : "открытых поставок нет" },
