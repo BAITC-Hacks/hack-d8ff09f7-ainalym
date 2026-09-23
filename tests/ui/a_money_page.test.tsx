@@ -2,7 +2,7 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import { MoneyPage } from "@/app/(app)/money/MoneyPage";
+import { MoneyPage } from "@/components/pulse/MoneyPage";
 import { MoneyStrip } from "@/components/pulse/MoneyStrip";
 import type { MoneyView } from "@/components/pulse/types";
 const money: MoneyView = { ai: "rules", provenance: "partner_anonymised", external: "export_only", cash: [], committed_by_supplier: [{ supplier_id: "IEK", amount: "0.00", currency: "KZT", lines: 4, cost_known_lines: 0 }], next_60d: { out: [{ at: "2026-10-02", amount: "30.00", currency: "CNY", po_id: "PO-two", kind: "supplier_balance" }, { at: "2026-10-01", amount: "10.50", currency: "KZT", po_id: "PO-one", kind: "supplier_prepayment" }] }, stock_value: null, risks: [{ code: "cost_unknown", count: 4, label_ru: "Себестоимость не задана" }] };

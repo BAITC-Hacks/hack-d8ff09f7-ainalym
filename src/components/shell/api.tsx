@@ -1,10 +1,17 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { beginPending, endPending } from "./pending";
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message); this.name = "ApiError"; }
 }
+/** Every page-level request is counted so the shell can show its loading ribbon; the 5-second state poll is not. */
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const tracked = !path.startsWith("/api/state");
+  if (tracked) beginPending();
+  try { return await apiRequestRaw<T>(path, init); } finally { if (tracked) endPending(); }
+}
+async function apiRequestRaw<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try { response = await fetch(path, { cache: "no-store", ...init, headers: { ...(init?.body ? { "Content-Type": "application/json" } : {}), ...init?.headers } }); }
   catch (error) { if (error instanceof DOMException && error.name === "AbortError") throw error; throw new ApiError(0, "network", "Нет связи — показываю последнее"); }

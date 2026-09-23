@@ -1,4 +1,5 @@
 "use client";
+import { Spinner } from "./loading";
 import Link from "next/link";
 import { useEffect, type ReactNode, type RefObject } from "react";
 import styles from "./ui.module.css";
@@ -76,7 +77,7 @@ export function Row({ label, meta, value, valueMeta, href }: { label: ReactNode;
 
 /* ---------- states — visibly distinct: loading / empty / unavailable / stale / offline ---------- */
 export function Loading({ label = "Загружаю данные…", lines = 4 }: { label?: string; lines?: number }) {
-  return <div className={styles.loading} role="status" aria-live="polite" aria-label={label}>{Array.from({ length: lines }, (_, i) => <span key={i} style={{ width: `${88 - i * 14}%` }} />)}<p>{label}</p></div>;
+  return <div className={styles.loading} role="status" aria-live="polite" aria-label={label}>{Array.from({ length: lines }, (_, i) => <span key={i} style={{ width: `${88 - i * 14}%` }} />)}<p style={{ display: "flex", alignItems: "center", gap: 8 }}><Spinner size={14} />{label}</p></div>;
 }
 export function Empty({ title, children }: { title: string; children?: ReactNode }) { return <div className={styles.empty}><p className={styles.emptyTitle}>{title}</p>{children && <p className={styles.emptyBody}>{children}</p>}</div>; }
 export function Unavailable({ title, detail, retry }: { title: string; detail?: ReactNode; retry?: () => void }) {

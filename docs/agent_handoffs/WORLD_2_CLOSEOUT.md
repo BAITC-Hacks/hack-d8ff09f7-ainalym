@@ -1,0 +1,12 @@
+# WORLD-2 closeout
+- Branch `lane/world2` starts at `e4486c9`; `main` was untouched.
+- Outcome: `supplier_reply` is interpreted into a typed partial or delay decision and one review proposal; the feed states its consequence in Russian.
+- Demo: reset seeds one local approved order and scripted `WE-046`; the original 45 events are unchanged; reset plus worker replay was verified.
+- Money: manager approval splits 100 units into 60/40 and produces two 30/70 obligation pairs; priced totals remain equal to the original.
+- Safety: no supplier send; duplicate `source_id` replays; stale PO versions and settled obligations block a split; protected UI paths were untouched.
+- Evidence: rules tests cover percent, quantity, weeks and `до dd.mm`; duplicate event, split money, expedite task, and keyless demo event pass.
+- Checks: `npm run etl && npm run check` → 255 passed, 0 failed, 7 external skips; `npm run build` passed with existing middleware/tracing warnings.
+- Edge: current catalog has no exact SKU in two suppliers, so expedite raises urgency and opens a purchasing task; live provider output and external delivery were not exercised.
+- Files: `src/ai/{interpret,provider,worker,supplier-reply}.ts`, `src/domain/{apply,events,views}.ts`, `src/app/(app)/review/[id]/{page,SupplierReplyReview}.tsx`, `src/app/(peers)/peers/page.tsx`.
+- Files: `scripts/{demo_reset,etl/world-events}.mjs`, `fixtures/{decision_catalog.json,world_events.jsonl}`, `tests/{ai/decisions,ai/supplier_reply,peers/play_scope,skeleton/reset}.test.ts`, `README.md`, `docs/CONTRACTS.md`, this closeout.
+- Gate: GREEN

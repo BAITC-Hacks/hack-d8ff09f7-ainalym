@@ -1,0 +1,29 @@
+{
+  "captured_at": "2026-09-23T10:39:31.818Z",
+  "note": "run 2 (10:38Z) — UI approve with one draft adjustment; captured with curl after the Playwright proof test timed out on the post-approve calc rerun",
+  "proposal": {
+    "id": "PR-bf713aca-2638-4842-ba3f-85c84e6d6ce5",
+    "state": "approved",
+    "version": 2,
+    "money_at_stake": {
+      "amount": "67763248.35",
+      "currency": "KZT"
+    }
+  },
+  "stale_repeat_status": 409,
+  "ledger_row": {
+    "id": "AA-80039002-c4d1-4bcf-8f39-0e2c88c39894",
+    "kind": "decision",
+    "summary_ru": "Одобрено предложение PR-bf713aca-2638-4842-ba3f-85c84e6d6ce5",
+    "result": "done",
+    "po_id": "PO-a458c7ea-97d3-40ac-8d88-d795f790082a",
+    "at": "2026-09-23T10:38:09.227Z"
+  },
+  "adjusted_rows": [
+    {
+      "code_1c": "010400444_",
+      "qty_recommended": 132,
+      "qty_adjusted": 135
+    }
+  ]
+}
