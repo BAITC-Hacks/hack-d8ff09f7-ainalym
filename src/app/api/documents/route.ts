@@ -31,7 +31,6 @@ export async function POST(request: Request): Promise<Response> {
       kind = typeof body.kind === "string" ? body.kind : "invoice";
       package_key = typeof body.package_key === "string" ? body.package_key : null;
       source = "fixture";
-      ensureDocumentsDemoOrder();
     } else {
       const form = await request.formData();
       const file = form.get("file");
@@ -62,7 +61,9 @@ export async function POST(request: Request): Promise<Response> {
     const result = replay || await extractWithModel(buffer, mime);
     extracted = result.extracted; extraction_mode = result.extraction_mode;
   }
-  const inferred = po_id ? null : inferOrder(extracted);
+  let inferred = po_id ? null : inferOrder(extracted);
+  // Fixture without any matching order (fresh demo host): seed the synthetic IEK order and match against it.
+  if (!po_id && !inferred && source === "fixture") { ensureDocumentsDemoOrder(); inferred = inferOrder(extracted); }
   po_id ||= inferred?.po_id || null;
   const supplier_id = po?.supplier_id || inferred?.supplier_id || null;
   // Uploads live next to the database (the only writable place on the demo host), never inside the release tree.
