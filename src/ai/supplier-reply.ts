@@ -51,8 +51,15 @@ export async function proposeSupplierReply(row: {
   if (!codes.length || codes.some(code => typeof code !== "string" || !lines.some(line => line.code_1c === code)))
     throw new Error("supplier_reply_lines_mismatch");
   const id = `PR-${createHash("sha256").update(`${row.org_id}:${row.source_id}:supplier_reply`).digest("hex").slice(0, 24)}`;
-  const existing = db().prepare("SELECT id FROM proposal WHERE id=?").get(id) as { id: string } | undefined;
-  if (existing) return existing.id;
+  const existing = db().prepare("SELECT id,kind,rationale_ru FROM proposal WHERE id=?").get(id) as
+    { id: string; kind: string; rationale_ru: string } | undefined;
+  if (existing) {
+    await recordAction(runId, { kind: "escalation", subject_ref: id, po_id: poId, world_event_id: row.id,
+      summary_ru: existing.kind === "supplier_split" ? `Подготовлено разделение заказа ${poId}; требуется ваше решение` : `Подготовлено ускорение заказа ${poId}; требуется ваше решение`,
+      rationale_ru: existing.rationale_ru, sources: [row.id, id], autonomy: "escalated", result: "needs_owner",
+      idempotency_key: `worker:${row.source_id}:supplier_reply:proposal` });
+    return existing.id;
+  }
   const decision = await interpretSupplierReply({ text, at: row.at || new Date().toISOString(), po_id: poId,
     org_id: row.org_id, affected_lines: codes as string[] });
   if (decision.action === "unknown") {

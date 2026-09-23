@@ -6,6 +6,7 @@ import { decideProposal } from "../../src/domain/apply";
 import { moneyView } from "../../src/domain/cashflow";
 import { queueView } from "../../src/domain/views";
 import { interpretSupplierReply } from "../../src/ai/interpret";
+import { processEvent } from "../../src/ai/worker";
 import { composeEvent } from "../../src/world/compose";
 import { feed } from "../../src/world/feed";
 
@@ -62,6 +63,11 @@ describe("supplier reply consequence", () => {
     expect(new Decimal(parts.now.total_cost).plus(parts.later.total_cost).toFixed(2)).toBe("1000.00");
     expect(feed().rows.find(row => row.id === first.event.id)?.text).toContain("Предложение: разделить заказ");
     expect((db().prepare("SELECT COUNT(*) AS n FROM obligation").get() as { n: number }).n).toBe(2);
+    const decisions = (db().prepare("SELECT COUNT(*) AS n FROM decision_record").get() as { n: number }).n;
+    db().prepare("UPDATE world_event SET state='pending',processing_stage='applied',run_id=NULL,claimed_at=NULL WHERE id=?").run(first.event.id);
+    expect((await processEvent(first.event.id)).reason).toBeUndefined();
+    expect((db().prepare("SELECT COUNT(*) AS n FROM decision_record").get() as { n: number }).n).toBe(decisions);
+    expect((db().prepare("SELECT COUNT(*) AS n FROM proposal WHERE kind='supplier_split'").get() as { n: number }).n).toBe(1);
     const approved = await decideProposal(proposal.id, proposal.version, "approve");
     expect(approved.split_po_ids).toHaveLength(2);
     expect((db().prepare("SELECT COUNT(*) AS n FROM obligation").get() as { n: number }).n).toBe(4);
