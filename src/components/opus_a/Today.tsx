@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { ArrowRight, Bot, ClipboardCheck, FileSpreadsheet, PackageOpen, Truck } from "lucide-react";
+import { ArrowRight, Bot, ClipboardCheck, FileSpreadsheet, Truck } from "lucide-react";
 import { apiRequest, ApiError, useApi, useApiSync } from "@/components/shell/api";
 import { AgentsLabel, ProposalStateChip, type TruthAxes } from "@/components/labels";
-import { B0, clock, money, pct, plural, qty, toMinor, formatMinor, day, type Money } from "./format";
+import { B0, clock, money, monthLong, pct, plural, qty, toMinor, formatMinor, day, type Money } from "./format";
 import { ErrorState, Pill, Skel, State, Truth, UrgencyPill, STALE_TITLE, type ApiErr } from "./ui";
 
 type QueueItem = { id: string; kind: "proposal" | "task" | string; title: string; why: string; sources: string[]; money_at_stake?: Money | null; options: { key: string; label: string; effect: string }[]; href: string; since: string };
@@ -61,7 +61,7 @@ function DecisionCard({ item, onDone }: { item: QueueItem; onDone: (msg: { text:
     <span className="oa-icon" data-tone={isProposal ? "accent" : undefined} aria-hidden>{isProposal ? <Truck size={18} /> : <ClipboardCheck size={18} />}</span>
     <div>
       <h3>{item.title}</h3>
-      <p>{item.why.length > 220 ? `${item.why.slice(0, 220)}…` : item.why}</p>
+      <p>{whyRu(item)}</p>
       <div className="oa-decision-meta">
         <ProposalStateChipLike kind={item.kind} />
         <span className="muted" style={{ font: "var(--oa-meta)" }}>{qty(item.sources.length)} {plural(item.sources.length, "источник", "источника", "источников")} · с {clock(item.since)}</span>
@@ -96,6 +96,15 @@ function DecisionCard({ item, onDone }: { item: QueueItem; onDone: (msg: { text:
       {error ? <ErrorState error={error} onRetry={openConfirm} /> : null}
     </div> : null}
   </li>;
+}
+/** Source-gap tasks arrive with engine text; show it in short business Russian with the first codes. */
+function whyRu(item: QueueItem): string {
+  const gaps = [...item.why.matchAll(/(\S+_): stock source missing for \S+: latest confirmed month (\d{4}-\d{2})/g)];
+  if (item.kind !== "proposal" && gaps.length) {
+    const first = gaps.slice(0, 3).map(g => `${g[1]} — остаток на ${monthLong(g[2])}`).join("; ");
+    return `Нет свежего остатка по ${qty(item.sources.length)} SKU — проверьте склад перед заказом. Например: ${first}.`;
+  }
+  return item.why.length > 220 ? `${item.why.slice(0, 220)}…` : item.why;
 }
 function ProposalStateChipLike({ kind }: { kind: string }) {
   return kind === "proposal" ? <ProposalStateChip state="needs_review" /> : <Pill tone="warn">Нужна ваша проверка</Pill>;
@@ -197,7 +206,7 @@ export function TodayView() {
           </li>)}</ol> : null}
           <div className="muted" style={{ font: "var(--oa-meta)", display: "flex", gap: 8, alignItems: "center" }}><Bot size={14} aria-hidden />{ledger.data ? `${qty(ledger.data.stats.auto)} сами · ${qty(ledger.data.stats.needs_you)} ждут вас` : " "}</div>
         </section>
-        <div className="muted" style={{ font: "var(--oa-meta)", display: "flex", gap: 8 }}><FileSpreadsheet size={14} aria-hidden />Экспорт для 1С (файл) — после утверждения заказа. <PackageOpen size={14} aria-hidden /></div>
+        <div className="muted" style={{ font: "var(--oa-meta)", display: "flex", gap: 8 }}><FileSpreadsheet size={14} aria-hidden />Экспорт для 1С (файл) — после утверждения заказа.</div>
       </aside>
     </div>
     {today.error?.status === 409 ? <State kind="stale" title={STALE_TITLE} onRetry={today.reload} retryLabel="Обновить" /> : null}
