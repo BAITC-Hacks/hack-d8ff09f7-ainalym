@@ -13,11 +13,14 @@ import {
 } from "./server/demo_guard";
 
 function ipFor(request: NextRequest): string {
-  return request.headers.get("cf-connecting-ip") || request.headers.get("x-real-ip") || request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (process.env.DEMO_PROXY === "cloudflare") return request.headers.get("cf-connecting-ip") || "unknown";
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 }
 
 function safeNext(value: string | null): string {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/";
+  if (!value?.startsWith("/") || value.startsWith("//") || /[\\\u0000-\u001f]/.test(value)) return "/";
+  const url = new URL(value, "http://demo.invalid");
+  return url.origin === "http://demo.invalid" ? url.pathname + url.search : "/";
 }
 
 function escapeHtml(value: string): string {
@@ -33,9 +36,11 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const active = guardEnabled();
 
-  if (path === "/api/health") {
-    return NextResponse.json({ ok: true, demo_guard: active ? "on" : "off", remaining_daily_budget: active ? remainingDailyCalls() : null }, { headers: { "Cache-Control": "no-store" } });
+  if (active && path.startsWith("/api/") && !allowApiRequest(ipFor(request))) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": "1", "Cache-Control": "no-store" } });
   }
+
+  if (path === "/api/health") return NextResponse.next();
   if (!active) return NextResponse.next();
 
   const code = process.env.DEMO_ACCESS_CODE!;
@@ -51,7 +56,7 @@ export async function middleware(request: NextRequest) {
     const next = safeNext(typeof form.get("next") === "string" ? String(form.get("next")) : null);
     if (typeof candidate !== "string" || !validCode(candidate, code)) return codePage(next, true);
     const response = NextResponse.redirect(new URL(next, request.url), { status: 303 });
-    response.cookies.set(ACCESS_COOKIE, issueAccessCookie(code), { httpOnly: true, sameSite: "lax", secure: request.nextUrl.protocol === "https:", path: "/", maxAge: ACCESS_DAYS * 86_400 });
+    response.cookies.set(ACCESS_COOKIE, issueAccessCookie(code), { httpOnly: true, sameSite: "lax", secure: request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto") === "https", path: "/", maxAge: ACCESS_DAYS * 86_400 });
     response.headers.set("Cache-Control", "no-store");
     return response;
   }
@@ -63,9 +68,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(destination);
   }
 
-  if (path.startsWith("/api/") && !allowApiRequest(ipFor(request))) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": "1", "Cache-Control": "no-store" } });
-  }
   if (process.env.AINALYM_MODE === "live" && request.method === "POST" &&
       ["/api/decisions", "/api/drafts", "/api/voice/session", "/api/assistant/message"].includes(path) &&
       remainingDailyCalls() === 0) return providerUnavailable();
