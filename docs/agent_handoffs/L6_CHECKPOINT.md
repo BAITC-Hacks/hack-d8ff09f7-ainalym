@@ -1,6 +1,6 @@
-# L6 checkpoint — supplier and judge channel
-done: world feed/API; SKU judge compose page; prepared PO email and controlled supplier confirmation channel.
-done: supplier reply enters world_event verbatim; fail-first peer tests 5/5; build GREEN.
-undone: 1C file export seam, peer view, runtime integration gate.
-resumable: implement approved PO export with idempotent file path and ledger_peer_record.
+# L6 checkpoint — PO export
+done: world feed/API, judge page, supplier channel; approved PO to CSV/XLSX and one peer record.
+done: export_only label, no connector; fail-first peer tests 7/7; build GREEN; XLSX opened by openpyxl.
+undone: peer view, runtime integration gate, route handoff for /api/orders/:id/export.
+resumable: show world events and export records in /peers; verify HTTP gates after ETL lands.
 sha: HEAD (the commit containing this checkpoint).
