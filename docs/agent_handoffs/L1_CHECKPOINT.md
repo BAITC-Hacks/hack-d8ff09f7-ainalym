@@ -1,4 +1,4 @@
-done: npm install; scripts, Vitest, check runner, health smoke and route.
-undone: repositories, ETL reset, remaining routes, ledger, contracts v1, full gates.
-resumable: next implement typed repositories over schema v0; main was merged at checkpoint.
+done: scripts/check, health smoke/route, typed repositories; build and tsc green.
+undone: ETL reset, remaining routes, ledger, contracts v1, full gates.
+resumable: next wire reset to L9 ETL when it lands; main was merged at checkpoint.
 sha: HEAD (this checkpoint commit).
