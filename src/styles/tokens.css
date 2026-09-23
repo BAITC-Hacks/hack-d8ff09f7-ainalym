@@ -3,9 +3,9 @@
   color-scheme: light;
   --page: #fdfdfc; --panel: #ffffff; --wash: #f4f5f7; --pressed: #e9ecf0;
   --line: #e6e9ee; --gridline: #e9ecf0; --ink: #17212b; --muted: #5b6673;
-  --ring: #236bd1; --accent: #1f5fd1; --primary: var(--ink); --on-primary: #fff;
+  --ring: #236bd1; --accent: #1f5fd1; --primary: var(--ink); --primary-hover: #293848; --on-primary: #fff; --overlay-backdrop: #17212b40;
   --data-revenue: #4691fc; --data-profit: #1a9e6f; --data-cost: #8493a5;
-  --success: #177c59; --success-disc: #177c59; --warning: #99640b;
+  --success: #177c59; --success-disc: #177c59; --warning: #99640b; --warning-bg: #fff8e9;
   --danger-bg: #fdecf3; --danger-fg: #b8145a; --insight-bg: #f2f6fc; --track: #eceef2;
   --shadow-pop: 0 8px 28px #17212b1a;
   --font-ui: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;

@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 import styles from "./labels.module.css";
 export type TruthAxes = { provenance?: "partner_anonymised" | "synthetic"; ai?: "live" | "rules" | "replay" | "unavailable"; external?: "export_only" | "local_simulator" | "unavailable" };
+/** Result metadata only: never infer historical execution from the current provider mode. */
+export function resultAxes(value?: TruthAxes & { axes?: TruthAxes; labels?: TruthAxes } | null): TruthAxes {
+  return { provenance: value?.axes?.provenance ?? value?.labels?.provenance ?? value?.provenance, ai: value?.axes?.ai ?? value?.labels?.ai ?? value?.ai, external: value?.axes?.external ?? value?.labels?.external ?? value?.external };
+}
 export const LABELS = {
   provenance: { partner_anonymised: "Данные партнёра · обезличены", synthetic: "Синтетические данные" },
   ai: { live: "Живой AI", rules: "Правила без LLM", replay: "Воспроизведение · записанное решение", unavailable: "Провайдер недоступен" },
@@ -10,7 +14,7 @@ export const LABELS = {
   urgency: { critical: "критично", soon: "скоро", normal: "планово", none: "не требуется" },
 } as const;
 export function Chip({ children, tone = "neutral", title }: { children: ReactNode; tone?: "neutral" | "warning" | "danger"; title?: string }) { return <span className={`${styles.chip} ${tone === "neutral" ? "" : styles[tone]}`} title={title}>{children}</span>; }
-export function ModeChip({ mode, ai }: { mode?: string; ai?: TruthAxes["ai"] }) { return <Chip title={mode === "offline" ? "Offline walkthrough" : ai}>{mode === "offline" ? "Офлайн-режим · записанные решения" : ai ? LABELS.ai[ai] : "Режим уточняется"}</Chip>; }
+export function ModeChip({ mode, ai }: { mode?: string; ai?: TruthAxes["ai"] }) { return <Chip title={mode === "offline" ? "Offline walkthrough" : ai}>{mode === "offline" ? "Офлайн-режим · записанные решения" : mode === "unavailable" ? "Режимы недоступны" : ai ? LABELS.ai[ai] : "Режим уточняется"}</Chip>; }
 export function TruthAxisLabels({ axes, provenance, ai, external }: TruthAxes & { axes?: TruthAxes }) {
   const value = axes ?? { provenance, ai, external };
   return <div className={styles.axes} aria-label="Источник, AI, внешнее действие">

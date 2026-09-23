@@ -1,0 +1,41 @@
+.page { display: grid; gap: 28px; }
+.pageHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.pageHead > div { display: grid; gap: 12px; }
+.eyebrow { color: var(--muted); font: var(--t-caption); letter-spacing: .08em; }
+.subtitle { color: var(--muted); max-width: 64ch; line-height: 1.5; }
+.meta { color: var(--muted); font: var(--t-meta); line-height: 1.45; }
+.list { min-width: 0; }
+.listHead { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+.listHead > div { display: grid; gap: 4px; }
+.filters { display: flex; align-items: flex-end; gap: 16px; padding-block: 20px; }
+.filters label { display: grid; gap: 6px; font: var(--t-meta); color: var(--muted); }
+.filters input,.filters select { min-width: 0; min-height: var(--control-h); padding: 8px 12px; background: var(--panel); color: var(--ink); border: 1px solid var(--muted); }
+.count { margin-inline-start: auto; color: var(--muted); font: var(--t-meta); padding-block: 12px; }
+.events { list-style: none; padding: 0; margin: 0; }
+.event { display: grid; grid-template-columns: 28px minmax(0,1fr) 144px; gap: 16px; border-top: 1px solid var(--line); padding-block: 20px; min-height: 136px; }
+.sequence { font: var(--t-meta); color: var(--muted); padding-top: 3px; }
+.eventBody { min-width: 0; display: grid; gap: 8px; }
+.eventHead { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.eventText { line-height: 1.5; overflow-wrap: anywhere; max-width: 75ch; }
+.eventMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; color: var(--muted); font: var(--t-meta); }
+.eventAction { display: flex; align-items: flex-start; padding-top: 2px; }
+.eventAction a { display: flex; align-items: center; gap: 4px; min-height: 36px; font: var(--t-label); }
+.empty { display: grid; justify-items: start; gap: 12px; padding-block: 16px; }
+.timer { display: grid; gap: 4px; justify-items: start; }
+.timer label { display: flex; flex-wrap: wrap; align-items: center; min-height: 44px; gap: 8px; cursor: pointer; font: var(--t-label); }
+.timer input { width: 18px; height: 18px; accent-color: var(--accent); }
+.controls { padding: var(--panel-pad); border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--panel); }
+.controlsHead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.controlsHead > div { display: grid; gap: 8px; }
+.controlActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.compose { display: grid; gap: 16px; max-width: 720px; margin-top: 8px; }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.presets [aria-pressed=true] { background: var(--wash); border-color: var(--ink); }
+.composeFields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.compose label { display: grid; gap: 6px; font: var(--t-meta); color: var(--muted); }
+.compose input,.compose textarea { color: var(--ink); background: var(--panel); border: 1px solid var(--muted); min-height: var(--control-h); min-width: 0; width: 100%; padding: 10px 12px; }
+.compose textarea { resize: vertical; line-height: 1.5; }
+.compose > button { justify-self: start; }
+.composeResult { display: grid; gap: 8px; overflow-wrap: anywhere; }
+@media (max-width:767px) { .composeFields { grid-template-columns: 1fr; } .pageHead > a,.composeResult a { min-height: 44px; display: inline-flex; align-items: center; } }
+@media (max-width:767px) { .pageHead { flex-direction: column; gap: 16px; } .filters { flex-wrap: wrap; gap: 12px; } .filters label { flex: 1 1 140px; min-width: 0; } .filters input,.filters select { width: 100%; } .count { width: 100%; margin: 0; padding: 0; } .event { grid-template-columns: 20px minmax(0,1fr); gap: 8px; } .eventAction { grid-column: 2; } .eventAction a,.eventMeta a { min-height: 44px; display: inline-flex; align-items: center; } }

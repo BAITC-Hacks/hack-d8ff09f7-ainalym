@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { generateObject } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
-import { db } from "../db/client";
+import { db, withTx, bumpStateVersion } from "../db/client";
 import { recordAction } from "../server/ledger";
 
 export type ArtifactKind = "supplier_email" | "run_summary";
@@ -26,22 +26,23 @@ export class DraftProviderUnavailable extends Error {
   constructor() { super("Provider unavailable"); }
 }
 
-function artifactDir(): string { return join(process.cwd(), "data", "artifacts"); }
+function artifactDir(): string { return process.env.ARTIFACT_PATH || join(process.cwd(), "data", "artifacts"); }
 function saveArtifact(artifact: Artifact): Artifact {
   const directory = artifactDir();
   mkdirSync(directory, { recursive: true });
-  const stem = join(directory, artifact.id);
+  const stem = join(/* turbopackIgnore: true */ directory, artifact.id);
   const nonce = randomUUID();
   writeFileSync(`${stem}.${nonce}.json.tmp`, JSON.stringify(artifact, null, 2), { mode: 0o600 });
   writeFileSync(`${stem}.${nonce}.md.tmp`, artifact.markdown, { mode: 0o600 });
   renameSync(`${stem}.${nonce}.json.tmp`, `${stem}.json`);
   renameSync(`${stem}.${nonce}.md.tmp`, `${stem}.md`);
+  withTx(tx => { bumpStateVersion(tx); });
   return artifact;
 }
 
 export function readArtifact(id: string): Artifact | null {
   if (!/^ART-[a-f0-9-]{36}$/.test(id)) return null;
-  try { return JSON.parse(readFileSync(join(artifactDir(), `${id}.json`), "utf8")) as Artifact; }
+  try { return JSON.parse(readFileSync(join(/* turbopackIgnore: true */ artifactDir(), `${id}.json`), "utf8")) as Artifact; }
   catch { return null; }
 }
 
@@ -62,6 +63,10 @@ async function draftText(prompt: unknown, schema: z.ZodType): Promise<{ object: 
 function consistent(markdown: string, exactLines: { code: string; qty: number }[]): boolean {
   if (/отправлен|отправили|подтвержд[её]н поставщиком|оплачен|выполнен/i.test(markdown)) return false;
   return exactLines.every(line => markdown.includes(line.code) && markdown.includes(`${line.qty} шт`));
+}
+
+function unsafeGeneratedText(text: string): boolean {
+  return /\d|отправ|оплачен|выполнен|согласован|подписан|принят поставщиком|подтвержд[её]н поставщиком/i.test(text);
 }
 
 export async function prepareSupplierEmail(po_id: string): Promise<Artifact> {
@@ -88,7 +93,8 @@ export async function prepareSupplierEmail(po_id: string): Promise<Artifact> {
   ].join("\n");
   let markdown = render(generated.object.greeting_ru, generated.object.closing_ru);
   let consistency: Artifact["consistency"] = "passed";
-  if (!consistent(markdown, lines.map(line => ({ code: line.code_1c, qty: line.qty })))) {
+  if (unsafeGeneratedText(`${generated.object.greeting_ru} ${generated.object.closing_ru}`) ||
+      !consistent(markdown, lines.map(line => ({ code: line.code_1c, qty: line.qty })))) {
     markdown = render(`Здравствуйте, ${po.supplier_name}.`, "С уважением, отдел закупок.");
     consistency = "revised";
   }
@@ -129,7 +135,7 @@ export async function prepareRunSummary(run_id: string): Promise<Artifact> {
   ].join("\n");
   let markdown = render(generated.object.intro_ru);
   let consistency: Artifact["consistency"] = "passed";
-  if (!consistent(markdown, [])) {
+  if (unsafeGeneratedText(generated.object.intro_ru) || !consistent(markdown, [])) {
     markdown = render("Подготовлена сводка расчёта для проверки менеджером.");
     consistency = "revised";
   }
