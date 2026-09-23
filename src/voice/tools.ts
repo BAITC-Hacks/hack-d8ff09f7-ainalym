@@ -12,6 +12,10 @@ const labels = { provenance: "Partner data · anonymised", ai: "Rules, no LLM", 
 const ttlSeconds = 600;
 const own = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const err = (code: string, message: string, status: number, version = stateVersion()) => ({ status, result: { ok: false, code, message, state_version: version, labels } as ToolResult });
+export function ambiguousQuantity(text: string): boolean {
+  const values = text.toLowerCase().match(/\d+(?:[\s.,]\d+)*|(?:ноль|один|одна|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать|тринадцать|четырнадцать|пятнадцать|двадцать|тридцать|сорок|тысяч[аиу]?)/g) ?? [];
+  return values.length >= 2 && new Set(values.map(value => value.replace(/\s+/g, ""))).size > 1 && /(?:нет|то есть|ой|поправка|вернее)/i.test(text);
+}
 
 function init() {
   db().exec(`CREATE TABLE IF NOT EXISTS voice_tool_call (
@@ -74,6 +78,7 @@ async function run(name: ToolName, call: ToolCall, origin: string): Promise<{ st
   }
   const supplier = call.args.supplier_id ?? call.scope.supplier_id;
   const category = call.args.category;
+  if (typeof call.args.utterance === "string" && ambiguousQuantity(call.args.utterance)) return err("needs_clarification", "Уточните количество перед расчётом.", 422, version);
   if (supplier === undefined && category === undefined) return err("invalid", "Supplier or category is required", 400, version);
   if (category !== undefined && (typeof category !== "string" || !category.trim())) return err("invalid", "Invalid category", 400, version);
   const routeScope = { ...(supplier ? { supplier } : {}), ...(category ? { category } : {}) };

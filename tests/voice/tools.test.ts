@@ -48,4 +48,16 @@ describe("voice tool bridge", () => {
     expect(response.status).toBe(403);
     expect(response.result.code).toBe("denied");
   });
+
+  it("does not create a run for a corrected, ambiguous spoken quantity", async () => {
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    const response = await executeVoiceTool("recommend_for", {
+      request_id: "call-ambiguous", scope: { org_id: "ORG-1", supplier_id: "SE" },
+      args: { supplier_id: "SE", utterance: "Закажи тринадцать… нет, четырнадцать тысяч" },
+    });
+    expect(response.status).toBe(422);
+    expect(response.result.code).toBe("needs_clarification");
+    expect(fetcher).not.toHaveBeenCalled();
+  });
 });

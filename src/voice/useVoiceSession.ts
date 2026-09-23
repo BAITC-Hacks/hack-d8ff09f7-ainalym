@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { VoiceTurnGate } from "./transport";
 
 export type VoiceState = "idle" | "connecting" | "listening" | "checking" | "preparing" | "waiting_review" | "ended" | "unavailable";
 export interface Caption { who: "user" | "assistant" | "tool"; text: string }
@@ -20,10 +21,8 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
   const stream = useRef<MediaStream | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
   const generation = useRef(0);
-  const workEpoch = useRef(0);
-  const activeResponse = useRef<string | undefined>(undefined);
-  const ignoredResponses = useRef(new Set<string>());
-  const pending = useRef(new Set<AbortController>());
+  const turn = useRef(new VoiceTurnGate());
+  const latestUtterance = useRef("");
   const scopeRef = useRef(scope);
   scopeRef.current = scope;
 
@@ -32,8 +31,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
   }, []);
 
   const release = useCallback(() => {
-    for (const controller of pending.current) controller.abort();
-    pending.current.clear();
+    turn.current.cancel();
     channel.current?.close();
     channel.current = null;
     stream.current?.getTracks().forEach(track => track.stop());
@@ -51,10 +49,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
   }, [release, send]);
 
   const interrupt = useCallback(() => {
-    workEpoch.current++;
-    if (activeResponse.current) ignoredResponses.current.add(activeResponse.current);
-    for (const controller of pending.current) controller.abort();
-    pending.current.clear();
+    turn.current.cancel();
     send({ type: "response.cancel" });
     setState("listening");
   }, [send]);
@@ -65,34 +60,33 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
 
   const handleEvent = useCallback(async (event: RealtimeEvent, sessionGeneration: number) => {
     if (sessionGeneration !== generation.current) return;
-    if (event.type === "response.created" && event.response?.id) activeResponse.current = event.response.id;
+    if (event.type === "response.created" && event.response?.id) turn.current.created(event.response.id);
     if (event.type === "conversation.item.input_audio_transcription.completed" && event.transcript?.trim()) {
+      latestUtterance.current = event.transcript.trim();
       setCaptions(lines => [...lines, { who: "user", text: event.transcript!.trim() }]);
     }
     if (event.type === "response.output_audio_transcript.done" && event.transcript?.trim()) {
       setCaptions(lines => [...lines, { who: "assistant", text: event.transcript!.trim() }]);
     }
     if (event.type === "input_audio_buffer.speech_started") {
-      workEpoch.current++;
-      if (activeResponse.current) ignoredResponses.current.add(activeResponse.current);
-      for (const controller of pending.current) controller.abort();
-      pending.current.clear();
+      turn.current.cancel();
       setState("listening");
     }
     if (event.type !== "response.done" || event.response?.status !== "completed") return;
-    if (event.response.id && ignoredResponses.current.delete(event.response.id)) return;
-    const callEpoch = workEpoch.current;
+    const callEpoch = turn.current.accept(event.response.id);
+    if (callEpoch === null) return;
     const calls = event.response.output?.filter(item => item.type === "function_call") ?? [];
     if (!calls.length) return;
     for (const call of calls) {
-      if (sessionGeneration !== generation.current || callEpoch !== workEpoch.current || !call.call_id) return;
+      if (sessionGeneration !== generation.current || !turn.current.isCurrent(callEpoch) || !call.call_id) return;
       const controller = new AbortController();
-      pending.current.add(controller);
+      turn.current.track(controller);
       setState(call.name === "recommend_for" ? "preparing" : "checking");
       setCaptions(lines => [...lines, { who: "tool", text: "Проверяю…" }]);
       let output: Record<string, unknown>;
       try {
         const args = JSON.parse(call.arguments || "{}");
+        if (call.name === "recommend_for" && latestUtterance.current) args.utterance = latestUtterance.current;
         const response = await fetch(`/api/voice/tools/${encodeURIComponent(call.name)}`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ request_id: call.call_id, scope: scopeRef.current, args }), signal: controller.signal,
@@ -103,9 +97,9 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
         if (controller.signal.aborted) return;
         output = { ok: false, code: "tool_unavailable", message: "Не удалось проверить данные" };
       } finally {
-        pending.current.delete(controller);
+        turn.current.done(controller);
       }
-      if (controller.signal.aborted || sessionGeneration !== generation.current || callEpoch !== workEpoch.current) return;
+      if (controller.signal.aborted || sessionGeneration !== generation.current || !turn.current.isCurrent(callEpoch)) return;
       if (output.ok && typeof output.state_version === "number") {
         window.dispatchEvent(new CustomEvent("ainalym:state-changed", { detail: { state_version: output.state_version } }));
         void fetch("/api/state", { cache: "no-store" }).catch(() => undefined);
@@ -114,7 +108,7 @@ export function useVoiceSession(scope: VoiceScope): VoiceSession {
       else setState("listening");
       send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: call.call_id, output: JSON.stringify(output) } });
     }
-    if (sessionGeneration === generation.current && callEpoch === workEpoch.current) send({ type: "response.create", response: { tool_choice: "none" } });
+    if (sessionGeneration === generation.current && turn.current.isCurrent(callEpoch)) send({ type: "response.create", response: { tool_choice: "none" } });
   }, [send]);
 
   const start = useCallback(async () => {
