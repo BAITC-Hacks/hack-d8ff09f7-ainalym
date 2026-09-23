@@ -30,6 +30,7 @@ export function withTx<T>(fn: (d: DatabaseSync) => T): T {
   d.exec("BEGIN");
   try {
     const out = fn(d);
+    if (out && typeof (out as { then?: unknown }).then === "function") throw new Error("withTx requires a synchronous callback");
     d.exec("COMMIT");
     return out;
   } catch (e) {
