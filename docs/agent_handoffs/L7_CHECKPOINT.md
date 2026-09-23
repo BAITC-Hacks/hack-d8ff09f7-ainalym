@@ -1,8 +1,5 @@
-# L7 checkpoint — 09:02Z (main @ 02b088e)
-- lane/docs REBUILT on main: the earlier branch had merged 2b29bd2 (L2b, since dropped from main); old tip kept as local ref `l7-backup-with-l2b`. This branch carries only L7 files.
-- done: README v1.4 (§3 = main incl. L3/L8; methodology + outlier algorithm from src/domain/engine.ts) · TASK_MAP @09:01Z (28 rows) · scripts/clean_clone_check.sh · docs/SUBMISSION_RU.md v1.
-- check @09:00Z (with keys): passed=26 failed=0. Queue: 010 done, 020 queued, 030–060 released now; new items every ≈20 min.
-- for root: docs/DEMO_ACCESS.md says «Live AI on a synthetic company» — this case uses partner data.
-- FINDING (engine on partner data, as_of 2026-09-22, main @ af5c9ac, read-only run): `oneoff` 010500008_ doc 20000099834 (7 488) is NOT excluded — threshold = max(3×14 502, 5×144, 20) = 43 506; U733M 130300027_ excludes nothing (threshold 3 370; docs 1 960, 1 457 kept), growth clamped ×0.5, safety 1 705 > forecast 1 650, on_hand = September opening stock 6 (file «Свободный остаток» 108 is not a source) → need 3 360. For L2a/root; README states the rule as coded, claims M4 only on test data.
-- FINDING 2: on_hand = month-opening stock (300200745_: 181 at 2026-09 vs «Свободный остаток» 23 on 22.09 in the SE transit file); own-season index can go negative from returns (300200898_ March = −0.389); 2026-03 flagged stockout on 300200898_ although 70 sold (opening unknown).
-- undone: routes/UI/voice/scenario.mjs → README/TASK_MAP; SUBMISSION refresh ≈T+190; remote clean clone ≈12:10Z; README final ≈12:40Z.
+# L7 checkpoint — 09:13Z (main @ 99e3138 merged with -X ours for L7 files)
+- done: README v1.5 (§3 = main incl. L2b/L3/L8; check 55/2 named) · TASK_MAP @09:17Z · clean_clone_check.sh · SUBMISSION_RU v1. Merge ONLY this line (never 74367cc).
+- queue: 010, 020 on main; 030–060 queued; drafts 070 data dictionary, 080 judge checks, 100 methodology (waits for INTEG-1 outlier/on-hand rule) drip every 20 min.
+- engine findings sent to root 09:0xZ; root: INTEG-1 fixes (outlier threshold max(20, min(3×median, 5×p95)), on-hand freshness) ≈09:35Z.
+- next: after INTEG-1 → README §4 methodology/outlier + TASK_MAP; 100_methodology refresh; SUBMISSION ≈T+190; remote clean clone ≈12:10Z; README final ≈12:40Z.
