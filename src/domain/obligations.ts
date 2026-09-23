@@ -15,8 +15,9 @@ export function syncOrderObligations(poId: string, tx?: DatabaseSync): Row[] {
     if (po.state !== "approved" && po.state !== "exported") throw new Error("order_not_approved");
     const lines = d.prepare("SELECT qty,unit_cost FROM purchase_order_line WHERE po_id=?").all(poId) as Row[];
     if (!lines.length) throw new Error("order_has_no_lines");
-    if (lines.some(l => l.unit_cost === null)) return [];
-    const total = lines.reduce((a, l) => a.plus(new Decimal(String(l.unit_cost)).times(String(l.qty))), new Decimal(0));
+    const priced = lines.filter(l => l.unit_cost !== null);
+    if (!priced.length) return [];
+    const total = priced.reduce((a, l) => a.plus(new Decimal(String(l.unit_cost)).times(String(l.qty))), new Decimal(0));
     const terms = JSON.parse(String(po.terms || "{}")) as Record<string, unknown>;
     const pct = new Decimal(String(terms.prepayment_pct ?? terms.prepay_pct ?? terms.prepayment_percent ?? 30));
     if (pct.lt(0) || pct.gt(100)) throw new Error("invalid_supplier_terms");

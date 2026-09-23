@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { bumpStateVersion, db, dbPath, stateVersion, withTx } from "../db/client";
 import { activeOrg, WorldError } from "../world/feed";
+import { urgencyLabelRu } from "../domain/urgency";
 import { poXlsx } from "./xlsx";
 
 export const EXPORT_LABEL = "Экспорт для 1С (файл)";
@@ -35,7 +36,7 @@ export function exportOrder(poId: string) {
   const lines = db().prepare("SELECT l.code_1c, s.article, s.name, l.qty, s.moq, (SELECT r.urgency FROM recommendation r WHERE r.code_1c = l.code_1c AND r.run_id = po.run_id ORDER BY r.rowid DESC LIMIT 1) AS urgency, COALESCE(l.rationale_ru, (SELECT r.rationale_ru FROM recommendation r WHERE r.code_1c = l.code_1c AND r.run_id = po.run_id ORDER BY r.rowid DESC LIMIT 1)) AS rationale_ru FROM purchase_order_line l JOIN purchase_order po ON po.id = l.po_id JOIN sku s ON s.code_1c = l.code_1c WHERE l.po_id = ? ORDER BY l.id")
     .all(poId) as unknown as ExportLine[];
   if (!lines.length) throw new WorldError("empty_po", 422);
-  const rows: (string | number)[][] = [HEADERS, ...lines.map((line) => [line.code_1c, line.article ?? "", line.name, line.qty, line.moq, line.urgency ?? "none", line.rationale_ru ?? ""] as (string | number)[])];
+  const rows: (string | number)[][] = [HEADERS, ...lines.map((line) => [line.code_1c, line.article ?? "", line.name, line.qty, line.moq, urgencyLabelRu(line.urgency), line.rationale_ru ?? ""] as (string | number)[])];
   const slug = `${poId.replace(/[^A-Za-z0-9_-]/g, "_")}-${createHash("sha256").update(poId).digest("hex").slice(0, 8)}`;
   const dir = process.env.EXPORT_DIR || join(dirname(dbPath()), "exports");
   mkdirSync(dir, { recursive: true });

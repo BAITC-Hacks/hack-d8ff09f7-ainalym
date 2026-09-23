@@ -1,7 +1,7 @@
 import Decimal from "decimal.js";
 import { db, bumpStateVersion, withTx } from "../db/client";
 import { syncOrderObligations } from "./obligations";
-import { Money } from "./money";
+import { formatAmount, Money } from "./money";
 
 type Order = Record<string, unknown>;
 
@@ -10,7 +10,11 @@ export function orderById(id: string): (Order & { lines: Order[] }) | null {
   const order = d.prepare("SELECT * FROM purchase_order WHERE id=?").get(id) as Order | undefined;
   if (!order) return null;
   const lines = d.prepare("SELECT l.*,s.article,s.name,s.moq FROM purchase_order_line l LEFT JOIN sku s ON s.code_1c=l.code_1c WHERE po_id=? ORDER BY l.id").all(id) as Order[];
-  return { ...order, lines };
+  const priced = lines.filter(line => line.unit_cost !== null);
+  const totalCost = priced.length ? formatAmount(priced.reduce(
+    (sum, line) => sum.plus(new Decimal(String(line.qty)).times(String(line.unit_cost))), new Decimal(0))) : null;
+  return { ...order, total_cost: totalCost, cost_known_lines: priced.length,
+    unknown_cost_lines: lines.length - priced.length, lines };
 }
 
 export function listOrders(): (Order & { lines: Order[] })[] {
