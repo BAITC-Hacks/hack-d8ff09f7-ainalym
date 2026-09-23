@@ -2,7 +2,7 @@
 
 Кейс HackAlem AI (трек «Логистика», партнёр ТОО «Электрокомплект», ekt.kz). Ниже — только то, что подтверждается текущим репозиторием. Статус каждой возможности с временем проверки (UTC) — в [`docs/TASK_MAP.md`](docs/TASK_MAP.md); README не утверждает ничего сверх этой таблицы.
 
-> Состояние README: **v1.4**, основа `main` @ `af5c9ac`, наблюдение 2026-09-23 09:01Z. Разделы, помеченные «ожидается», описывают контракт (`docs/CONTRACTS.md`), а не работающий код; они обновляются по мере слияния веток.
+> Состояние README: **v1.5**, основа `main` @ `99e3138`, наблюдение 2026-09-23 09:17Z. Разделы, помеченные «ожидается», описывают контракт (`docs/CONTRACTS.md`), а не работающий код; они обновляются по мере слияния веток.
 
 ## 1. Название
 
@@ -21,7 +21,7 @@
 
 ## 3. Что реализовано
 
-Наблюдение: 2026-09-23 09:01Z, `main` @ `af5c9ac`. Подтверждено кодом в репозитории:
+Наблюдение: 2026-09-23 09:17Z, `main` @ `99e3138`. Подтверждено кодом в репозитории:
 
 - каркас приложения Next.js 16 (App Router, TypeScript) с оболочкой интерфейса: навигация «Сегодня · Закупки · Проверка · Товары · Деньги · Связи · Помощник», метки режимов, шрифт Inter; корень `/` ведёт на `/today`, экран «Сегодня» пока пустой;
 - обезличенные выгрузки партнёра — `fixtures/partner/{IEK,SE}/*.xlsx` (12 файлов, см. раздел 9);
@@ -30,11 +30,12 @@
 - схема SQLite (`src/db/schema.sql`, 26 таблиц), клиент `src/db/client.ts` и типизированные репозитории (`src/db/repo/`);
 - расчётный движок M1–M4 (`src/domain/engine.ts`) и запуск расчёта с предложениями по поставщикам (`src/domain/apply.ts`), состояния задач и плановые проверки (`src/domain/tasks.ts`, `schedule.ts`), деньги в KZT без плавающей точки (`src/domain/money.ts`) — проверены тестами на тестовых данных в памяти (`tests/domain/a_*.test.ts`): товар в пути уменьшает потребность, прогноз поднимается в сезонный пик, месяц дефицита компенсируется, разовый документ исключается, отсутствие остатка — отказ, все входы в `components`; повторный запуск не пишет второе предложение; неутверждённое предложение устаревает при новом расчёте;
 - типизированные решения с провайдерами `jev` (TypeSafe → Vercel AI Gateway), `openai`, `rules`, воспроизведение записанных решений; каталог из пяти вопросов (`src/ai/*`, `tests/ai/decisions.test.ts`); API `POST/GET /api/decisions`, `POST /api/drafts`, `GET /api/artifacts/:id[/download]` — черновики письма поставщику и сводки расчёта (RU, не отправляются; нужен `OPENAI_API_KEY`); воркер событий `src/ai/worker.ts` (тестов воркера пока нет);
+- заказы, обязательства и деньги (`src/domain/orders.ts`, `obligations.ts`, `cashflow.ts`), события ленты и пересчёт затронутых артикулов (`src/domain/events.ts`, `recompute.ts`), карточка артикула (`src/domain/skus.ts`); маршруты `GET /api/orders`, `GET /api/orders/:id`, `POST /api/orders/:id/approve` (привязка к версии, предоплата 30 % и остаток 70 % к сроку поставки), `GET /api/money`, `GET /api/skus`, `GET /api/skus/:code` — тесты `tests/domain/b_money_orders.test.ts`;
 - `GET /api/health`; защита хостинг-демо: код доступа, лимит запросов и дневной лимит живых вызовов (`src/middleware.ts`, `src/server/demo_guard.ts`, включается `DEMO_ACCESS_CODE`); сборка контейнера и скрипты развёртывания (`scripts/deploy/*`, `docs/DEMO_ACCESS.md`).
 
-`npm run check` на 09:00Z: `check: passed=26 failed=0 skipped=0 externally-unverified=0` — в этом прогоне были ключи провайдеров, поэтому прошли 4 живые проверки провайдеров (TypeSafe, шлюз, OpenAI, правила). Без ключей они должны отмечаться как `UNVERIFIED` (проверяется в чистом клоне, раздел 8).
+`npm run check` на 09:16Z: `check: passed=55 failed=2 skipped=0 externally-unverified=0`. Красные: `keeps floating point coercion out of domain source` (`src/domain/cashflow.ts`) и `world events and SKU drilldown recomputes exactly the requested codes` (`sales source missing for SE-1`); исправление в работе. В этом прогоне были ключи провайдеров (4 живые проверки провайдеров прошли); путь без ключей проверяется в чистом клоне (раздел 8).
 
-Ожидается (статус — `docs/TASK_MAP.md`): маршруты расчёта, рекомендаций, заказов, денег и карточки артикула; экспорт для 1С; проверка движка на данных партнёра (`scripts/scenario.mjs`); очередь решений и экраны; лента событий; голос.
+Ожидается (статус — `docs/TASK_MAP.md`): маршруты расчёта и рекомендаций; экспорт для 1С; проверка движка на данных партнёра (`scripts/scenario.mjs`); очередь решений и экраны; лента событий; голос.
 
 ## 4. Как это работает: от входных данных до результата
 
@@ -157,7 +158,7 @@ npm run dev        # http://localhost:3000
 
 1. `npm install && cp .env.example .env.local` — ожидается: установка без ошибок, ключи не нужны.
 2. `npm run etl` — строки `supplier: 2`, `sku: 3909`, `sales_line: 248915`, `sales_month: 99634`, `stock_month: 117282`, `in_transit: 313`, `season_index: 24`, `stockout months: 1596` (проверено 08:53Z). База — `data/partner.db` (не в git).
-3. `npm run check` — итоговая строка вида `check: passed=N failed=0 skipped=N externally-unverified=N`; на 09:00Z (с ключами): `check: passed=26 failed=0 skipped=0 externally-unverified=0`; число проверок растёт по мере слияния.
+3. `npm run check` — итоговая строка вида `check: passed=N failed=0 skipped=N externally-unverified=N`; на 09:16Z (с ключами): `check: passed=55 failed=2 skipped=0 externally-unverified=0` (красные — раздел 3); число проверок растёт по мере слияния.
    `npm run demo:reset` — счётчики таблиц, `"ok":true`, `world_event` = 45.
 4. `node scripts/scenario.mjs` — ожидается пять строк `[PASS] M1 … M5` и сводка по деньгам. *(ожидается)*
 5. **M1, все источники:** `npm run dev` → «Запустить расчёт» по SE → открыть артикул `intransit` — IEK `010500006_` ВА47-29 16А (30 000 шт в пути) → изменить товар в пути на +100 (лента: «Товар в пути +N») → рекомендуемое количество уменьшается. *(ожидается)*
