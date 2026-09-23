@@ -9,7 +9,8 @@ import { judgeOutlier, summarizeChanges } from "./interpret";
 
 export interface ProcessResult { run_id: string | null; actions: number; escalations: number; reason?: string }
 export interface TickResult { runs: string[]; processed: number }
-interface EventRow { id: string; org_id: string; seq: number | null; kind: string; code_1c: string | null; po_id: string | null; source_id: string; text: string | null; payload: string; at: string | null; state: string; run_id: string | null }
+interface EventRow { id: string; org_id: string; seq: number | null; kind: string; code_1c: string | null; po_id: string | null; source_id: string; text: string | null; payload: string; at: string | null; state: string; run_id: string | null; claimed_at: string | null; attempt: number; processing_stage: string; affected_codes: string }
+const CLAIM_TIMEOUT_MS = 5 * 60_000;
 const processing = new Map<string, Promise<ProcessResult>>();
 let ticking: Promise<TickResult> | null = null;
 
@@ -181,10 +182,13 @@ async function recomputeAffected(row: EventRow, codes: string[], runId: string):
 async function runEvent(id: string): Promise<ProcessResult> {
   const row = db().prepare("SELECT * FROM world_event WHERE id=?").get(id) as EventRow | undefined;
   if (!row) return { run_id: null, actions: 0, escalations: 0, reason: "world_event_not_found" };
-  if (row.state !== "pending" || row.run_id) return { run_id: row.run_id, actions: 0, escalations: 0, reason: `already_${row.state}` };
+  if (row.state !== "pending") return { run_id: row.run_id, actions: 0, escalations: 0, reason: `already_${row.state}` };
+  const staleBefore = new Date(Date.now() - CLAIM_TIMEOUT_MS).toISOString();
+  if (row.run_id && row.claimed_at && row.claimed_at > staleBefore) return { run_id: row.run_id, actions: 0, escalations: 0, reason: "already_claimed" };
   const runId = await startRun({ org_id: row.org_id, trigger_type: "world_event", trigger_ref: row.id });
   const claimed = withTx(tx => {
-    const result = tx.prepare("UPDATE world_event SET run_id=? WHERE id=? AND state='pending' AND run_id IS NULL").run(runId, id);
+    const result = tx.prepare("UPDATE world_event SET run_id=?,claimed_at=?,attempt=attempt+1 WHERE id=? AND state='pending' AND (run_id IS NULL OR claimed_at IS NULL OR claimed_at<=?)")
+      .run(runId, new Date().toISOString(), id, staleBefore);
     if (result.changes) bumpStateVersion(tx);
     return result;
   });
@@ -192,12 +196,14 @@ async function runEvent(id: string): Promise<ProcessResult> {
     await finishRun(runId, "failed");
     return { run_id: null, actions: 0, escalations: 0, reason: "claimed_by_another_worker" };
   }
+  if (row.run_id && row.run_id !== runId) await finishRun(row.run_id, "failed");
   try {
     const payload = eventPayload(row);
     const review = await maybeSemanticDecisions(row, payload, runId);
-    const sourceRow = domainEvent(row, payload, runId);
-    const applied = await applyWorldEvent(sourceRow);
-    if (!applied.applied && applied.reason !== "replayed") throw new Error(applied.reason || "event_not_applied");
+    const applied = row.processing_stage === "applied"
+      ? { applied: true, affected_codes: JSON.parse(row.affected_codes) as string[] }
+      : await applyWorldEvent(domainEvent(row, payload, runId));
+    if (!applied.applied) throw new Error("reason" in applied ? applied.reason || "event_not_applied" : "event_not_applied");
     await recordAction(runId, {
       kind: "status_change", subject_ref: row.id, world_event_id: row.id,
       summary_ru: `Событие ${row.kind} применено`, sources: [row.source_id], idempotency_key: `worker:${row.id}:applied`,
@@ -205,7 +211,7 @@ async function runEvent(id: string): Promise<ProcessResult> {
     if (review) await proposeOutlierReview(row, runId, review.subject, review.answer, review.decisionId, review.at);
     await recomputeAffected(row, applied.affected_codes, runId);
     withTx(tx => {
-      tx.prepare("UPDATE world_event SET state='processed',run_id=?,processed_at=? WHERE id=?").run(runId, new Date().toISOString(), id);
+      tx.prepare("UPDATE world_event SET state='processed',processing_stage='finished',run_id=?,processed_at=? WHERE id=?").run(runId, new Date().toISOString(), id);
       bumpStateVersion(tx);
     });
     await finishRun(runId, "done");
@@ -219,7 +225,7 @@ async function runEvent(id: string): Promise<ProcessResult> {
       sources: [row.source_id], autonomy: "escalated", result: "failed", idempotency_key: `worker:${row.id}:failed`,
     });
     withTx(tx => {
-      tx.prepare("UPDATE world_event SET state='failed',run_id=?,processed_at=? WHERE id=?").run(runId, new Date().toISOString(), id);
+      tx.prepare("UPDATE world_event SET state='failed',processing_stage='finished',run_id=?,processed_at=? WHERE id=?").run(runId, new Date().toISOString(), id);
       bumpStateVersion(tx);
     });
     await finishRun(runId, "failed");
@@ -263,7 +269,8 @@ export function tick(): Promise<TickResult> {
     const runs: string[] = [];
     let processed = 0;
     while (true) {
-      const event = db().prepare("SELECT id FROM world_event WHERE state='pending' AND run_id IS NULL ORDER BY seq,id LIMIT 1").get() as { id: string } | undefined;
+      const event = db().prepare("SELECT id FROM world_event WHERE state='pending' AND (run_id IS NULL OR claimed_at IS NULL OR claimed_at<=?) ORDER BY seq,id LIMIT 1")
+        .get(new Date(Date.now() - CLAIM_TIMEOUT_MS).toISOString()) as { id: string } | undefined;
       if (!event) break;
       const result = await processEvent(event.id);
       if (result.run_id) runs.push(result.run_id);
