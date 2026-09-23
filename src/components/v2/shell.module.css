@@ -1,7 +1,7 @@
 .frame { display: grid; grid-template-columns: var(--v2-side-w) minmax(0, 1fr); min-height: 100dvh; }
 .side { background: var(--v2-side); border-right: 1px solid var(--v2-line); padding: 20px 16px; display: flex; flex-direction: column; gap: 24px; position: sticky; top: 0; height: 100dvh; }
 .brand { display: flex; align-items: center; gap: 10px; font: 500 17px/24px var(--v2-font); color: var(--v2-ink); text-decoration: none; padding: 4px 8px; border-radius: var(--v2-radius-sm); letter-spacing: -.01em; }
-.mark { width: 18px; height: 18px; border-radius: 50%; background: conic-gradient(from 200deg, var(--v2-accent) 0 60%, var(--v2-ink) 60% 100%); }
+.mark { width: 20px; height: 20px; flex: none; display: block; }
 .nav { display: flex; flex-direction: column; gap: 2px; }
 .navItem { display: flex; align-items: center; justify-content: space-between; min-height: 40px; padding: 8px 12px; border-radius: var(--v2-radius-sm); color: var(--v2-ink); text-decoration: none; font: 400 15px/20px var(--v2-font); transition: background var(--v2-fast) var(--v2-ease); }
 .navItem:hover { background: rgba(20,20,19,.06); }

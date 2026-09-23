@@ -66,7 +66,7 @@ export function OaShell({ children }: { children: ReactNode }) {
   ];
   return <div className="oa">
     <aside className="oa-rail" aria-label="Разделы">
-      <Link href="/opus_a/today" className="oa-brand"><span className="oa-brand-mark" aria-hidden>А</span>Ainalym</Link>
+      <Link href="/opus_a/today" className="oa-brand"><img src="/brand/ainalym-mark.svg" alt="" width={22} height={22} className="oa-brand-mark" />Ainalym</Link>
       <nav className="oa-nav">
         {nav.map(item => {
           const current = item.match ? path.startsWith(item.match) : path === item.href;

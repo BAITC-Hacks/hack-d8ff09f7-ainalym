@@ -11,7 +11,7 @@
 /* rail */
 .oa-rail { position: sticky; top: 0; height: 100vh; background: var(--oa-rail); border-right: 1px solid var(--oa-line); display: flex; flex-direction: column; padding: 18px 14px; gap: 6px; }
 .oa-brand { display: flex; align-items: center; gap: 10px; padding: 6px 10px 18px; font: 600 17px/22px var(--oa-font); letter-spacing: -0.02em; }
-.oa-brand-mark { width: 22px; height: 22px; border-radius: 6px; background: var(--oa-ink); color: var(--oa-accent); display: grid; place-items: center; font: 700 13px/1 var(--oa-font); }
+.oa-brand-mark { width: 22px; height: 22px; flex: none; display: block; }
 .oa-nav { display: flex; flex-direction: column; gap: 2px; }
 .oa-nav-sep { height: 1px; background: var(--oa-line); margin: 10px 6px; }
 .oa-nav a { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 10px; border-radius: var(--oa-radius); color: var(--oa-ink-2); font: 400 15px/20px var(--oa-font); transition: background var(--oa-fast) var(--oa-ease); }

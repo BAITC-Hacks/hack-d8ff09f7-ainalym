@@ -35,7 +35,7 @@ export function V2Shell({ children }: { children: ReactNode }) {
   const aiLabel = ai === "rules" ? "Правила без LLM" : ai === "offline" ? "Воспроизведение · записанное решение" : ai === "jev" || ai === "openai" ? "Живой AI" : health.error ? "Провайдер недоступен" : "";
   return <div className={styles.frame}>
     <aside className={styles.side} aria-label="Разделы">
-      <Link href="/v2/today" prefetch={false} className={styles.brand} aria-label="Ainalym — на главную"><span className={styles.mark} aria-hidden="true" />Ainalym</Link>
+      <Link href="/v2/today" prefetch={false} className={styles.brand} aria-label="Ainalym — на главную"><img src="/brand/ainalym-mark.svg" alt="" width={20} height={20} className={styles.mark} />Ainalym</Link>
       <nav className={styles.nav}>
         {NAV.map(item => {
           const active = pathname.startsWith(item.match);
