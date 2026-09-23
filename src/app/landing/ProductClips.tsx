@@ -56,7 +56,7 @@ function ClipCard({ clip, index, motion }: { clip: typeof CLIPS[number]; index: 
   }, [hovered, loaded, motion, paused, visible]);
 
   return (
-    <figure ref={card} className={styles.clipCard} data-product-clip={clip.id} data-revealed={loaded || undefined}>
+    <figure ref={card} className={styles.clipCard} data-product-clip={clip.id} data-revealed={loaded || undefined} data-inview={visible || undefined}>
       <div
         className={styles.clipMedia}
         onPointerEnter={event => { if (event.pointerType === "mouse") setHovered(true); }}
