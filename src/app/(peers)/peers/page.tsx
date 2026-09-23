@@ -43,7 +43,7 @@ export default function PeersPage() {
       {events.length ? <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>№ / время</th><th>Событие</th><th>Объект</th><th>Состояние / запуск</th></tr></thead><tbody>{events.map((event) => <tr key={event.id}>
         <td>{event.seq ?? "—"}<br /><small>{shortTime(event.emitted_at ?? event.at)}</small></td>
         <td><strong>{eventKinds[event.kind] ?? "Событие"}</strong><br />{eventSummary(event)}<br /><WorldLabel /></td>
-        <td>{event.code_1c ? <Link className={styles.link} href={`/world/${encodeURIComponent(event.code_1c)}`}>{event.code_1c}</Link> : event.po_id ? <Link className={styles.link} href={`/supplier/${encodeURIComponent(event.po_id)}`}>{event.po_id}</Link> : String(event.payload.supplier_id ?? (event.kind === "stock_snapshot" ? "Все SKU" : "—"))}</td>
+        <td>{event.code_1c ? <Link className={styles.link} href={`/world/${encodeURIComponent(event.code_1c)}`}>{event.code_1c}</Link> : event.po_id ? <Link className={styles.link} href={`/supplier/${encodeURIComponent(event.po_id)}`}>{event.po_id}</Link> : String(event.payload.supplier_id ?? (event.kind === "stock_snapshot" ? "Все артикулы" : "—"))}</td>
         <td>{eventStates[event.state] ?? "Проверить состояние"}{event.run_id && <><br /><Link className={styles.link} href={`/api/agent/runs/${encodeURIComponent(event.run_id)}`}>Открыть запуск</Link></>}</td>
       </tr>)}</tbody></table></div> : <p className={styles.truth}>Событий пока нет. Сценарий появится после загрузки данных партнёра.</p>}
     </section>

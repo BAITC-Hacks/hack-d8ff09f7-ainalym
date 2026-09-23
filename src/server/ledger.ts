@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { bumpStateVersion, db, withTx } from "@/db/client";
+import type { TaskClass } from "@/ai/provider";
 
 export type Autonomy = "auto" | "escalated";
-export interface ActionInput { kind: string; subject_ref?: string; summary_ru: string; rationale_ru?: string; sources?: unknown[]; autonomy?: Autonomy; result?: "done" | "needs_owner" | "failed"; provider?: string; model_version?: string; idempotency_key?: string; world_event_id?: string; code_1c?: string; po_id?: string }
+export interface ActionInput { kind: string; subject_ref?: string; summary_ru: string; rationale_ru?: string; sources?: unknown[]; autonomy?: Autonomy; result?: "done" | "needs_owner" | "failed"; provider?: string; model_version?: string; task_class?: TaskClass; idempotency_key?: string; world_event_id?: string; code_1c?: string; po_id?: string }
 export interface RunInput { org_id: string; trigger_type: string; trigger_ref?: string }
 
 export function startRun(input: RunInput, d?: DatabaseSync, bump = true): string {
@@ -19,6 +20,8 @@ export function startRun(input: RunInput, d?: DatabaseSync, bump = true): string
 
 export function recordAction(run_id: string, a: ActionInput, d?: DatabaseSync, bump = true): string {
   const write = (tx: DatabaseSync) => {
+    const columns = tx.prepare("PRAGMA table_info(agent_action)").all() as { name: string }[];
+    if (!columns.some(column => column.name === "task_class")) tx.exec("ALTER TABLE agent_action ADD COLUMN task_class TEXT");
     if (a.idempotency_key) {
       const prior = tx.prepare("SELECT id FROM agent_action WHERE idempotency_key = ?").get(a.idempotency_key) as { id: string } | undefined;
       if (prior) return prior.id;
@@ -26,10 +29,10 @@ export function recordAction(run_id: string, a: ActionInput, d?: DatabaseSync, b
     const run = tx.prepare("SELECT org_id FROM agent_run WHERE id = ?").get(run_id) as { org_id: string } | undefined;
     if (!run) throw new Error("Unknown agent run");
     const id = `AA-${randomUUID()}`;
-    tx.prepare(`INSERT INTO agent_action (id,run_id,org_id,world_event_id,code_1c,po_id,kind,subject_ref,summary_ru,rationale_ru,sources,autonomy,result,provider,model_version,idempotency_key,at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, run_id, run.org_id, a.world_event_id || null, a.code_1c || null,
+    tx.prepare(`INSERT INTO agent_action (id,run_id,org_id,world_event_id,code_1c,po_id,kind,subject_ref,summary_ru,rationale_ru,sources,autonomy,result,provider,model_version,task_class,idempotency_key,at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, run_id, run.org_id, a.world_event_id || null, a.code_1c || null,
       a.po_id || null, a.kind, a.subject_ref || null, a.summary_ru, a.rationale_ru || null, JSON.stringify(a.sources || []),
-      a.autonomy || "auto", a.result || "done", a.provider || null, a.model_version || null, a.idempotency_key || null, new Date().toISOString());
+      a.autonomy || "auto", a.result || "done", a.provider || null, a.model_version || null, a.task_class || null, a.idempotency_key || null, new Date().toISOString());
     tx.prepare("UPDATE agent_run SET actions_count = actions_count + 1, escalations_count = escalations_count + ? WHERE id = ?")
       .run(a.autonomy === "escalated" || a.result === "needs_owner" ? 1 : 0, run_id);
     if (bump) bumpStateVersion(tx);

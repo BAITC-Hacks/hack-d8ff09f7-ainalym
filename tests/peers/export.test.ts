@@ -66,6 +66,7 @@ describe("1C file export boundary", () => {
     expect(first.label).toBe("Экспорт для 1С (файл)");
     const csvRows = readFileSync(first.csv_path, "utf8").replace(/^\ufeff/, "").trim().split(/\r?\n/).map(row => row.split(";"));
     expect(csvRows[0]).toEqual(ONEC_EXPORT_HEADERS);
+    expect(csvRows[0][7]).toBe("Дата поставки");
     expect(csvRows[1]).toEqual(["03001_", "Кабель", "K-5", "", "20", "", "IEK", "", "не требуется", "Потребность на 70 дней"]);
     expect(readFileSync(first.csv_path, "utf8")).toContain("03001_");
     const workbook = readXlsx(readFileSync(first.xlsx_path), { type: "buffer" });

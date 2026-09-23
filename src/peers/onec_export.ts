@@ -7,7 +7,7 @@ import { urgencyLabelRu } from "../domain/urgency";
 import { poXlsx } from "./xlsx";
 
 export const EXPORT_LABEL = "Экспорт для 1С (файл)";
-export const ONEC_EXPORT_HEADERS = ["Номенклатура.Код", "Номенклатура", "Артикул", "Ед.", "Количество", "Цена", "Поставщик", "Дата поставки (ETA)", "Срочность", "Обоснование"];
+export const ONEC_EXPORT_HEADERS = ["Номенклатура.Код", "Номенклатура", "Артикул", "Ед.", "Количество", "Цена", "Поставщик", "Дата поставки", "Срочность", "Обоснование"];
 interface Order { id: string; state: string; version: number; supplier_id: string; eta: string | null }
 interface ExportLine { code_1c: string; article: string | null; name: string; unit: string | null; qty: number; unit_cost: string | null; urgency: string | null; rationale_ru: string | null }
 interface PeerRecord { id: string; payload: string; state: string }

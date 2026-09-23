@@ -82,12 +82,12 @@ export async function runCalculation(scope: CalcScope = {}, overrides: Partial<E
   const applied = await applyRecommendations(id, { database, org_id: orgId });
   for (const supplierId of [...new Set(unresolved.map((row) => row.supplier_id))]) {
     const gaps = unresolved.filter((row) => row.supplier_id === supplierId);
-    const task = await createTask({ title: `Проверить отсутствующие источники ${supplierId}: ${gaps.length} SKU`, state: "needs_review",
+    const task = await createTask({ title: `Проверить отсутствующие источники ${supplierId}: ${gaps.length} артикулов`, state: "needs_review",
       sources: gaps.map((row) => `${row.code_1c}: ${row.reason}`) }, { database, org_id: orgId, run_id: agentRunId });
     applied.tasks.push(task);
     await recordAction(agentRunId, { kind: "escalation", subject_ref: task.id,
-      summary_ru: `Требуются данные для ${gaps.length} SKU ${supplierId}`,
-      rationale_ru: `${gaps.slice(0, 5).map((row) => `${row.code_1c}: ${row.reason}`).join("; ")}${gaps.length > 5 ? `; и ещё ${gaps.length - 5} SKU` : ""}`,
+      summary_ru: `Требуются данные для ${gaps.length} артикулов ${supplierId}`,
+      rationale_ru: `${gaps.slice(0, 5).map((row) => `${row.code_1c}: ${row.reason}`).join("; ")}${gaps.length > 5 ? `; и ещё ${gaps.length - 5} артикулов` : ""}`,
       sources: gaps.map((row) => row.code_1c), autonomy: "escalated", result: "needs_owner", idempotency_key: `source-gap:${id}:${supplierId}` }, database);
   }
   if (!ctx.agent_run_id) await finishRun(agentRunId, "done", database);

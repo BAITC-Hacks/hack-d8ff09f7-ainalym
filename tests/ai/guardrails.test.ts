@@ -54,7 +54,7 @@ describe("provider and decision guardrails", () => {
     process.env.TYPESAFE_API_KEY = "test-only-key";
     const fetchMock = vi.fn(async () => ({ ok: false, status: 429 }));
     vi.stubGlobal("fetch", fetchMock);
-    const result = await decideChoice(question, { document_qty: 100, threshold: 100 }, "jev");
+    const result = await decideChoice(question, { document_qty: 100, threshold: 100 }, { taskClass: "reasoning", reasoningEffort: "high" }, "jev");
     expect(result).toMatchObject({ answer: null, result_state: "provider_error" });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -62,7 +62,7 @@ describe("provider and decision guardrails", () => {
   it("returns provider_error after a timeout", async () => {
     process.env.TYPESAFE_API_KEY = "test-only-key";
     vi.stubGlobal("fetch", vi.fn(async () => { throw new DOMException("Timed out", "AbortError"); }));
-    const result = await decideChoice(question, { document_qty: 100, threshold: 100 }, "jev");
+    const result = await decideChoice(question, { document_qty: 100, threshold: 100 }, { taskClass: "reasoning", reasoningEffort: "high" }, "jev");
     expect(result.answer).toBeNull();
     expect(result.result_state).toBe("provider_error");
   });
@@ -74,7 +74,7 @@ describe("provider and decision guardrails", () => {
       endpoint = url;
       return { ok: true, json: async () => ({ ...response("regular"), model: "typesafe-ai/jev" }) };
     }));
-    const result = await decideChoice(question, { document_qty: 80, threshold: 100 }, "jev");
+    const result = await decideChoice(question, { document_qty: 80, threshold: 100 }, { taskClass: "reasoning", reasoningEffort: "high" }, "jev");
     expect(endpoint).toBe("https://ai-gateway.vercel.sh/v1/evaluate");
     expect(result).toMatchObject({ answer: "regular", provider: "jev:gateway" });
   });
@@ -89,7 +89,7 @@ describe("provider and decision guardrails", () => {
         ? { ok: false, status: 429 }
         : { ok: true, json: async () => ({ ...response("one_off"), model: "typesafe-ai/jev" }) };
     }));
-    const result = await decideChoice(question, { document_qty: 120, threshold: 100 }, "jev");
+    const result = await decideChoice(question, { document_qty: 120, threshold: 100 }, { taskClass: "reasoning", reasoningEffort: "high" }, "jev");
     expect(endpoints).toEqual([
       "https://api.typesafe.ai/v1/systemone", "https://api.typesafe.ai/v1/systemone",
       "https://ai-gateway.vercel.sh/v1/evaluate",
@@ -162,12 +162,12 @@ describe("provider and decision guardrails", () => {
   });
 
   it("rules change with quantities and preserve short Chinese text", async () => {
-    const one = await decideChoice(question, { document_qty: 120, threshold: 100 }, "rules");
-    const regular = await decideChoice(question, { document_qty: 80, threshold: 100 }, "rules");
+    const one = await decideChoice(question, { document_qty: 120, threshold: 100 }, { taskClass: "reasoning", reasoningEffort: "high" }, "rules");
+    const regular = await decideChoice(question, { document_qty: 80, threshold: 100 }, { taskClass: "reasoning", reasoningEffort: "high" }, "rules");
     expect(one.answer).toBe("one_off");
     expect(regular.answer).toBe("regular");
     const terms = catalogQuestion("supplier_terms_hint")!;
-    expect((await decideChoice(terms, { text: "预付" }, "rules")).answer).toBe("prepayment");
+    expect((await decideChoice(terms, { text: "预付" }, { taskClass: "reasoning", reasoningEffort: "high" }, "rules")).answer).toBe("prepayment");
   });
 
   it("caches by subject version and invalidates after a SKU update", async () => {
@@ -198,10 +198,10 @@ describe("provider and decision guardrails", () => {
   it("OpenAI preserves unknown and errors separately", async () => {
     process.env.OPENAI_API_KEY = "test-only-key";
     generated.mockResolvedValueOnce({ object: { answer: "unknown", distribution: { one_off: 0.1, regular: 0.1, unknown: 0.8 } }, response: { modelId: "test-model" } });
-    const unknown = await decideChoice(question, { document_qty: 100, threshold: 100 }, "openai");
+    const unknown = await decideChoice(question, { document_qty: 100, threshold: 100 }, { taskClass: "reasoning", reasoningEffort: "high" }, "openai");
     expect(unknown).toMatchObject({ answer: "unknown", result_state: "decided", model_version: "test-model" });
     generated.mockRejectedValueOnce(new Error("429"));
-    const error = await decideChoice(question, { document_qty: 100, threshold: 100 }, "openai");
+    const error = await decideChoice(question, { document_qty: 100, threshold: 100 }, { taskClass: "reasoning", reasoningEffort: "high" }, "openai");
     expect(error).toMatchObject({ answer: null, result_state: "provider_error" });
   });
 });

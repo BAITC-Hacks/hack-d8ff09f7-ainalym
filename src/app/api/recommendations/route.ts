@@ -12,14 +12,17 @@ export async function GET(request: Request): Promise<Response> {
     const ektMap = loadMap(), snapshot = loadSnapshot(), images = loadSkuImages();
     const runId = query.run_id || (db().prepare("SELECT id FROM calc_run ORDER BY started_at DESC LIMIT 1").get() as { id: string } | undefined)?.id;
     if (!runId) return ok({ groups: [] });
-    const clauses = ["r.run_id = ?", "COALESCE(r.qty_adjusted, r.qty_recommended) > 0"];
-    const args: string[] = [runId];
+    const clauses = ["r.recency = 1", "COALESCE(r.qty_adjusted, r.qty_recommended) > 0"];
+    const args: string[] = query.run_id ? [query.run_id] : [];
     for (const [param, column] of [["supplier", "r.supplier_id"], ["category", "s.category"], ["urgency", "r.urgency"]]) {
       const value = query[param as keyof typeof query];
       if (value) { clauses.push(`${column} = ?`); args.push(value); }
     }
     const rows = db().prepare(`SELECT r.*, s.name, s.unit, s.moq, s.unit_cost, s.category, f.base_rate
-      FROM recommendation r JOIN sku s ON s.code_1c = r.code_1c
+      FROM (SELECT r.*, ROW_NUMBER() OVER (PARTITION BY r.supplier_id,r.code_1c
+        ORDER BY c.started_at DESC,c.rowid DESC,r.rowid DESC) AS recency
+        FROM recommendation r JOIN calc_run c ON c.id=r.run_id ${query.run_id ? "WHERE r.run_id=?" : ""}) r
+      JOIN sku s ON s.code_1c = r.code_1c
       LEFT JOIN forecast f ON f.id = r.forecast_id WHERE ${clauses.join(" AND ")}
       ORDER BY r.supplier_id, r.urgency, r.code_1c`).all(...args);
     const codes = rows.map(row => String(row.code_1c));

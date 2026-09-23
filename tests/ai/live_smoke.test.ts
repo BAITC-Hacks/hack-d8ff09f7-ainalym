@@ -12,7 +12,7 @@ describe("live provider smoke", () => {
   it("direct TypeSafe choice", async (ctx) => {
     if (process.env.AINALYM_LIVE_SMOKE !== "1") ctx.skip("UNVERIFIED: live provider not exercised (set AINALYM_LIVE_SMOKE=1)");
     if (!process.env.TYPESAFE_API_KEY) ctx.skip("UNVERIFIED: missing TypeSafe credentials");
-    const result = await decideChoice(question, context, "jev");
+    const result = await decideChoice(question, context, { taskClass: "reasoning", reasoningEffort: "high" }, "jev");
     expect(result).toMatchObject({ result_state: "decided", provider: "jev:typesafe" });
     expect(result.answer).toBeTruthy();
     expect(result.model_version).toBeTruthy();
@@ -25,7 +25,7 @@ describe("live provider smoke", () => {
     const direct = process.env.TYPESAFE_API_KEY;
     delete process.env.TYPESAFE_API_KEY;
     try {
-      const result = await decideChoice(question, context, "jev");
+      const result = await decideChoice(question, context, { taskClass: "reasoning", reasoningEffort: "high" }, "jev");
       expect(result).toMatchObject({ result_state: "decided", provider: "jev:gateway" });
       expect(result.answer).toBeTruthy();
       expect(result.model_version).toBeTruthy();
@@ -36,7 +36,7 @@ describe("live provider smoke", () => {
   it("OpenAI structured choice", async (ctx) => {
     if (process.env.AINALYM_LIVE_SMOKE !== "1") ctx.skip("UNVERIFIED: live provider not exercised (set AINALYM_LIVE_SMOKE=1)");
     if (!process.env.OPENAI_API_KEY) ctx.skip("UNVERIFIED: missing OpenAI credentials");
-    const result = await decideChoice(question, context, "openai");
+    const result = await decideChoice(question, context, { taskClass: "reasoning", reasoningEffort: "high" }, "openai");
     expect(result).toMatchObject({ result_state: "decided", provider: "openai" });
     expect(result.answer).toBeTruthy();
     expect(result.model_version).toBeTruthy();
@@ -44,7 +44,7 @@ describe("live provider smoke", () => {
   }, 30_000);
 
   it("rules choice", async () => {
-    const result = await decideChoice(question, context, "rules");
+    const result = await decideChoice(question, context, { taskClass: "reasoning", reasoningEffort: "high" }, "rules");
     expect(result).toMatchObject({ result_state: "decided", provider: "rules", label: "Правила без LLM" });
     console.log(`one_off_order=${result.answer} provider=${result.provider} model=${result.model_version} label=${result.label}`);
   });

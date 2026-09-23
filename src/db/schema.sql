@@ -37,12 +37,12 @@ CREATE INDEX IF NOT EXISTS world_event_org_state ON world_event(org_id, state, s
 CREATE INDEX IF NOT EXISTS world_event_code ON world_event(code_1c, state);
 CREATE TABLE IF NOT EXISTS agent_run (id TEXT PRIMARY KEY, org_id TEXT NOT NULL, trigger_type TEXT NOT NULL, trigger_ref TEXT, state TEXT NOT NULL DEFAULT 'running', started_at TEXT NOT NULL, finished_at TEXT, actions_count INTEGER NOT NULL DEFAULT 0, escalations_count INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS agent_run_org ON agent_run(org_id, started_at);
-CREATE TABLE IF NOT EXISTS agent_action (id TEXT PRIMARY KEY, run_id TEXT NOT NULL, org_id TEXT NOT NULL, world_event_id TEXT, code_1c TEXT, po_id TEXT, kind TEXT NOT NULL, subject_ref TEXT, summary_ru TEXT NOT NULL, rationale_ru TEXT, sources TEXT NOT NULL DEFAULT '[]', autonomy TEXT NOT NULL DEFAULT 'auto', result TEXT NOT NULL DEFAULT 'done', provider TEXT, model_version TEXT, idempotency_key TEXT UNIQUE, at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS agent_action (id TEXT PRIMARY KEY, run_id TEXT NOT NULL, org_id TEXT NOT NULL, world_event_id TEXT, code_1c TEXT, po_id TEXT, kind TEXT NOT NULL, subject_ref TEXT, summary_ru TEXT NOT NULL, rationale_ru TEXT, sources TEXT NOT NULL DEFAULT '[]', autonomy TEXT NOT NULL DEFAULT 'auto', result TEXT NOT NULL DEFAULT 'done', provider TEXT, model_version TEXT, task_class TEXT, idempotency_key TEXT UNIQUE, at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS agent_action_at ON agent_action(at);
 CREATE INDEX IF NOT EXISTS agent_action_code ON agent_action(code_1c);
 CREATE INDEX IF NOT EXISTS agent_action_org_at ON agent_action(org_id, at);
 CREATE INDEX IF NOT EXISTS agent_action_po ON agent_action(po_id, at);
-CREATE TABLE IF NOT EXISTS decision_record (id TEXT PRIMARY KEY, question_id TEXT NOT NULL, subject_ref TEXT, answer TEXT, distribution TEXT NOT NULL DEFAULT '{}', provider TEXT, model_version TEXT, result_state TEXT NOT NULL, mode TEXT NOT NULL, at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS decision_record (id TEXT PRIMARY KEY, question_id TEXT NOT NULL, subject_ref TEXT, answer TEXT, distribution TEXT NOT NULL DEFAULT '{}', provider TEXT, model_version TEXT, task_class TEXT NOT NULL DEFAULT 'reasoning', result_state TEXT NOT NULL, mode TEXT NOT NULL, at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS ledger_peer_record (id TEXT PRIMARY KEY, peer TEXT NOT NULL, external_identity TEXT NOT NULL, kind TEXT, payload TEXT NOT NULL DEFAULT '{}', version INTEGER NOT NULL DEFAULT 1, state TEXT NOT NULL, as_of TEXT NOT NULL, UNIQUE (peer, external_identity));
 CREATE TABLE IF NOT EXISTS state_version (n INTEGER NOT NULL);
 INSERT INTO state_version (n) SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM state_version);

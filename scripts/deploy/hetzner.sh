@@ -24,7 +24,7 @@ awk -F= '
     value=substr($0, index($0, "=") + 1)
     gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
     present=(value != "" && value != "\"\"" && value != "\047\047")
-    if (name !~ /^(DEMO_ACCESS_CODE|DEMO_DAILY_LIVE_CALLS|OPENAI_API_KEY|AI_GATEWAY_API_KEY|TYPESAFE_API_KEY|OPENAI_MODEL|AI_PROVIDER|AINALYM_FEED_AUTOPLAY|EKT_API_USER|EKT_API_PASSWORD)$/) bad=1
+    if (name !~ /^(DEMO_ACCESS_CODE|DEMO_DAILY_LIVE_CALLS|OPENAI_API_KEY|AI_GATEWAY_API_KEY|TYPESAFE_API_KEY|OPENAI_MODEL|OPENAI_REASONING_MODEL|OPENAI_FAST_MODEL|AI_PROVIDER|AINALYM_FEED_AUTOPLAY|EKT_API_USER|EKT_API_PASSWORD)$/) bad=1
     if (name == "DEMO_ACCESS_CODE" && present) access=1
     if (name == "OPENAI_API_KEY" && present) openai=1
     if (name == "AI_GATEWAY_API_KEY" && present) gateway=1

@@ -57,7 +57,7 @@ export function Replenishment({ runId }: { runId?: string }) {
   const params = new URLSearchParams({ ...(currentRun ? { run_id: currentRun } : {}), ...(supplier ? { supplier } : {}) });
   const path = `/api/recommendations?${params}`;
   async function calculate() {
-    const result = await action.run(() => apiRequest<{ run_id: string; skus: number; recommended: number }>("/api/calc/run", { method: "POST", body: JSON.stringify({ scope: supplier ? { supplier } : {} }) }), value => `Расчёт завершён: ${number(value.skus, 0)} SKU, ${number(value.recommended, 0)} рекомендаций.`);
+    const result = await action.run(() => apiRequest<{ run_id: string; skus: number; recommended: number }>("/api/calc/run", { method: "POST", body: JSON.stringify({ scope: supplier ? { supplier } : {} }) }), value => `Расчёт завершён: ${number(value.skus, 0)} артикулов, ${number(value.recommended, 0)} рекомендаций.`);
     if (result) setCurrentRun(result.run_id);
   }
   return <div className={styles.page}>

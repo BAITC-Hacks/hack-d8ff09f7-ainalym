@@ -25,8 +25,8 @@ export interface Tables {
   payment: { id: string; direction: string; counterparty_id: string | null; amount: string; currency: string; payment_ref: string; at: string };
   world_event: { id: string; org_id: string; seq: number | null; kind: string; actor_id: string | null; code_1c: string | null; po_id: string | null; at: string | null; source_id: string; text: string | null; payload: string; state: string; run_id: string | null; emitted_at: string | null; processed_at: string | null };
   agent_run: { id: string; org_id: string; trigger_type: string; trigger_ref: string | null; state: string; started_at: string; finished_at: string | null; actions_count: number; escalations_count: number };
-  agent_action: { id: string; run_id: string; org_id: string; world_event_id: string | null; code_1c: string | null; po_id: string | null; kind: string; subject_ref: string | null; summary_ru: string; rationale_ru: string | null; sources: string; autonomy: string; result: string; provider: string | null; model_version: string | null; idempotency_key: string | null; at: string };
-  decision_record: { id: string; question_id: string; subject_ref: string | null; answer: string | null; distribution: string; provider: string | null; model_version: string | null; result_state: string; mode: string; at: string };
+  agent_action: { id: string; run_id: string; org_id: string; world_event_id: string | null; code_1c: string | null; po_id: string | null; kind: string; subject_ref: string | null; summary_ru: string; rationale_ru: string | null; sources: string; autonomy: string; result: string; provider: string | null; model_version: string | null; task_class: string | null; idempotency_key: string | null; at: string };
+  decision_record: { id: string; question_id: string; subject_ref: string | null; answer: string | null; distribution: string; provider: string | null; model_version: string | null; task_class: string; result_state: string; mode: string; at: string };
   ledger_peer_record: { id: string; peer: string; external_identity: string; kind: string | null; payload: string; version: number; state: string; as_of: string };
 }
 

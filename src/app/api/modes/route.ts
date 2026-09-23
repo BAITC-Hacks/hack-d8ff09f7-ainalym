@@ -8,6 +8,7 @@ export async function GET(): Promise<Response> {
     const fetchedAt = org ? (JSON.parse(org.payload) as { etl_fetched_at?: string }).etl_fetched_at ?? null : null;
     return ok({
     axes: truthAxes(),
+    ai_routing: "рассуждения — модель рассуждений, быстрые задачи — быстрая модель",
     connections: [
       { id: "onec_in", label: "Вход: стандартные отчёты 1С УТ", detail: "динамика продаж, остатки, товар в пути, MOQ загружаются как есть, без доработки конфигурации", state: fetchedAt ? "active" : "unavailable", external: "file_import", as_of: fetchedAt },
       { id: "onec_out", label: "Экспорт для 1С (файл)", state: "active", external: "export_only" },

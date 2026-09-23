@@ -82,7 +82,10 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     JOIN purchase_order p ON p.id=l.po_id WHERE l.code_1c=? AND p.state IN ('approved','exported')
     AND p.eta IS NOT NULL AND substr(p.eta,1,10)>=? AND substr(p.eta,1,10)<=?`)
     .all(code_1c, asOf, horizonDate.toISOString().slice(0, 10)) as { po_id: string; eta: string; qty: number }[];
-  const approvedSupply = approvedRows.reduce((sum, row) => sum.plus(row.qty), new Decimal(0));
+  // A PO line can appear in both the approval ledger and the transit feed.
+  const transitRefs = new Set(transitRows.map((row) => row.po_ref));
+  const approvedSupply = approvedRows.filter((row) => !transitRefs.has(row.po_id))
+    .reduce((sum, row) => sum.plus(row.qty), new Decimal(0));
   const onHand = dec(freshOnHand ? sku.on_hand_qty : stock?.opening_qty);
   if (noSalesHistory || (months.length > 0 && months.every((month) => dec(month.qty_file ?? month.qty_regular).isZero()) && sales.every((sale) => dec(sale.qty).isZero()))) {
     const flags = ["inactive"];
@@ -137,12 +140,16 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
   const worldDelta = new Map<string, Decimal>();
   const excludedFromFile = new Map<string, Decimal>();
   const excluded: { doc_no: string; ym: string; qty: number; threshold: number }[] = [];
+  const pendingReview: { doc_no: string; ym: string; qty: number; threshold: number }[] = [];
   for (const doc of docGroups.values()) {
     const state = outlierState.get(`${doc.doc_no}|${doc.ym}`);
     const docThreshold = thresholdFor(doc.qty);
-    if (state === "excluded" || (state !== "kept" && doc.qty.gt(docThreshold))) {
+    const outlierCandidate = state === "excluded" || (state !== "kept" && doc.qty.gt(docThreshold));
+    if (outlierCandidate && positiveDocs.length < 3) {
+      pendingReview.push({ doc_no: doc.doc_no, ym: doc.ym, qty: numeric(doc.qty), threshold: numeric(docThreshold) });
+    } else if (outlierCandidate) {
       excluded.push({ doc_no: doc.doc_no, ym: doc.ym, qty: numeric(doc.qty), threshold: numeric(docThreshold) });
-      if (doc.source !== "judge") excludedFromFile.set(doc.ym, (excludedFromFile.get(doc.ym) ?? new Decimal(0)).plus(doc.qty));
+      if (doc.source === "file") excludedFromFile.set(doc.ym, (excludedFromFile.get(doc.ym) ?? new Decimal(0)).plus(doc.qty));
       continue;
     }
     byMonth.set(doc.ym, (byMonth.get(doc.ym) ?? new Decimal(0)).plus(doc.qty));
@@ -204,6 +211,8 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     monthlyForecast.set(ym, (monthlyForecast.get(ym) ?? new Decimal(0)).plus(daily));
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
+  // Daily thirds can leave a sub-unit Decimal residue that incorrectly rounds need up.
+  forecastQty = forecastQty.toDecimalPlaces(9);
   const variance = uncensored.reduce((sum, point) => sum.plus(point.qty.minus(baseRate).pow(2)), new Decimal(0)).div(uncensored.length);
   const sigmaDaily = variance.sqrt().div(new Decimal(30).sqrt());
   const z = params.service_level >= 0.99 ? new Decimal("2.33") : params.service_level >= 0.95 ? new Decimal("1.645") : new Decimal("1.28");
@@ -225,7 +234,8 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     inferred_stockout_months: inferredStockoutMonths,
     raw_demand_rate: numeric(rawObservedRate.toDecimalPlaces(3)), corrected_demand_rate: numeric(baseRate.toDecimalPlaces(3)),
     stockout_uplift: numeric(stockoutUplift.toDecimalPlaces(3)),
-    outliers_excluded: excluded, median_month_qty: numeric(medianMonth), p95_doc_qty: numeric(p95Doc), outlier_threshold: numeric(threshold),
+    outliers_excluded: excluded, outliers_pending_review: pendingReview, flags: pendingReview.length ? ["проверить вручную"] : [],
+    median_month_qty: numeric(medianMonth), p95_doc_qty: numeric(p95Doc), outlier_threshold: numeric(threshold),
     safety: numeric(safety.toDecimalPlaces(3)), on_hand: numeric(onHand), on_hand_as_of: freshOnHand ? sku.on_hand_as_of : `${stockMonth}-01`, in_transit: numeric(transit),
     in_transit_sources: transitRows, in_transit_excluded_late: allTransitRows.filter((row) => !transitRows.includes(row)),
     approved_order_qty: numeric(approvedSupply), approved_order_sources: approvedRows,
@@ -234,6 +244,7 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     days_of_cover: coverDays ? numeric(coverDays.toDecimalPlaces(1)) : null,
   };
   const arrivals = transitRows.filter((row) => row.expected_at).map((row) => `${row.qty} ${unit} прибудет до ${row.expected_at!.slice(8, 10)}.${row.expected_at!.slice(5, 7)}`);
-  const rationale_ru = `Код 1С ${code_1c}: фактические продажи ${components.raw_demand_rate} ${unit}/мес; спрос с учётом дефицита ${components.corrected_demand_rate} ${unit}/мес; сезонность ${ownSeason ? "артикула" : "поставщика"}, рост ×${components.growth}; прогноз на ${horizonDays} дн ${components.forecast_qty} + запас ${components.safety} − остаток ${components.on_hand} − в пути ${components.in_transit} − утверждённый заказ ${components.approved_order_qty} ${unit} = потребность ${need} ${unit} (${orderRule} ${sku.moq} ${unit}). ${arrivals.length ? `Ожидаемые поставки: ${arrivals.join(", ")}. ` : ""}Месяцы с подтверждённым дефицитом: ${observedStockoutMonths.join(", ") || "нет"}; предполагаемый дефицит при неизвестном остатке: ${inferredStockoutMonths.join(", ") || "нет"}; исключены разовые документы: ${excluded.map((doc) => doc.doc_no).join(", ") || "нет"}.${stockStale ? ` Последний подтверждённый остаток ${stockMonth}; текущий остаток неизвестен, заказ требует уточнения.` : ""}`;
-  return { forecast: { horizon_months: horizonDays / 30, base_rate: components.base_rate, season: components.season, growth: components.growth, stockout_uplift: components.stockout_uplift, safety: components.safety, method_ru: "Сезонный спрос × рост; цензурирование дефицита; исключение разовых документов" }, need, rationale_ru, components };
+  const undatedTransit = transitRows.some((row) => !row.expected_at);
+  const rationale_ru = `Код 1С ${code_1c}: фактические продажи ${components.raw_demand_rate} ${unit}/мес; спрос с учётом дефицита ${components.corrected_demand_rate} ${unit}/мес; сезонность ${ownSeason ? "артикула" : "поставщика"}, рост ×${components.growth}; прогноз на ${horizonDays} дн ${components.forecast_qty} + запас ${components.safety} − остаток ${components.on_hand} − в пути ${components.in_transit} − утверждённый заказ ${components.approved_order_qty} ${unit} = потребность ${need} ${unit} (${orderRule} ${sku.moq} ${unit}). ${arrivals.length ? `Ожидаемые поставки: ${arrivals.join(", ")}. ` : ""}${undatedTransit ? "Срок прибытия не указан — учтено в горизонте. " : ""}Месяцы с подтверждённым дефицитом: ${observedStockoutMonths.join(", ") || "нет"}; предполагаемый дефицит при неизвестном остатке: ${inferredStockoutMonths.join(", ") || "нет"}; исключены разовые документы: ${excluded.map((doc) => doc.doc_no).join(", ") || "нет"}.${pendingReview.length ? ` Документы ${pendingReview.map((doc) => doc.doc_no).join(", ")}: проверить вручную — недостаточно истории для исключения.` : ""}${stockStale ? ` Последний подтверждённый остаток ${stockMonth}; текущий остаток неизвестен, заказ требует уточнения.` : ""}`;
+  return { forecast: { horizon_months: horizonDays / 30, base_rate: components.base_rate, season: components.season, growth: components.growth, stockout_uplift: components.stockout_uplift, safety: components.safety, method_ru: "Сезонный спрос × рост; восстановление спроса при дефиците; исключение разовых документов" }, need, rationale_ru, components, flags: components.flags };
 }
