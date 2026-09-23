@@ -15,5 +15,6 @@
 - Live Russian microphone/WebRTC round-trip and UI task visibility: externally unverified; L4 panel and L1 state/ledger routes were not present at this checkpoint. No OpenAI product call was made to build or test.
 - L4 panel landed on `main`; the hook now dispatches `ainalym:voice-tool-result` after a confirmed tool HTTP result so its result card can use the same backend result. L4 still needs to subscribe; the UI acceptance gate is not claimed.
 - After L1/L2 landed, the local no-key HTTP and browser integration ran against a disposable reset of the partner data: [integration gate](integration.md) and [typed/queue screenshot](typed-partner-status.png). The live microphone gate remains externally unverified.
+- After L3 and the E2E lane merged, `npm run check -- voice` again reported passed=19, failed=0, externally-unverified=2; `npm run build` passed. The post-L3 HTTP duplicate, queue, state, and no-key results are recorded in [integration gate](integration.md).
 
 Official OpenAI Docs checked: [WebRTC](https://developers.openai.com/api/docs/guides/voice-webrtc), [Realtime conversations and function calls](https://developers.openai.com/api/docs/guides/realtime-conversations), [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [file transcription](https://developers.openai.com/api/docs/guides/speech-to-text).
