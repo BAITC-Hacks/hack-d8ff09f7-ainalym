@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { db, resetInstance } from "../../src/db/client";
 import { executeVoiceTool } from "../../src/voice/tools";
+import { keywordIntent } from "../../src/voice/typed";
 
 describe("partner-data voice integration", () => {
   it("runs a scoped calculation on an anonymised partner SKU", async () => {
@@ -24,6 +25,8 @@ describe("partner-data voice integration", () => {
         AND (SELECT known FROM stock_month t WHERE t.code_1c = s.code_1c ORDER BY ym DESC LIMIT 1) = 1
         ORDER BY s.months_with_sales DESC, s.code_1c LIMIT 1`).get("SE") as { code_1c: string } | undefined;
       expect(candidate).toBeDefined();
+      expect(keywordIntent(`Объясни код 1С ${candidate!.code_1c}`, { org_id: "ORG-1" }))
+        .toMatchObject({ tool: "explain_sku", args: { code_1c: candidate!.code_1c } });
       const response = await executeVoiceTool("recommend_for", {
         request_id: "partner-voice-run", scope: { org_id: "ORG-1", supplier_id: "SE", code_1c: candidate!.code_1c }, args: { supplier_id: "SE" },
       });
