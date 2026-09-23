@@ -1,0 +1,16 @@
+{
+  "sku": [
+    "http 404 /api/skus/NOPE_",
+    "http 503 /api/skus/130300027_",
+    "http 409 /api/recommendations/REC-8cc28f2b-99ab-4d46-a44e-e7aa4acd3f68/adjust",
+    "http 404 /api/recommendations/REC-8cc28f2b-99ab-4d46-a44e-e7aa4acd3f68/adjust"
+  ],
+  "money": [
+    "http 500 /api/money",
+    "http 503 /api/money"
+  ],
+  "supplier": [
+    "http 409 /api/supplier/PO-e98da479-c639-4a7f-b014-7b030994a3c2/reply"
+  ],
+  "keyboard": []
+}
