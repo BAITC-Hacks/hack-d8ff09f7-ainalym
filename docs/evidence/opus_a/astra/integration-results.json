@@ -1,0 +1,215 @@
+{
+  "config": {
+    "argv": [
+      "/Users/adil/.local/share/node-v24.18.0-darwin-arm64/bin/node",
+      "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/node_modules/.bin/playwright",
+      "test",
+      "-c",
+      "docs/evidence/opus_a/astra/playwright.config.ts",
+      "--grep",
+      "real recalculation|real local order",
+      "--reporter=list,json",
+      "--output=docs/evidence/opus_a/astra/integration-test-results"
+    ],
+    "configFile": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/docs/evidence/opus_a/astra/playwright.config.ts",
+    "rootDir": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/docs/evidence/opus_a/astra/integration-test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "opus_a.spec.ts"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "opus_a.spec.ts",
+      "file": "opus_a.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "real recalculation: complete run, busy state and history",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 54808,
+                  "error": {
+                    "message": "Error: apiRequestContext.get: read ECONNRESET\nCall log:\n\u001b[2m  - → GET http://localhost:3111/api/calc/runs\u001b[22m\n\u001b[2m    - user-agent: Playwright/1.63.0 (arm64; macOS 26.4) node/24.18\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n",
+                    "stack": "Error: apiRequestContext.get: read ECONNRESET\nCall log:\n\u001b[2m  - → GET http://localhost:3111/api/calc/runs\u001b[22m\n\u001b[2m    - user-agent: Playwright/1.63.0 (arm64; macOS 26.4) node/24.18\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\n    at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:158:40",
+                    "location": {
+                      "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                      "column": 40,
+                      "line": 158
+                    },
+                    "snippet": "  156 |   await expect(page.getByRole('button', { name: 'Считаю…' })).toBeDisabled();\n  157 |   expect((await response).ok()).toBe(true); await expect(page.getByText(/Расчёт готов:/)).toBeVisible();\n> 158 |   const current = await (await request.get(`${BASE}/api/calc/runs`)).json(); expect(current.runs[0].id).not.toBe(previous.runs[0].id); expect(current.runs[0].scope.supplier).toBeUndefined(); expect(current.runs[0].scope.codes.length).toBeGreaterThan(1000);\n      |                                        ^\n  159 |   const recommendations = await (await request.get(`${BASE}/api/recommendations`)).json(); expect(recommendations.groups.map((group: { supplier_id: string }) => group.supplier_id).sort()).toEqual(['IEK', 'SE']);\n  160 |   await page.locator('.oa-run-history summary').click(); await expect(page.locator('.oa-run-history li').first()).toContainText('Все поставщики'); await shot(page, 'run-history-desktop');\n  161 | });"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                        "column": 40,
+                        "line": 158
+                      },
+                      "message": "Error: apiRequestContext.get: read ECONNRESET\nCall log:\n\u001b[2m  - → GET http://localhost:3111/api/calc/runs\u001b[22m\n\u001b[2m    - user-agent: Playwright/1.63.0 (arm64; macOS 26.4) node/24.18\u001b[22m\n\u001b[2m    - accept: */*\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\n\n  156 |   await expect(page.getByRole('button', { name: 'Считаю…' })).toBeDisabled();\n  157 |   expect((await response).ok()).toBe(true); await expect(page.getByText(/Расчёт готов:/)).toBeVisible();\n> 158 |   const current = await (await request.get(`${BASE}/api/calc/runs`)).json(); expect(current.runs[0].id).not.toBe(previous.runs[0].id); expect(current.runs[0].scope.supplier).toBeUndefined(); expect(current.runs[0].scope.codes.length).toBeGreaterThan(1000);\n      |                                        ^\n  159 |   const recommendations = await (await request.get(`${BASE}/api/recommendations`)).json(); expect(recommendations.groups.map((group: { supplier_id: string }) => group.supplier_id).sort()).toEqual(['IEK', 'SE']);\n  160 |   await page.locator('.oa-run-history summary').click(); await expect(page.locator('.oa-run-history li').first()).toContainText('Все поставщики'); await shot(page, 'run-history-desktop');\n  161 | });\n    at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:158:40"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-23T11:02:13.022Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/docs/evidence/opus_a/astra/integration-test-results/opus_a-real-recalculation--4f990--run-busy-state-and-history/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                    "column": 40,
+                    "line": 158
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "cbef5de3954c760cf6ba-b7068f273f0c4b142901",
+          "file": "opus_a.spec.ts",
+          "line": 151,
+          "column": 5
+        },
+        {
+          "title": "real local order: prepare, approve exact version, download CSV/XLSX with Код 1с",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 35319,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('.oa-skel')\nExpected: \u001b[32m0\u001b[39m\nReceived: \u001b[31m11\u001b[39m\nTimeout:  20000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" locator('.oa-skel') with timeout 20000ms\u001b[22m\n\u001b[2m  - waiting for locator('.oa-skel')\u001b[22m\n\u001b[2m    32 × locator resolved to 31 elements\u001b[22m\n\u001b[2m       - unexpected value \"31\"\u001b[22m\n\u001b[2m    12 × locator resolved to 11 elements\u001b[22m\n\u001b[2m       - unexpected value \"11\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('.oa-skel')\nExpected: \u001b[32m0\u001b[39m\nReceived: \u001b[31m11\u001b[39m\nTimeout:  20000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" locator('.oa-skel') with timeout 20000ms\u001b[22m\n\u001b[2m  - waiting for locator('.oa-skel')\u001b[22m\n\u001b[2m    32 × locator resolved to 31 elements\u001b[22m\n\u001b[2m       - unexpected value \"31\"\u001b[22m\n\u001b[2m    12 × locator resolved to 11 elements\u001b[22m\n\u001b[2m       - unexpected value \"11\"\u001b[22m\n\n    at ready (/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:9:75)\n    at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:164:50",
+                    "location": {
+                      "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                      "column": 75,
+                      "line": 9
+                    },
+                    "snippet": "   7 | const SKU = \"130200122_\";\n   8 | const views = [{ name: \"desktop\", width: 1440, height: 900 }, { name: \"phone\", width: 390, height: 844 }];\n>  9 | async function ready(page: Page) { await expect(page.locator(\".oa-skel\")).toHaveCount(0, { timeout: 20_000 }); await page.evaluate(() => document.fonts.ready); }\n     |                                                                           ^\n  10 | async function shot(page: Page, name: string, fullPage = false) {\n  11 |   await page.locator('img').evaluateAll(images => Promise.race([Promise.all(images.map(image => { (image as HTMLImageElement).loading = 'eager'; return (image as HTMLImageElement).decode().catch(() => {}); })), new Promise(resolve => setTimeout(resolve, 2000))]));\n  12 |   await page.screenshot({ path: `${OUT}/${name}.png`, fullPage });"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                        "column": 75,
+                        "line": 9
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveCount\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator:  locator('.oa-skel')\nExpected: \u001b[32m0\u001b[39m\nReceived: \u001b[31m11\u001b[39m\nTimeout:  20000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveCount\" locator('.oa-skel') with timeout 20000ms\u001b[22m\n\u001b[2m  - waiting for locator('.oa-skel')\u001b[22m\n\u001b[2m    32 × locator resolved to 31 elements\u001b[22m\n\u001b[2m       - unexpected value \"31\"\u001b[22m\n\u001b[2m    12 × locator resolved to 11 elements\u001b[22m\n\u001b[2m       - unexpected value \"11\"\u001b[22m\n\n\n   7 | const SKU = \"130200122_\";\n   8 | const views = [{ name: \"desktop\", width: 1440, height: 900 }, { name: \"phone\", width: 390, height: 844 }];\n>  9 | async function ready(page: Page) { await expect(page.locator(\".oa-skel\")).toHaveCount(0, { timeout: 20_000 }); await page.evaluate(() => document.fonts.ready); }\n     |                                                                           ^\n  10 | async function shot(page: Page, name: string, fullPage = false) {\n  11 |   await page.locator('img').evaluateAll(images => Promise.race([Promise.all(images.map(image => { (image as HTMLImageElement).loading = 'eager'; return (image as HTMLImageElement).decode().catch(() => {}); })), new Promise(resolve => setTimeout(resolve, 2000))]));\n  12 |   await page.screenshot({ path: `${OUT}/${name}.png`, fullPage });\n    at ready (/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:9:75)\n    at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:164:50"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-23T11:03:08.188Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/docs/evidence/opus_a/astra/integration-test-results/opus_a-real-local-order-pr-8b448-wnload-CSV-XLSX-with-Код-1с/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                    "column": 75,
+                    "line": 9
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "cbef5de3954c760cf6ba-f73e1477d6e3092f5d94",
+          "file": "opus_a.spec.ts",
+          "line": 163,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-09-23T11:02:12.698Z",
+    "duration": 90947.559,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

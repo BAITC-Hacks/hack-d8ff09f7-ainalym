@@ -1,0 +1,585 @@
+{
+  "config": {
+    "argv": [
+      "/Users/adil/.local/share/node-v24.18.0-darwin-arm64/bin/node",
+      "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/node_modules/.bin/playwright",
+      "test",
+      "-c",
+      "docs/evidence/opus_a/astra/playwright.config.ts"
+    ],
+    "configFile": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/docs/evidence/opus_a/astra/playwright.config.ts",
+    "rootDir": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/docs/evidence/opus_a/astra/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "opus_a.spec.ts"
+        ],
+        "timeout": 45000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "docs/evidence/opus_a/astra/playwright-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "opus_a.spec.ts",
+      "file": "opus_a.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "desktop: three populated screens, reflow and rationale",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11234,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-23T10:42:49.757Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cbef5de3954c760cf6ba-af1ea403dd89e8634cb0",
+          "file": "opus_a.spec.ts",
+          "line": 27,
+          "column": 7
+        },
+        {
+          "title": "phone: three populated screens, reflow and rationale",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10963,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-23T10:43:01.173Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cbef5de3954c760cf6ba-61681e72216b1126fec0",
+          "file": "opus_a.spec.ts",
+          "line": 27,
+          "column": 7
+        },
+        {
+          "title": "search: code, article, name; keyboard, empty and unavailable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 7164,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-23T10:43:12.140Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cbef5de3954c760cf6ba-b298f547a32374a06b43",
+          "file": "opus_a.spec.ts",
+          "line": 50,
+          "column": 5
+        },
+        {
+          "title": "row and tab keys; filter, disclosure and scroll survive SKU return",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 367,
+                  "error": {
+                    "message": "Error: locator.scrollIntoViewIfNeeded: Error: strict mode violation: getByRole('link', { name: 'Карточка товара', exact: true }) resolved to 2 elements:\n    1) <a class=\"oa-btn oa-btn-outline\" href=\"/opus_a/skus/030200240_?from=%2Fopus_a%2Freplenishment%3Fsupplier%3DSE\">…</a> aka getByRole('link', { name: 'Карточка товара' }).first()\n    2) <a class=\"oa-link\" href=\"/opus_a/skus/030200240_\">…</a> aka getByRole('link', { name: 'Карточка товара' }).nth(1)\n\nCall log:\n\u001b[2m  - waiting for getByRole('link', { name: 'Карточка товара', exact: true })\u001b[22m\n",
+                    "stack": "Error: locator.scrollIntoViewIfNeeded: Error: strict mode violation: getByRole('link', { name: 'Карточка товара', exact: true }) resolved to 2 elements:\n    1) <a class=\"oa-btn oa-btn-outline\" href=\"/opus_a/skus/030200240_?from=%2Fopus_a%2Freplenishment%3Fsupplier%3DSE\">…</a> aka getByRole('link', { name: 'Карточка товара' }).first()\n    2) <a class=\"oa-link\" href=\"/opus_a/skus/030200240_\">…</a> aka getByRole('link', { name: 'Карточка товара' }).nth(1)\n\nCall log:\n\u001b[2m  - waiting for getByRole('link', { name: 'Карточка товара', exact: true })\u001b[22m\n\n    at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:77:74",
+                    "location": {
+                      "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                      "column": 74,
+                      "line": 77
+                    },
+                    "snippet": "  75 |   await page.keyboard.press('k'); await expect(rows.first()).toBeFocused(); await page.keyboard.press('ArrowDown'); await page.keyboard.press('Enter');\n  76 |   await expect(page.locator('.oa-why')).toBeVisible();\n> 77 |   await page.getByRole('link', { name: 'Карточка товара', exact: true }).scrollIntoViewIfNeeded();\n     |                                                                          ^\n  78 |   await page.waitForTimeout(80); const scroll = await page.evaluate(() => window.scrollY);\n  79 |   await page.getByRole('link', { name: 'Карточка товара', exact: true }).click(); await ready(page);\n  80 |   await page.locator('.oa-crumb a').click(); await ready(page);"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                        "column": 74,
+                        "line": 77
+                      },
+                      "message": "Error: locator.scrollIntoViewIfNeeded: Error: strict mode violation: getByRole('link', { name: 'Карточка товара', exact: true }) resolved to 2 elements:\n    1) <a class=\"oa-btn oa-btn-outline\" href=\"/opus_a/skus/030200240_?from=%2Fopus_a%2Freplenishment%3Fsupplier%3DSE\">…</a> aka getByRole('link', { name: 'Карточка товара' }).first()\n    2) <a class=\"oa-link\" href=\"/opus_a/skus/030200240_\">…</a> aka getByRole('link', { name: 'Карточка товара' }).nth(1)\n\nCall log:\n\u001b[2m  - waiting for getByRole('link', { name: 'Карточка товара', exact: true })\u001b[22m\n\n\n  75 |   await page.keyboard.press('k'); await expect(rows.first()).toBeFocused(); await page.keyboard.press('ArrowDown'); await page.keyboard.press('Enter');\n  76 |   await expect(page.locator('.oa-why')).toBeVisible();\n> 77 |   await page.getByRole('link', { name: 'Карточка товара', exact: true }).scrollIntoViewIfNeeded();\n     |                                                                          ^\n  78 |   await page.waitForTimeout(80); const scroll = await page.evaluate(() => window.scrollY);\n  79 |   await page.getByRole('link', { name: 'Карточка товара', exact: true }).click(); await ready(page);\n  80 |   await page.locator('.oa-crumb a').click(); await ready(page);\n    at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:77:74"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-23T10:43:19.311Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/docs/evidence/opus_a/astra/test-results/opus_a-row-and-tab-keys-fi-3602e-d-scroll-survive-SKU-return/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                    "column": 74,
+                    "line": 77
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "cbef5de3954c760cf6ba-8729f3cd77ba1e8061cd",
+          "file": "opus_a.spec.ts",
+          "line": 69,
+          "column": 5
+        },
+        {
+          "title": "adjust contract: freeze version, 409 blocks resubmit, refresh keeps draft, success",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3506,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-23T10:43:19.919Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cbef5de3954c760cf6ba-cd8dd6e1004e6d0e1724",
+          "file": "opus_a.spec.ts",
+          "line": 89,
+          "column": 5
+        },
+        {
+          "title": "desktop: proposal 409, no stale repeat, keyboard escape",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 15363,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Решить…' }).first()\nExpected: focused\nReceived: inactive\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Решить…' }).first() with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Решить…' }).first()\u001b[22m\n\u001b[2m    24 × locator resolved to <button type=\"button\" aria-expanded=\"false\" class=\"oa-btn oa-btn-black oa-btn-sm\">Решить…</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Решить…' }).first()\nExpected: focused\nReceived: inactive\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Решить…' }).first() with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Решить…' }).first()\u001b[22m\n\u001b[2m    24 × locator resolved to <button type=\"button\" aria-expanded=\"false\" class=\"oa-btn oa-btn-black oa-btn-sm\">Решить…</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n\n    at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:119:110",
+                    "location": {
+                      "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                      "column": 110,
+                      "line": 119
+                    },
+                    "snippet": "  117 |     await page.keyboard.press('Enter'); await expect(page.getByText('Данные обновились', { exact: true })).toBeVisible(); await expect(confirm).toBeDisabled(); expect(version).toBeGreaterThan(0);\n  118 |     await shot(page, `proposal-stale-${viewport.name}`); if (viewport.name === 'phone') await noOverflow(page);\n> 119 |     await page.keyboard.press('Escape'); await expect(page.getByRole('button', { name: 'Решить…' }).first()).toBeFocused();\n      |                                                                                                              ^\n  120 |   });\n  121 | }\n  122 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                        "column": 110,
+                        "line": 119
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Решить…' }).first()\nExpected: focused\nReceived: inactive\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Решить…' }).first() with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Решить…' }).first()\u001b[22m\n\u001b[2m    24 × locator resolved to <button type=\"button\" aria-expanded=\"false\" class=\"oa-btn oa-btn-black oa-btn-sm\">Решить…</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n\n\n  117 |     await page.keyboard.press('Enter'); await expect(page.getByText('Данные обновились', { exact: true })).toBeVisible(); await expect(confirm).toBeDisabled(); expect(version).toBeGreaterThan(0);\n  118 |     await shot(page, `proposal-stale-${viewport.name}`); if (viewport.name === 'phone') await noOverflow(page);\n> 119 |     await page.keyboard.press('Escape'); await expect(page.getByRole('button', { name: 'Решить…' }).first()).toBeFocused();\n      |                                                                                                              ^\n  120 |   });\n  121 | }\n  122 |\n    at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:119:110"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-23T10:43:23.508Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/docs/evidence/opus_a/astra/test-results/opus_a-desktop-proposal-409-no-stale-repeat-keyboard-escape/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                    "column": 110,
+                    "line": 119
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "cbef5de3954c760cf6ba-af314909c9f6125094a1",
+          "file": "opus_a.spec.ts",
+          "line": 111,
+          "column": 7
+        },
+        {
+          "title": "phone: proposal 409, no stale repeat, keyboard escape",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 13890,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Решить…' }).first()\nExpected: focused\nReceived: inactive\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Решить…' }).first() with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Решить…' }).first()\u001b[22m\n\u001b[2m    24 × locator resolved to <button type=\"button\" aria-expanded=\"false\" class=\"oa-btn oa-btn-black oa-btn-sm\">Решить…</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Решить…' }).first()\nExpected: focused\nReceived: inactive\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Решить…' }).first() with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Решить…' }).first()\u001b[22m\n\u001b[2m    24 × locator resolved to <button type=\"button\" aria-expanded=\"false\" class=\"oa-btn oa-btn-black oa-btn-sm\">Решить…</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n\n    at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:119:110",
+                    "location": {
+                      "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                      "column": 110,
+                      "line": 119
+                    },
+                    "snippet": "  117 |     await page.keyboard.press('Enter'); await expect(page.getByText('Данные обновились', { exact: true })).toBeVisible(); await expect(confirm).toBeDisabled(); expect(version).toBeGreaterThan(0);\n  118 |     await shot(page, `proposal-stale-${viewport.name}`); if (viewport.name === 'phone') await noOverflow(page);\n> 119 |     await page.keyboard.press('Escape'); await expect(page.getByRole('button', { name: 'Решить…' }).first()).toBeFocused();\n      |                                                                                                              ^\n  120 |   });\n  121 | }\n  122 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                        "column": 110,
+                        "line": 119
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Решить…' }).first()\nExpected: focused\nReceived: inactive\nTimeout:  10000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Решить…' }).first() with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Решить…' }).first()\u001b[22m\n\u001b[2m    24 × locator resolved to <button type=\"button\" aria-expanded=\"false\" class=\"oa-btn oa-btn-black oa-btn-sm\">Решить…</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n\n\n  117 |     await page.keyboard.press('Enter'); await expect(page.getByText('Данные обновились', { exact: true })).toBeVisible(); await expect(confirm).toBeDisabled(); expect(version).toBeGreaterThan(0);\n  118 |     await shot(page, `proposal-stale-${viewport.name}`); if (viewport.name === 'phone') await noOverflow(page);\n> 119 |     await page.keyboard.press('Escape'); await expect(page.getByRole('button', { name: 'Решить…' }).first()).toBeFocused();\n      |                                                                                                              ^\n  120 |   });\n  121 | }\n  122 |\n    at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:119:110"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-23T10:43:39.105Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/docs/evidence/opus_a/astra/test-results/opus_a-phone-proposal-409-no-stale-repeat-keyboard-escape/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                    "column": 110,
+                    "line": 119
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "cbef5de3954c760cf6ba-89795ea4934aba509062",
+          "file": "opus_a.spec.ts",
+          "line": 111,
+          "column": 7
+        },
+        {
+          "title": "empty, unavailable, loading, missing SKU and optional EKT states",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 12789,
+                  "error": {
+                    "message": "Error: route.continue: Route is already handled!",
+                    "stack": "Error: route.continue: Route is already handled!\n    at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:131:142",
+                    "location": {
+                      "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                      "column": 142,
+                      "line": 131
+                    },
+                    "snippet": "  129 |     await page.goto(`${BASE}/opus_a/${path}`); await expect(page.getByText('Данные недоступны').first()).toBeVisible(); await shot(page, `${name}-unavailable`); await page.unroute(api);\n  130 |   }\n> 131 |   await page.route('**/api/recommendations**', async route => { await new Promise(resolve => setTimeout(resolve, 1200)); await route.continue(); });\n      |                                                                                                                                              ^\n  132 |   await page.goto(`${BASE}/opus_a/replenishment`); await expect(page.locator('.oa-skel').first()).toBeVisible(); await shot(page, 'replenishment-loading'); await page.unroute('**/api/recommendations**');\n  133 |   await page.setViewportSize(views[1]); await page.goto(`${BASE}/opus_a/skus/000000000_`); await expect(page.getByText('Товар не найден')).toBeVisible(); await expect(page.locator('.oa-skel')).toHaveCount(0); await shot(page, 'sku-not-found-phone'); await noOverflow(page);\n  134 |   const detail = await (await request.get(`${BASE}/api/skus/${SKU}`)).json();"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                        "column": 142,
+                        "line": 131
+                      },
+                      "message": "Error: route.continue: Route is already handled!\n\n  129 |     await page.goto(`${BASE}/opus_a/${path}`); await expect(page.getByText('Данные недоступны').first()).toBeVisible(); await shot(page, `${name}-unavailable`); await page.unroute(api);\n  130 |   }\n> 131 |   await page.route('**/api/recommendations**', async route => { await new Promise(resolve => setTimeout(resolve, 1200)); await route.continue(); });\n      |                                                                                                                                              ^\n  132 |   await page.goto(`${BASE}/opus_a/replenishment`); await expect(page.locator('.oa-skel').first()).toBeVisible(); await shot(page, 'replenishment-loading'); await page.unroute('**/api/recommendations**');\n  133 |   await page.setViewportSize(views[1]); await page.goto(`${BASE}/opus_a/skus/000000000_`); await expect(page.getByText('Товар не найден')).toBeVisible(); await expect(page.locator('.oa-skel')).toHaveCount(0); await shot(page, 'sku-not-found-phone'); await noOverflow(page);\n  134 |   const detail = await (await request.get(`${BASE}/api/skus/${SKU}`)).json();\n    at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:131:142"
+                    },
+                    {
+                      "location": {
+                        "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                        "column": 140,
+                        "line": 133
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('Товар не найден')\nExpected: visible\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('Товар не найден') with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for getByText('Товар не найден')\u001b[22m\n\u001b[2m  - Test ended.\u001b[22m\n\n\n  131 |   await page.route('**/api/recommendations**', async route => { await new Promise(resolve => setTimeout(resolve, 1200)); await route.continue(); });\n  132 |   await page.goto(`${BASE}/opus_a/replenishment`); await expect(page.locator('.oa-skel').first()).toBeVisible(); await shot(page, 'replenishment-loading'); await page.unroute('**/api/recommendations**');\n> 133 |   await page.setViewportSize(views[1]); await page.goto(`${BASE}/opus_a/skus/000000000_`); await expect(page.getByText('Товар не найден')).toBeVisible(); await expect(page.locator('.oa-skel')).toHaveCount(0); await shot(page, 'sku-not-found-phone'); await noOverflow(page);\n      |                                                                                                                                            ^\n  134 |   const detail = await (await request.get(`${BASE}/api/skus/${SKU}`)).json();\n  135 |   await page.route(`**/api/skus/${SKU}`, route => route.fulfill({ json: { ...detail, ekt: { price: '123.45', currency: 'KZT', stock_total: 400, as_of: '2026-09-22T10:00:00Z', source: 'ekt_api_snapshot' } } }));\n  136 |   await page.goto(`${BASE}/opus_a/skus/${SKU}`); await ready(page); await page.getByRole('heading', { name: 'Каталог ЭКТ' }).scrollIntoViewIfNeeded(); await expect(page.locator('.oa-ekt')).toContainText('123,45'); await shot(page, 'sku-ekt-contract-phone'); await noOverflow(page);\n    at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:133:140"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-23T10:43:53.346Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/docs/evidence/opus_a/astra/test-results/opus_a-empty-unavailable-l-35edf-SKU-and-optional-EKT-states/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                    "column": 142,
+                    "line": 131
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "cbef5de3954c760cf6ba-2dc3408d14649ce7d9b7",
+          "file": "opus_a.spec.ts",
+          "line": 123,
+          "column": 5
+        },
+        {
+          "title": "320px, touch targets, visible focus and reduced motion",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 5873,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mtrue\u001b[39m\nReceived: \u001b[31mfalse\u001b[39m",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mtrue\u001b[39m\nReceived: \u001b[31mfalse\u001b[39m\n    at noOverflow (/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:15:89)\n    at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:142:67",
+                    "location": {
+                      "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                      "column": 89,
+                      "line": 15
+                    },
+                    "snippet": "  13 | }\n  14 | async function noOverflow(page: Page) {\n> 15 |   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);\n     |                                                                                         ^\n  16 |   const overflowing = await page.locator('.oa-table,.oa-rail,.oa-tabs').evaluateAll(nodes => nodes.filter(node => node.scrollWidth > node.clientWidth + 2).map(node => node.className));\n  17 |   expect(overflowing).toEqual([]);\n  18 | }"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                        "column": 89,
+                        "line": 15
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mtrue\u001b[39m\nReceived: \u001b[31mfalse\u001b[39m\n\n  13 | }\n  14 | async function noOverflow(page: Page) {\n> 15 |   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);\n     |                                                                                         ^\n  16 |   const overflowing = await page.locator('.oa-table,.oa-rail,.oa-tabs').evaluateAll(nodes => nodes.filter(node => node.scrollWidth > node.clientWidth + 2).map(node => node.className));\n  17 |   expect(overflowing).toEqual([]);\n  18 | }\n    at noOverflow (/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:15:89)\n    at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:142:67"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-23T10:44:06.469Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/docs/evidence/opus_a/astra/test-results/opus_a-320px-touch-targets-visible-focus-and-reduced-motion/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts",
+                    "column": 89,
+                    "line": 15
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "cbef5de3954c760cf6ba-247742e88f903656d985",
+          "file": "opus_a.spec.ts",
+          "line": 139,
+          "column": 5
+        },
+        {
+          "title": "real local order: prepare, approve exact version, download CSV/XLSX with Код 1с",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 26057,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-23T10:44:12.665Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cbef5de3954c760cf6ba-f73e1477d6e3092f5d94",
+          "file": "opus_a.spec.ts",
+          "line": 151,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-09-23T10:42:49.451Z",
+    "duration": 109380.48199999999,
+    "expected": 5,
+    "skipped": 0,
+    "unexpected": 5,
+    "flaky": 0
+  }
+}

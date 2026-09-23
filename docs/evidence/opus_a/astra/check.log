@@ -1,0 +1,244 @@
+
+> app@0.1.0 check
+> node scripts/check.mjs
+
+[PASS] deterministic replenishment need > completes a supplier's SKUs when one has no sales
+[PASS] deterministic replenishment need > reduces need when in-transit supply rises
+[PASS] deterministic replenishment need > responds to sales and stock changes independently
+[PASS] deterministic replenishment need > includes a new world sales day but excludes its one-off judge document
+[PASS] deterministic replenishment need > raises the forecast into the SKU's seasonal peak
+[PASS] deterministic replenishment need > compensates a censored stockout month
+[PASS] deterministic replenishment need > excludes an injected one-off document from regular demand
+[PASS] deterministic replenishment need > excludes the eval document and a 5000-unit injection on a high-volume SKU
+[PASS] deterministic replenishment need > refuses a missing stock source
+[PASS] deterministic replenishment need > marks an old stock snapshot provisional
+[PASS] deterministic replenishment need > records all inputs and arithmetic in components
+[PASS] deterministic replenishment need > uses a fresh on-hand snapshot only once it is dated
+[PASS] voice tool bridge > reads only confirmed ledger actions for a status question
+[PASS] voice tool bridge > executes a duplicate transport delivery only once
+[PASS] review queue and versioned approval > keeps today readable before the organization opening balance is loaded
+[PASS] review queue and versioned approval > shows one decision with rationale, sources and two effects
+[PASS] review queue and versioned approval > puts priced decisions ahead of an unresolved source task
+[PASS] review queue and versioned approval > returns 409 for stale version and prepares a local order for the exact current version
+[PASS] review queue and versioned approval > cannot approve an old proposal after a newer run supersedes it
+[PASS] review queue and versioned approval > binds an adjusted quantity to a new proposal version
+[PASS] named partner SKU properties > M1: in-transit changes signed need by exactly 100 units
+[PASS] does not create an empty supplier proposal for zero need
+[PASS] carries unchanged supplier lines with their rationale into a partial recompute proposal
+[PASS] worker with replenishment domains > applies, recomputes, and proposes from two events without replaying
+[PASS] worker with replenishment domains > reclaims an interrupted applied event without applying its source twice
+[PASS] provider and decision guardrails > keeps direct and gateway response parsers separate
+[PASS] purchase approvals and obligations > GET /api/orders/:id sums known line costs and counts unknown lines
+[PASS] purchase approvals and obligations > rejects a stale order version
+[PASS] purchase approvals and obligations > approves the exact version and bumps it once
+[PASS] purchase approvals and obligations > creates 30% prepayment at approval and 70% balance at ETA
+[PASS] purchase approvals and obligations > never creates duplicate obligations for a repeated approval
+[PASS] purchase approvals and obligations > keeps unknown-cost orders approved without inventing a price
+[PASS] purchase approvals and obligations > does not mark an order exported until an export exists
+[PASS] purchase approvals and obligations > marks an approved order exported with its file path
+[PASS] purchase approvals and obligations > syncs obligations without changing settled rows
+[PASS] purchase approvals and obligations > keeps an open prepayment due date stable on a repeated sync
+[PASS] money derived from ledger rows > keeps opening cash by currency
+[PASS] money derived from ledger rows > states when the ETL has no opening cash row
+[PASS] money derived from ledger rows > does not present an empty opening-cash list as a known zero balance
+[PASS] money derived from ledger rows > adds incoming and subtracts outgoing payments once
+[PASS] money derived from ledger rows > groups committed known cost by supplier
+[PASS] money derived from ledger rows > shows both obligation installments in the next 60 days
+[PASS] money derived from ledger rows > GET /api/money schedules priced installments when another PO line has unknown cost
+[PASS] money derived from ledger rows > keeps an overdue open prepayment visible
+[PASS] money derived from ledger rows > states a cash shortfall in the obligation's currency
+[PASS] money derived from ledger rows > counts missing cost instead of summing it as zero
+[PASS] money derived from ledger rows > values only known-cost stock
+[PASS] world events and SKU drilldown > appends a sales day once and marks only its SKU
+[PASS] world events and SKU drilldown > deduplicates distinct event IDs sharing an organization source ID
+[PASS] world events and SKU drilldown > records one action for multiple lines of the same SKU
+[PASS] world events and SKU drilldown > keeps a returned quantity as a signed sales line
+[PASS] world events and SKU drilldown > updates the stock snapshot without treating blank as zero
+[PASS] world events and SKU drilldown > accepts a world stock snapshot array and its explicit known flag
+[PASS] world events and SKU drilldown > updates in-transit quantity and marks the affected SKU
+[PASS] world events and SKU drilldown > turns a one-off judge message into a flagged sales line
+[PASS] world events and SKU drilldown > applies the judge one-off document payload
+[PASS] world events and SKU drilldown > applies the judge in-transit increase as a delta
+[PASS] world events and SKU drilldown > applies the judge price update
+[PASS] world events and SKU drilldown > updates unit cost from a price event
+[PASS] world events and SKU drilldown > returns a SKU with its series, forecast and timeline
+[PASS] world events and SKU drilldown > recomputes exactly the requested codes
+[PASS] supplier draft > requires approval before any model call
+[PASS] supplier draft > labels a missing drafting provider
+[PASS] supplier draft > revises overclaimed text and preserves exact line sources
+[PASS] supplier draft > removes invented quantities from generated prose
+[PASS] calculation to supplier approval > persists the forecast, recommendation, proposal and review task
+[PASS] calculation to supplier approval > replays an existing run without writing another proposal
+[PASS] calculation to supplier approval > marks an unapproved proposal stale when a newer run supersedes it
+[PASS] calculation to supplier approval > keeps unaffected supplier lines when recomputing one SKU
+[PASS] calculation to supplier approval > names a missing source without fabricating a recommendation
+[PASS] calculation to supplier approval > escalates a provisional worker result instead of proposing its quantity
+[PASS] named partner SKU properties > M2: its own seasonal index peaks in Q3 and varies at least 1.3×
+[PASS] named partner SKU properties > M3: censored stockout months raise demand over the raw observed series
+[PASS] named partner SKU properties > M4: an injected 5000-unit document is excluded without changing regular rate
+[PASS] named partner SKU properties > M5: named recommendations carry supplier and numeric rationale, including missing cost
+[PASS] returns 404 for an unknown SKU without writing or bumping state
+[PASS] rejects a SKU from another supplier before writing a supplier event
+[PASS] provider and decision guardrails > returns provider_error after 429, never a default option
+[PASS] typed decision service > validates the five-question catalog
+[PASS] typed decision service > persists a labelled replay judgment with the full distribution
+[PASS] typed decision service > keeps insufficient, unsupported, and an unrecorded replay distinct
+[PASS] typed decision service > maps an increasing worker summary to the recorded replay subject
+[PASS] demo access > shows a RU/EN code page once, then accepts the signed cookie
+[PASS] demo access > limits all API requests to a refillable 60 per IP
+[PASS] persistent daily live budget > denies the third live reservation and resets on the next UTC day
+[PASS] persistent daily live budget > returns the honest unavailable response after exhaustion
+[PASS] persistent daily live budget > counts each outgoing provider request, including a retry
+[PASS] typed recovery and voice notes > answers from confirmed ledger data without a provider
+[PASS] typed recovery and voice notes > narrows a global status question to the supplier named in Russian
+[PASS] typed recovery and voice notes > does not invent a transcript when the provider is missing
+[PASS] typed recovery and voice notes > stores only a provider-returned voice note and replays it
+[PASS] task state and scheduled checks > allows a valid versioned transition and reports affected rows
+[PASS] task state and scheduled checks > rejects a stale task version and an invalid transition
+[PASS] task state and scheduled checks > creates one follow-up proposal for an overdue supplier task version
+[PASS] task state and scheduled checks > does not write on a quiet tick
+[PASS] task state and scheduled checks > reflags only a SKU whose cover crosses its lead time
+[PASS] task state and scheduled checks > recomputes a SKU once after a newer processed sales day
+[PASS] world inbox and reviewer views > inserts one pending event per source and replays without a second write
+[PASS] world inbox and reviewer views > rejects an event for another organization
+[PASS] world inbox and reviewer views > shows persisted proposal and agent work after a run
+[PASS] world inbox and reviewer views > keeps the pending explanation and no commitment for a zero recommendation run
+[PASS] provider and decision guardrails > returns provider_error after a timeout
+[PASS] world event worker > drains pending rows in sequence and never reruns processed rows
+[PASS] world event worker > marks a failed event and records the reason for the ledger
+[PASS] world event worker > runs a due scheduled check once
+[PASS] world event worker > drains an event added while the tick is running
+[PASS] world event worker > prepares an outlier review proposal for a borderline document
+[PASS] world event worker > fails a borderline event before applying source data when its provider is unavailable
+[PASS] world feed > plays scripted rows in sequence through the worker seam
+[PASS] world feed > composes verbatim, deduplicates, and labels a synthetic event
+[PASS] world feed > does not disclose a foreign organization's rows
+[PASS] world feed > uses the scripted demo org when ETL has not inserted an organization row
+[PASS] world feed > keeps supplier replies inside the stateful supplier channel
+[UNVERIFIED] prepares an approved PO email through live OpenAI — UNVERIFIED: live provider not exercised (set AINALYM_LIVE_SMOKE=1)
+[PASS] provider and decision guardrails > uses the gateway transport when direct TypeSafe is unavailable
+[PASS] controlled supplier channel > holds a draft, records a local send, and preserves the reply verbatim
+[PASS] controlled supplier channel > rejects unknown and unapproved POs without leaking a channel
+[PASS] agent loop ledger > records sourced recompute, preparation and escalation once
+[PASS] agent loop ledger > escalates an overdue supplier task once per version
+[PASS] agent loop ledger > writes ledger actions to the calculation database
+[PASS] 1C file export boundary > writes CSV and XLSX for an approved PO, then replays one peer record
+[PASS] 1C file export boundary > refuses export before human approval
+[PASS] 1C file export boundary > writes critical urgency as the canonical Russian label
+[PASS] 1C file export boundary > writes soon urgency as the canonical Russian label
+[PASS] 1C file export boundary > writes normal urgency as the canonical Russian label
+[PASS] 1C file export boundary > writes none urgency as the canonical Russian label
+[PASS] provider and decision guardrails > falls back to the gateway after a direct provider error
+[PASS] repository and ledger persistence > increments row version and state_version in one update
+[PASS] repository and ledger persistence > deduplicates an action key without another write
+[PASS] repository and ledger persistence > rolls back a run and its actions after an injected failure
+[PASS] repository and ledger persistence > rejects a Promise transaction and rolls back its synchronous writes
+[PASS] processes and returns only the caller organization's events
+[PASS] provider and decision guardrails > maps the provider error to HTTP 503
+[PASS] provider and decision guardrails > keeps foreign tenant references out of model state
+[PASS] provider and decision guardrails > keeps untrusted text in state rather than question instructions
+[PASS] provider and decision guardrails > does not call a model for an image-only, fact-free input
+[PASS] provider and decision guardrails > discards a response after the SKU version advances
+[PASS] provider and decision guardrails > rules change with quantities and preserve short Chinese text
+[PASS] provider and decision guardrails > caches by subject version and invalidates after a SKU update
+[PASS] provider and decision guardrails > invalidates a decision when document quantity crosses the same threshold
+[PASS] provider and decision guardrails > OpenAI preserves unknown and errors separately
+[PASS] policy proposals > keeps a parameter edit in review until the exact proposal is approved
+[PASS] policy proposals > rejects a policy proposal if the supplier changed since it was prepared
+[PASS] policy proposals > binds an owner's outlier decision and recomputes the affected SKU
+[PASS] KZT money > preserves decimal cents through arithmetic and JSON
+[PASS] KZT money > allocates every cent, assigning the remainder to earlier shares
+[PASS] KZT money > rejects fractional cents and mixed currencies
+[PASS] keeps floating point coercion out of domain source
+[PASS] production container > builds from a Dockerfile with a health check
+[PASS] production container > never sends local environment files into the image
+[PASS] production container > passes the persistent database path to the ETL on every startup target
+[PASS] derives event text and numeric payload from the edited quantity
+[PASS] ephemeral voice session > labels missing provider without invoking it
+[PASS] ephemeral voice session > mints a bounded secret with the four case tools
+[PASS] ephemeral voice session > rejects a secret whose actual provider expiry exceeds sixty seconds
+[PASS] ephemeral voice session > does not call the provider after the live demo budget is exhausted
+[PASS] attaches all truth axes to partner and synthetic world rows
+[PASS] attaches all truth axes to the supplier channel
+[PASS] skeleton > GET /api/health reports an available database
+[PASS] skeleton > lets the route report contracted fields through the demo guard
+[PASS] skeleton > reports SQLite failure rather than success
+[UNVERIFIED] live provider smoke > direct TypeSafe choice — UNVERIFIED: live provider not exercised (set AINALYM_LIVE_SMOKE=1)
+[UNVERIFIED] live provider smoke > gateway choice — UNVERIFIED: live provider not exercised (set AINALYM_LIVE_SMOKE=1)
+[UNVERIFIED] live provider smoke > OpenAI structured choice — UNVERIFIED: live provider not exercised (set AINALYM_LIVE_SMOKE=1)
+[PASS] live provider smoke > rules choice
+[PASS] bumps state_version once for approval and both obligation rows
+[PASS] Realtime interruption event stream > drops a completed tool call from the interrupted response
+[PASS] Realtime interruption event stream > does not reuse a late transcript from an earlier speech turn
+[PASS] a_live snapshots and shell > retries a failed resource even when the state fingerprint has not changed
+[PASS] a_live snapshots and shell > does not show a previous object's payload under a changed API URL
+[PASS] a_live snapshots and shell > polls at five seconds, refreshes changed state, keeps the input node and focus
+[PASS] a_live snapshots and shell > pauses polling when hidden and refreshes immediately on visibility return
+[PASS] a_money page > does not turn a domain-pending response into claims of no payments or approved orders
+[PASS] a_money page > renders unknown IEK cost as unknown, not a zero-valued commitment
+[PASS] a_money page > sorts persisted payments by date and keeps currency totals separate
+[PASS] uses the configured mounted database without rewriting its filename
+[PASS] uses exact > supplier category > null, with IEK prefix and SE category rules
+[PASS] adds image_url consistently to list, detail and recommendation without DB mutation
+[UNVERIFIED] live voice gates > Russian microphone round-trip through Realtime, what_changed, persisted ledger, and UI state — UNVERIFIED: requires a real microphone utterance and recorded provider/UI trace
+[UNVERIFIED] live voice gates > browser stop() after recommend_for keeps the review task visible in the UI — UNVERIFIED: requires a real microphone session and browser task observation
+[PASS] a_money and result truth > shows historical ledger axes without opening an explanation
+[PASS] a_money and result truth > preserves decimal precision and never combines currencies
+[PASS] a_money and result truth > renders all three truth axes using contract wording
+[PASS] a_money and result truth > does not infer live AI or external integration when axes are absent
+[PASS] a_money and result truth > uses text for modes, tasks, partner agents and synthetic world
+[PASS] a_money and result truth > keeps KZT and CNY visible separately and does not turn absent SE cost into zero
+[PASS] a_money and result truth > distinguishes loading, missing and empty commitments
+[PASS] returns 503 and writes no run on an uninitialised database
+[PASS] reports empty source tables before creating a run
+[PASS] reports OpenAI as live when it is the only configured provider
+[PASS] a_live snapshots and shell > retains the last successful snapshot after a failed refresh
+[PASS] a_live snapshots and shell > shows offline replay and restores focus after closing the keyboard palette
+[PASS] a_live snapshots and shell > does not capture shortcut letters while typing
+[PASS] a_real action boundaries > does not present a failed worker event as successful play
+[PASS] serializes collection errors from modules and suites
+[PASS] named partner SKU properties > builds one SE supplier proposal while naming unresolved SKU sources
+[PASS] a_real action boundaries > reads the landed world feed rows and sends the numeric in-transit change
+[PASS] a_real action boundaries > keeps the more-decisions disclosure focused when its final row disappears
+[PASS] a_real action boundaries > retains a removed queue row while its action owns focus and blocks stale writes
+[PASS] a_real action boundaries > keeps a recorded result's top-level replay axes even when current mode differs
+[PASS] a_real action boundaries > does not call a calculation complete merely because compose returns a run id
+[PASS] a_real action boundaries > posts calculation scope once, paints busy, and preserves input on provider failure
+[PASS] a_real action boundaries > binds approvals to the displayed version and reports 409 inline
+[PASS] a_real action boundaries > never guesses a proposal version when the queue omits it
+[PASS] a_real action boundaries > keeps the last decision readable on refresh failure
+[PASS] a_real action boundaries > plays one event with an immediate busy state and an honest replay receipt
+[PASS] a_real action boundaries > composes through the API and retains typed input on rejection
+[PASS] a_real action boundaries > a missing service produces unavailable feedback, not success
+[PASS] fails closed when the child exits zero with a missing report
+[PASS] fails closed when the child exits zero with a invalid report
+[PASS] voice tool bridge > returns the first result to a duplicate while a slow tool is running
+[PASS] voice tool bridge > rejects a SKU outside the current supplier
+[PASS] voice tool bridge > keeps status actions inside the current supplier scope
+[PASS] voice tool bridge > labels a malformed transport payload
+[PASS] voice tool bridge > does not create a run for a corrected, ambiguous spoken quantity
+[PASS] voice tool bridge > rejects a stale purchase view before a calculation
+[PASS] partner-data voice integration > runs a scoped calculation on an anonymised partner SKU
+[PASS] partner event replay > excludes the injected one-off and prepares a supplier proposal
+[PASS] partner event replay > applies the +100 in-transit judge event to the affected SKU
+[PASS] partner event replay > applies the SE price judge event and recomputes its SKU
+[PASS] demo reset > rebuilds partner tables and scripted inbox with identical counts twice
+[PASS] partner ETL reset > rebuilds identical table counts twice and retains each eval SKU
+[PASS] M1 — Товар в пути +100 уменьшает чистую потребность до ограничения нулём (Δ=100.000, заказ 0→0 из-за достаточного запаса)
+[PASS] M1-active — При дефиците +100 в пути снижает потребность до кратности на 100 (SKU=010300095_, Δ=100.000)
+[PASS] M1-source — Отсутствующий обязательный источник назван
+[PASS] M2 — Сезонный профиль SKU меняет прогноз по месяцам (max/min=10.41)
+[PASS] M2-peak — Пик профиля соответствует Q3 в двух полных годах (peak quarter=3)
+[PASS] M3 — Компенсация дефицита повышает расчётную потребность (raw=866.129, adjusted=1308.389)
+[PASS] M4 — Разовый документ 5000 шт исключён из регулярного спроса (change=0.00%, excluded=true)
+[PASS] M5-full — Полный расчёт SE завершён
+[PASS] M5 — Рекомендации SE сгруппированы по поставщику и обоснованы (rows=566)
+Economics (approved SE order, KZT):
+| Qty | Unit cost | Committed | Prepayment 30% | Balance 70% |
+|---:|---:|---:|---:|---:|
+| 57 | 3049.48 | 173820.36 | 52146.11 | 121674.25 |
+Money view before approval: {"cash":[],"committed_by_supplier":[],"next_60d":{"out":[]},"stock_value":{"amount":"144117720.71","currency":"KZT","cost_known_share":0.1325267304445695,"cost_unknown_count":3083},"risks":[{"code":"cost_unknown","count":3417,"label_ru":"Себестоимость не задана"},{"code":"opening_cash_unknown","count":1,"label_ru":"Начальный остаток денег не задан"}]}
+Money view after approval: {"cash":[],"committed_by_supplier":[{"supplier_id":"SE","amount":"173820.36","currency":"KZT","lines":1,"cost_known_lines":1,"cost_complete":true,"unknown_cost_lines":0}],"next_60d":{"out":[{"at":"2026-09-23T10:41:35.995Z","amount":"52146.11","currency":"KZT","po_id":"PO-SCENARIO","kind":"supplier_prepayment"},{"at":"2026-11-12T00:00:00.000Z","amount":"121674.25","currency":"KZT","po_id":"PO-SCENARIO","kind":"supplier_balance"}]},"stock_value":{"amount":"144117720.71","currency":"KZT","cost_known_share":0.1325267304445695,"cost_unknown_count":3083},"risks":[{"code":"cost_unknown","count":3417,"label_ru":"Себестоимость не задана"},{"code":"opening_cash_unknown","count":1,"label_ru":"Начальный остаток денег не задан"}]}
+[PASS] Money — Утверждение создаёт обязательства 30/70 без выдуманной себестоимости
+[PASS] World — Лента событий применяется один раз по source_id (applied=45/45, processed=45)
+check: passed=227 failed=0 skipped=6 externally-unverified=6

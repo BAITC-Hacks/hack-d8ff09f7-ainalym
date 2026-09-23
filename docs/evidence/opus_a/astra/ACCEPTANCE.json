@@ -1,0 +1,29 @@
+{
+  "gate": "YELLOW",
+  "reason": "40-minute limit; final browser suite incomplete under growing local backend latency",
+  "gates": {
+    "tsc": "PASS",
+    "build": "PASS",
+    "eslint": "PASS",
+    "check": "227 passed, 0 failed, 6 skipped, 6 externally unverified"
+  },
+  "browser_runs": {
+    "playwright-results.json": {
+      "startTime": "2026-09-23T10:56:32.404Z",
+      "duration": 425944.999,
+      "expected": 11,
+      "skipped": 0,
+      "unexpected": 3,
+      "flaky": 0
+    },
+    "integration-results.json": {
+      "startTime": "2026-09-23T11:02:12.698Z",
+      "duration": 90947.559,
+      "expected": 0,
+      "skipped": 0,
+      "unexpected": 2,
+      "flaky": 0
+    }
+  },
+  "prior_verified": "10/11 run passed real local proposal preparation, version-bound order approval and parsed CSV/XLSX downloads; sole adjustment fixture failed after supplier-only recalculation, corrected to recalculate all."
+}

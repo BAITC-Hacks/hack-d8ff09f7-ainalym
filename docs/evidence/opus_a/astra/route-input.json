@@ -1,0 +1,11 @@
+{
+  "task_id": "OPUS-A-ASTRA-1-R1",
+  "venture": "ainalym",
+  "critical_triggers": [],
+  "venture_triggers": [],
+  "requires_judgment": true,
+  "independence_required": true,
+  "title": "Independent source and rendered gate of the three Opus A purchasing screens",
+  "load_bearing": true,
+  "verification": "Local Playwright interactions and source review"
+}

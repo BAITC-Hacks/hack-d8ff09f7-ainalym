@@ -1,0 +1,105 @@
+{
+  "method": "WCAG relative luminance from final scoped CSS tokens",
+  "pairs": [
+    {
+      "fg": "#121211",
+      "bg": "#ecebe6",
+      "roles": [
+        "ink",
+        "canvas"
+      ],
+      "ratio": 15.7,
+      "minimum": 4.5
+    },
+    {
+      "fg": "#65635d",
+      "bg": "#ecebe6",
+      "roles": [
+        "muted",
+        "canvas"
+      ],
+      "ratio": 5.03,
+      "minimum": 4.5
+    },
+    {
+      "fg": "#65635d",
+      "bg": "#f4f3ef",
+      "roles": [
+        "muted",
+        "surface"
+      ],
+      "ratio": 5.41,
+      "minimum": 4.5
+    },
+    {
+      "fg": "#65635d",
+      "bg": "#e2e0d9",
+      "roles": [
+        "muted",
+        "rail"
+      ],
+      "ratio": 4.55,
+      "minimum": 4.5
+    },
+    {
+      "fg": "#151a00",
+      "bg": "#dcec2a",
+      "roles": [
+        "accent-ink",
+        "accent"
+      ],
+      "ratio": 13.63,
+      "minimum": 4.5
+    },
+    {
+      "fg": "#2d5e2a",
+      "bg": "#dfe9d8",
+      "roles": [
+        "ok-fg",
+        "ok-bg"
+      ],
+      "ratio": 6.11,
+      "minimum": 4.5
+    },
+    {
+      "fg": "#7a4f06",
+      "bg": "#f1e5c8",
+      "roles": [
+        "warn-fg",
+        "warn-bg"
+      ],
+      "ratio": 5.69,
+      "minimum": 4.5
+    },
+    {
+      "fg": "#9b2f1c",
+      "bg": "#f3dcd6",
+      "roles": [
+        "bad-fg",
+        "bad-bg"
+      ],
+      "ratio": 5.69,
+      "minimum": 4.5
+    },
+    {
+      "fg": "#9b3a1c",
+      "bg": "#efe2d6",
+      "roles": [
+        "alert-ink",
+        "alert-row"
+      ],
+      "ratio": 5.48,
+      "minimum": 4.5
+    },
+    {
+      "fg": "#5b3b58",
+      "bg": "#d9cad6",
+      "roles": [
+        "plum",
+        "plum-fill"
+      ],
+      "ratio": 6.05,
+      "minimum": 4.5
+    }
+  ]
+}

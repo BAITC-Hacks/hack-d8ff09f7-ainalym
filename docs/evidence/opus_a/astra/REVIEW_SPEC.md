@@ -1,0 +1,8 @@
+# Independent Opus A gate
+Role: gate reviewer. Venture: ainalym. Builder: Astra xhigh; reviewer: gpt-6-sol xhigh, fresh context (R1 rung in MODEL_ROUTING_CURRENT.md). Scope: three Opus A screens and their shared UI. Time cap: 8 minutes. One leaf, no agents.
+
+Goal/readiness: determine whether a purchasing manager can understand and complete the visible flows without incorrect approvals, lost context, unreachable controls, or misleading states. Evidence must be observed behavior/source paths, never test count. Review objects: localhost:3111/opus_a/today, /opus_a/replenishment, /opus_a/skus/130200122_; source under src/components/opus_a, src/styles/opus_a, src/app/(opus_a). Baseline ref: da810b1. Required viewports: 1440×900 and 390×844. Read /Users/adil/Docs/Oracle/agent-scripts-main/skills/oil-frontend/SKILL.md. Preserve the established visual language.
+
+Write tier: DRY_RUN_ONLY. Only allowed file write: docs/evidence/opus_a/astra/INDEPENDENT_REVIEW.md. Source and DB are read-only. Do not modify git, source, dependencies, environment, accounts, or APIs. Browser requests may read local APIs; intercept any mutation for a test. No production/external calls, no secrets. Root owns all implementation and other evidence concurrently.
+
+Inspect source and rendered UI independently. Check complete flows, truthful quantities/costs, keyboard/focus, search, phone overflow and state handling. Report concrete defects with severity and file:line, reproduction, checks run and exact unverified surfaces. Do not read the root's REVIEW.md. Closeout file: INDEPENDENT_REVIEW.md; Gate GREEN/YELLOW/RED. Stop after writing and send the root the result. Escalate overlapping ownership or any write outside the sole report.

@@ -1,0 +1,65 @@
+
+Running 2 tests using 1 worker
+
+(node:12904) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 tests/e2e/opus_a.spec.ts:151:5 › real recalculation: complete run, busy state and history (54.8s)
+(node:18524) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 tests/e2e/opus_a.spec.ts:163:5 › real local order: prepare, approve exact version, download CSV/XLSX with Код 1с (35.3s)
+
+
+  1) tests/e2e/opus_a.spec.ts:151:5 › real recalculation: complete run, busy state and history ─────
+
+    Error: apiRequestContext.get: read ECONNRESET
+    Call log:
+      - → GET http://localhost:3111/api/calc/runs
+        - user-agent: Playwright/1.63.0 (arm64; macOS 26.4) node/24.18
+        - accept: */*
+        - accept-encoding: gzip,deflate,br
+
+
+      156 |   await expect(page.getByRole('button', { name: 'Считаю…' })).toBeDisabled();
+      157 |   expect((await response).ok()).toBe(true); await expect(page.getByText(/Расчёт готов:/)).toBeVisible();
+    > 158 |   const current = await (await request.get(`${BASE}/api/calc/runs`)).json(); expect(current.runs[0].id).not.toBe(previous.runs[0].id); expect(current.runs[0].scope.supplier).toBeUndefined(); expect(current.runs[0].scope.codes.length).toBeGreaterThan(1000);
+          |                                        ^
+      159 |   const recommendations = await (await request.get(`${BASE}/api/recommendations`)).json(); expect(recommendations.groups.map((group: { supplier_id: string }) => group.supplier_id).sort()).toEqual(['IEK', 'SE']);
+      160 |   await page.locator('.oa-run-history summary').click(); await expect(page.locator('.oa-run-history li').first()).toContainText('Все поставщики'); await shot(page, 'run-history-desktop');
+      161 | });
+        at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:158:40
+
+    Error Context: docs/evidence/opus_a/astra/integration-test-results/opus_a-real-recalculation--4f990--run-busy-state-and-history/error-context.md
+
+  2) tests/e2e/opus_a.spec.ts:163:5 › real local order: prepare, approve exact version, download CSV/XLSX with Код 1с 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('.oa-skel')
+    Expected: 0
+    Received: 11
+    Timeout:  20000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('.oa-skel') with timeout 20000ms
+      - waiting for locator('.oa-skel')
+        32 × locator resolved to 31 elements
+           - unexpected value "31"
+        12 × locator resolved to 11 elements
+           - unexpected value "11"
+
+
+       7 | const SKU = "130200122_";
+       8 | const views = [{ name: "desktop", width: 1440, height: 900 }, { name: "phone", width: 390, height: 844 }];
+    >  9 | async function ready(page: Page) { await expect(page.locator(".oa-skel")).toHaveCount(0, { timeout: 20_000 }); await page.evaluate(() => document.fonts.ready); }
+         |                                                                           ^
+      10 | async function shot(page: Page, name: string, fullPage = false) {
+      11 |   await page.locator('img').evaluateAll(images => Promise.race([Promise.all(images.map(image => { (image as HTMLImageElement).loading = 'eager'; return (image as HTMLImageElement).decode().catch(() => {}); })), new Promise(resolve => setTimeout(resolve, 2000))]));
+      12 |   await page.screenshot({ path: `${OUT}/${name}.png`, fullPage });
+        at ready (/Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:9:75)
+        at /Users/adil/Ventures/ainalym/hackathon/worktrees/opus_a/tests/e2e/opus_a.spec.ts:164:50
+
+    Error Context: docs/evidence/opus_a/astra/integration-test-results/opus_a-real-local-order-pr-8b448-wnload-CSV-XLSX-with-Код-1с/error-context.md
+
+  2 failed
+    tests/e2e/opus_a.spec.ts:151:5 › real recalculation: complete run, busy state and history ──────
+    tests/e2e/opus_a.spec.ts:163:5 › real local order: prepare, approve exact version, download CSV/XLSX with Код 1с 

@@ -1,0 +1,24 @@
+{
+  "all_route_down_conditions_met": false,
+  "capacity_state": "not_applicable",
+  "class": 2,
+  "context_mode": "relevant_inherited",
+  "critical_triggers": [],
+  "independence_required": true,
+  "orchestrator_lane": "gpt-6-sol",
+  "orchestrator_scope": "accepted_delivery_orchestration",
+  "primary_lane": "gpt-6-sol",
+  "reasoning_effort": "xhigh",
+  "review_lane": "fresh_gpt-5.6-sol_xhigh",
+  "schema_version": 1,
+  "task_class": "difficult",
+  "task_fingerprint": "1236f581f80702308ea1fb1ebdbc0383d3fcd388e4cdc281792d32a2c2fb2060",
+  "task_id": "OPUS-A-ASTRA-1-R1",
+  "title": "Independent source and rendered gate of the three Opus A purchasing screens",
+  "venture": "ainalym",
+  "venture_triggers": [],
+  "verification": "Local Playwright interactions and source review",
+  "why_routed": [
+    "explicit load-bearing class-2 work requires xhigh depth and a fresh gate"
+  ]
+}

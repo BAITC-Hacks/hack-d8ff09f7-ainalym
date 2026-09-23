@@ -1,0 +1,147 @@
+
+> app@0.1.0 build
+> next build
+
+▲ Next.js 16.3.6 (Turbopack)
+✓ Running next.config.ts took 29ms
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead.
+
+  To migrate automatically, run:
+  npx @next/codemod@canary middleware-to-proxy .
+
+  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 1342ms
+  Running TypeScript ...
+  Finished TypeScript in 2.8s ...
+  Collecting page data using 17 workers ...
+  Generating static pages using 17 workers (0/45) ...
+  Generating static pages using 17 workers (11/45) 
+  Generating static pages using 17 workers (22/45) 
+  Generating static pages using 17 workers (33/45) 
+✓ Generating static pages using 17 workers (45/45) in 398ms
+Turbopack build encountered 1 warning:
+./src/db/path.mjs:5:51
+Warning: Dynamic filesystem access causes tracing of the whole project
+  [90m3 |[0m [36mexport[0m [36mfunction[0m databasePath() {
+  [90m4 |[0m   [36mconst[0m configured = process.env.[33mDATABASE_PATH[0m || [32m"./data/ainalym.db"[0m;
+[33m[1m>[0m [90m5 |[0m   [36mreturn[0m configured === [32m":memory:"[0m ? configured : resolve(configured);
+  [90m  |[0m                                                   [33m[1m^^^^^^^^^^^^^^^^^^^[0m
+  [90m6 |[0m }
+  [90m7 |[0m
+
+Static analysis determined that this filesystem access causes the whole project to be traced and included in the output.
+This is usually unintentional and leads to all source files (including the public folder) to be deployed as part of the server code.
+This can slow down deployments or lead to failures when size limits are exceeded.
+To resolve this, you can
+- make sure the path is statically scoped to some subfolder, for example path.join(process.cwd(), 'data', bar), or
+- only use them in development, or
+- opt out by adding an ignore comment to the highlighted call: path.resolve(/*turbopackIgnore: true*/ ...), or
+- remove them.
+
+Import traces:
+  #1 [App Route]:
+    ./src/db/path.mjs
+    ./src/db/client.ts
+    ./src/app/api/skus/[code]/route.ts
+
+  #2 [Server Component]:
+    ./src/db/path.mjs
+    ./src/db/client.ts
+    ./src/app/(peers)/peers/page.tsx
+
+  #3 [App Route]:
+    ./src/db/path.mjs
+    ./src/db/path.mjs
+    ./src/db/client.ts
+    ./src/app/api/agent/ledger/route.ts
+
+  #4 [Instrumentation]:
+    ./src/db/path.mjs
+    ./src/db/client.ts
+    ./src/ai/worker.ts
+    ./src/server/scheduler.ts
+    ./src/instrumentation.ts
+
+
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/agent/ledger
+├ ƒ /api/agent/runs
+├ ƒ /api/agent/runs/[id]
+├ ƒ /api/agent/tick
+├ ƒ /api/artifacts/[id]
+├ ƒ /api/artifacts/[id]/download
+├ ƒ /api/assistant/message
+├ ƒ /api/calc/run
+├ ƒ /api/calc/runs
+├ ƒ /api/calc/runs/[id]
+├ ƒ /api/decisions
+├ ƒ /api/demo/example
+├ ƒ /api/demo/reset
+├ ƒ /api/drafts
+├ ƒ /api/health
+├ ƒ /api/modes
+├ ƒ /api/money
+├ ƒ /api/orders
+├ ƒ /api/orders/[id]
+├ ƒ /api/orders/[id]/approve
+├ ƒ /api/orders/[id]/export.csv
+├ ƒ /api/orders/[id]/export.xlsx
+├ ƒ /api/params
+├ ƒ /api/peers/onec-export/[po_id]
+├ ƒ /api/peers/onec-export/records
+├ ƒ /api/proposals
+├ ƒ /api/proposals/[id]
+├ ƒ /api/proposals/[id]/approve
+├ ƒ /api/proposals/[id]/reject
+├ ƒ /api/queue
+├ ƒ /api/recommendations
+├ ƒ /api/skus
+├ ƒ /api/skus/[code]
+├ ƒ /api/state
+├ ƒ /api/supplier/[po_id]/reply
+├ ƒ /api/today
+├ ƒ /api/voice/session
+├ ƒ /api/voice/tools/[name]
+├ ƒ /api/voice/transcribe
+├ ƒ /api/world/compose
+├ ƒ /api/world/feed
+├ ƒ /api/world/play
+├ ○ /assistant
+├ ○ /connections
+├ ƒ /money
+├ ƒ /opus_a/replenishment
+├ ƒ /opus_a/skus/[code]
+├ ○ /opus_a/today
+├ ○ /opus_b
+├ ○ /opus_b/replenishment
+├ ƒ /opus_b/skus/[code]
+├ ○ /opus_b/today
+├ ƒ /orders/[id]
+├ ƒ /peers
+├ ○ /purchases
+├ ƒ /replenishment
+├ ○ /review
+├ ƒ /review/[id]
+├ ƒ /skeleton
+├ ƒ /skus/[code]
+├ ƒ /supplier/[po_id]
+├ ƒ /today
+├ ○ /v2/money
+├ ƒ /v2/skus/[code]
+├ ƒ /v2/supplier/[po_id]
+├ ○ /world
+├ ƒ /world/[code_1c]
+└ ƒ /world/runs/[id]
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
