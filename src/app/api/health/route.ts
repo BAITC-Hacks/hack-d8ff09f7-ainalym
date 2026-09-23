@@ -1,6 +1,7 @@
 import { db, stateVersion } from "@/db/client";
 import { truthAxes } from "@/server/http";
 import { guardEnabled, remainingDailyCalls } from "@/server/demo_guard";
+import { selectedProvider } from "@/ai/provider";
 
 export const runtime = "nodejs";
 
@@ -11,7 +12,7 @@ export async function GET(): Promise<Response> {
     voice: process.env.OPENAI_API_KEY ? "configured" : "missing",
   } as const;
   const mode = process.env.AINALYM_MODE || (providers.jev === "configured" || providers.openai === "configured" ? "live" : "offline");
-  const ai_provider = process.env.AI_PROVIDER || (providers.jev === "configured" ? "jev" : providers.openai === "configured" ? "openai" : "rules");
+  const ai_provider = selectedProvider();
   const guarded = guardEnabled();
   try {
     db().prepare("SELECT 1").get();

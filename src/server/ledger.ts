@@ -6,7 +6,7 @@ export type Autonomy = "auto" | "escalated";
 export interface ActionInput { kind: string; subject_ref?: string; summary_ru: string; rationale_ru?: string; sources?: unknown[]; autonomy?: Autonomy; result?: "done" | "needs_owner" | "failed"; provider?: string; model_version?: string; idempotency_key?: string; world_event_id?: string; code_1c?: string; po_id?: string }
 export interface RunInput { org_id: string; trigger_type: string; trigger_ref?: string }
 
-export async function startRun(input: RunInput, d?: DatabaseSync): Promise<string> {
+export function startRun(input: RunInput, d?: DatabaseSync): string {
   const write = (tx: DatabaseSync) => {
     const id = `AR-${randomUUID()}`;
     tx.prepare("INSERT INTO agent_run (id,org_id,trigger_type,trigger_ref,started_at) VALUES (?,?,?,?,?)")
@@ -17,7 +17,7 @@ export async function startRun(input: RunInput, d?: DatabaseSync): Promise<strin
   return d ? write(d) : withTx(write);
 }
 
-export async function recordAction(run_id: string, a: ActionInput, d?: DatabaseSync): Promise<string> {
+export function recordAction(run_id: string, a: ActionInput, d?: DatabaseSync): string {
   const write = (tx: DatabaseSync) => {
     if (a.idempotency_key) {
       const prior = tx.prepare("SELECT id FROM agent_action WHERE idempotency_key = ?").get(a.idempotency_key) as { id: string } | undefined;
@@ -38,7 +38,7 @@ export async function recordAction(run_id: string, a: ActionInput, d?: DatabaseS
   return d ? write(d) : withTx(write);
 }
 
-export async function finishRun(run_id: string, state: "done" | "failed", d?: DatabaseSync): Promise<void> {
+export function finishRun(run_id: string, state: "done" | "failed", d?: DatabaseSync): void {
   const write = (tx: DatabaseSync) => {
     const result = tx.prepare("UPDATE agent_run SET state = ?, finished_at = ? WHERE id = ? AND state = 'running'")
       .run(state, new Date().toISOString(), run_id);

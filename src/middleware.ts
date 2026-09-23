@@ -36,11 +36,12 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const active = guardEnabled();
 
+  if (path === "/api/health") return NextResponse.next();
+
   if (active && path.startsWith("/api/") && !allowApiRequest(ipFor(request))) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": "1", "Cache-Control": "no-store" } });
   }
 
-  if (path === "/api/health") return NextResponse.next();
   if (!active) return NextResponse.next();
 
   const code = process.env.DEMO_ACCESS_CODE!;
