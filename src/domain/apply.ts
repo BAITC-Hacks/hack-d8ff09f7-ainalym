@@ -184,6 +184,47 @@ export class ProposalNotFoundError extends Error { readonly status = 404; }
 type Proposal = { id: string; kind: string; state: string; version: number; payload: string; subject_id: string | null; subject_version: number | null; rationale_ru: string | null; sources: string };
 type OrderLine = { recommendation_id: string; code_1c: string; qty: number; unit_cost: string | null; rationale_ru: string };
 
+/** A human adjustment changes the proposal version while retaining the engine's original quantity. */
+export async function adjustRecommendation(id: string, qty: number, reason: string, version: number, ctx: CalcContext = {}) {
+  if (!globalThis.Number.isSafeInteger(qty) || qty < 0 || !reason.trim()) throw new RangeError("quantity and reason are required");
+  const database = ctx.database ?? db();
+  const rec = database.prepare("SELECT id,run_id,code_1c,qty_recommended,qty_adjusted,proposal_id,version,state FROM recommendation WHERE id=?")
+    .get(id) as { id: string; run_id: string; code_1c: string; qty_recommended: number; qty_adjusted: number | null; proposal_id: string | null; version: number; state: string } | undefined;
+  if (!rec) throw new ProposalNotFoundError(`recommendation ${id} is missing`);
+  if (rec.version !== version || !["proposed", "adjusted"].includes(rec.state)) throw new ProposalConflictError(`recommendation ${id} is stale`);
+  if (!rec.proposal_id) throw new RangeError("recommendation has no review proposal");
+  const proposal = database.prepare("SELECT id,payload,version,state,rationale_ru,sources FROM proposal WHERE id=?")
+    .get(rec.proposal_id) as { id: string; payload: string; version: number; state: string; rationale_ru: string; sources: string } | undefined;
+  if (!proposal || proposal.state !== "needs_review") throw new ProposalConflictError("proposal is no longer adjustable");
+  const payload = JSON.parse(proposal.payload) as { lines: OrderLine[]; [key: string]: unknown };
+  const line = payload.lines.find((item) => item.recommendation_id === id);
+  if (!line) throw new RangeError("recommendation is absent from proposal");
+  line.qty = qty;
+  const priced = payload.lines.filter((item) => item.unit_cost !== null);
+  const moneyAtStake = priced.length ? priced.reduce((sum, item) => sum.add(Money.of(item.unit_cost!).mul(item.qty)), Money.of("0")).toJSON() : null;
+  const rationale = `${proposal.rationale_ru} Корректировка ${rec.code_1c}: ${rec.qty_adjusted ?? rec.qty_recommended} → ${qty} шт; причина: ${reason.trim()}.`;
+  const proposalVersion = inTx(database, () => {
+    const updated = database.prepare("UPDATE recommendation SET qty_adjusted=?,state='adjusted',version=version+1 WHERE id=? AND version=?")
+      .run(qty, id, version);
+    if (updated.changes !== 1) throw new ProposalConflictError(`recommendation ${id} is stale`);
+    const changed = database.prepare("UPDATE proposal SET payload=?,money_at_stake=?,rationale_ru=?,version=version+1 WHERE id=? AND version=? AND state='needs_review'")
+      .run(JSON.stringify(payload), moneyAtStake ? JSON.stringify(moneyAtStake) : null, rationale, proposal.id, proposal.version);
+    if (changed.changes !== 1) throw new ProposalConflictError("proposal changed during adjustment");
+    bumpStateVersion(database);
+    return proposal.version + 1;
+  });
+  const run = database.prepare("SELECT agent_run_id FROM calc_run WHERE id=?").get(rec.run_id) as { agent_run_id: string | null } | undefined;
+  const runId = run?.agent_run_id ?? await startRun({ org_id: ctx.org_id ?? "ORG-1", trigger_type: "goal", trigger_ref: id });
+  await recordAction(runId, { kind: "decision", subject_ref: id, code_1c: rec.code_1c,
+    summary_ru: `Количество ${rec.code_1c} изменено на ${qty} шт`, rationale_ru: reason.trim(),
+    sources: [`recommendation:${id}`, `proposal:${proposal.id}`], autonomy: "escalated", result: "done",
+    idempotency_key: `recommendation:adjust:${id}:${version + 1}` });
+  if (!run?.agent_run_id) await finishRun(runId, "done");
+  return { id, code_1c: rec.code_1c, qty_recommended: rec.qty_recommended, qty_adjusted: qty,
+    version: version + 1, proposal_id: proposal.id, proposal_version: proposalVersion,
+    affected: { recommendations: [id], proposals: [proposal.id] }, state_version: stateVersion(database) };
+}
+
 /** Approval binds the exact proposal version and creates a local PO, never a supplier send. */
 export async function decideProposal(id: string, proposalVersion: number, decision: "approve" | "reject",
   adjustments: { code_1c: string; qty: number }[] = [], ctx: CalcContext & { by?: string } = {}) {

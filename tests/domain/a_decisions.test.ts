@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { db, resetInstance } from "../../src/db/client";
-import { runCalculation } from "../../src/domain/apply";
+import { adjustRecommendation, runCalculation } from "../../src/domain/apply";
 import { queueView, todayView } from "../../src/domain/views";
 import { POST as approve } from "../../src/app/api/proposals/[id]/approve/route";
 import { approveOrder } from "../../src/domain/orders";
@@ -72,5 +72,21 @@ describe("review queue and versioned approval", () => {
     expect((await post(oldId, 1)).status).toBe(409);
     expect(next.proposals[0].supersedes_id).toBe(oldId);
     expect(database.prepare("SELECT count(*) AS n FROM purchase_order").get()).toEqual({ n: 0 });
+  });
+
+  it("binds an adjusted quantity to a new proposal version", async () => {
+    const database = fixture();
+    const run = await runCalculation({}, {}, { database, as_of: "2025-01-01" });
+    const proposal = run.proposals[0];
+    const payload = JSON.parse(proposal.payload as string) as { lines: { recommendation_id: string; qty: number }[] };
+    const original = payload.lines[0];
+    const adjusted = await adjustRecommendation(original.recommendation_id, original.qty + 5, "Новая потребность", 1, { database });
+    expect(adjusted.qty_recommended).toBe(original.qty);
+    expect(adjusted.proposal_version).toBe(2);
+    expect((await post(proposal.id as string, 1)).status).toBe(409);
+    const response = await post(proposal.id as string, 2);
+    expect(response.status).toBe(200);
+    const order = await response.json();
+    expect(database.prepare("SELECT qty FROM purchase_order_line WHERE po_id=?").get(order.po_id)).toEqual({ qty: original.qty + 5 });
   });
 });
