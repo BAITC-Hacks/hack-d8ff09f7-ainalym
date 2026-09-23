@@ -101,22 +101,22 @@ export default function LandingPage() {
             <div className={styles.proofItem}>
               <dt>Товаров в демо</dt>
               <dd>3 909</dd>
-              <p>Ассортимент из файлов партнёра</p>
+              <dd className={styles.proofDetail}>Ассортимент из файлов партнёра</dd>
             </div>
             <div className={styles.proofItem}>
               <dt>Поставщики</dt>
               <dd className={styles.proofNames}>IEK <span>Systeme Electric</span></dd>
-              <p>Расчёт по каждому поставщику</p>
+              <dd className={styles.proofDetail}>Расчёт по каждому поставщику</dd>
             </div>
             <div className={styles.proofItem}>
               <dt>Срок поставки</dt>
               <dd>40–50 <span className={styles.proofUnit}>дней</span></dd>
-              <p>IEK — 40, Systeme Electric — 50</p>
+              <dd className={styles.proofDetail}>IEK — 40, Systeme Electric — 50</dd>
             </div>
             <div className={styles.proofItem}>
               <dt>Оплата в демо</dt>
               <dd>30 / 70 <span className={styles.proofUnit}>%</span></dd>
-              <p>30 % — предоплата, 70 % — к поставке</p>
+              <dd className={styles.proofDetail}>30 % — предоплата, 70 % — к поставке</dd>
             </div>
           </dl>
           <p className={styles.proofNote}>Сроки поставки и схема оплаты — настройки демо, а не подтверждённые условия поставщиков. Суммы считаются там, где известна себестоимость; по IEK она не задана.</p>
