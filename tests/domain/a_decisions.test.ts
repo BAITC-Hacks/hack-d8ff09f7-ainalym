@@ -3,14 +3,16 @@ import { db, resetInstance } from "../../src/db/client";
 import { runCalculation } from "../../src/domain/apply";
 import { queueView, todayView } from "../../src/domain/views";
 import { POST as approve } from "../../src/app/api/proposals/[id]/approve/route";
+import { approveOrder } from "../../src/domain/orders";
 
 const oldPath = process.env.DATABASE_PATH;
 afterEach(() => { resetInstance(); if (oldPath === undefined) delete process.env.DATABASE_PATH; else process.env.DATABASE_PATH = oldPath; });
 
-function fixture() {
+function fixture(withOrg = true) {
   resetInstance();
   process.env.DATABASE_PATH = ":memory:";
   const database = db();
+  if (withOrg) database.prepare("INSERT INTO organization (id,name,payload) VALUES ('ORG-1','Тест','{}')").run();
   database.prepare("INSERT INTO supplier (id,name,lead_time_days) VALUES ('SE','SE',50)").run();
   database.prepare("INSERT INTO sku (code_1c,supplier_id,name,unit_cost,moq) VALUES ('CODE-1','SE','Деталь','12.50',1)").run();
   for (let month = 1; month <= 12; month++) {
@@ -27,6 +29,12 @@ const post = (id: string, proposal_version: number) => approve(new Request(`http
 }), { params: Promise.resolve({ id }) });
 
 describe("review queue and versioned approval", () => {
+  it("keeps today readable before the organization opening balance is loaded", async () => {
+    const database = fixture(false);
+    const today = await todayView("ORG-1", database);
+    expect(today.lead).toBeTruthy();
+    expect((today.pulse as { money: { empty_reason: string } }).money.empty_reason).toBe("organization_not_found");
+  });
   it("shows one decision with rationale, sources and two effects", async () => {
     const database = fixture();
     await runCalculation({}, {}, { database, as_of: "2025-01-01" });
@@ -40,7 +48,7 @@ describe("review queue and versioned approval", () => {
     expect(today.lead).toBeTruthy();
   });
 
-  it("returns 409 for stale version and approves the exact current version", async () => {
+  it("returns 409 for stale version and prepares a local order for the exact current version", async () => {
     const database = fixture();
     const result = await runCalculation({}, {}, { database, as_of: "2025-01-01" });
     const id = result.proposals[0].id as string;
@@ -49,7 +57,9 @@ describe("review queue and versioned approval", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.po_id).toMatch(/^PO-/);
-    expect(database.prepare("SELECT state FROM purchase_order WHERE id=?").get(body.po_id)).toEqual({ state: "approved" });
+    expect(database.prepare("SELECT state FROM purchase_order WHERE id=?").get(body.po_id)).toEqual({ state: "draft" });
+    expect(database.prepare("SELECT count(*) AS n FROM obligation WHERE po_id=?").get(body.po_id)).toEqual({ n: 0 });
+    approveOrder(body.po_id, 1);
     expect(database.prepare("SELECT count(*) AS n FROM obligation WHERE po_id=?").get(body.po_id)).toEqual({ n: 2 });
     expect((await post(id, 1)).status).toBe(409);
   });

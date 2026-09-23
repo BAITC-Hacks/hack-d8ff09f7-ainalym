@@ -26,7 +26,7 @@ export async function queueView(_orgId: string, database: DatabaseSync = db()): 
         { key: "approve", label: "Подготовить уточнение", effect: "Создаст одобренное внутреннее действие; отправка отдельно" },
         { key: "reject", label: "Перенести срок", effect: "Закроет предложение без отправки" },
       ] : [
-        { key: "approve", label: "Утвердить", effect: "Создаст заказ поставщику и обязательства по известным ценам; не отправит его" },
+        { key: "approve", label: "Подготовить заказ", effect: "Создаст внутренний черновик; отдельное одобрение заказа создаст обязательства" },
         { key: "reject", label: "Отклонить", effect: "Закроет предложение без заказа" },
       ], href: `/proposals/${row.id}`, since: row.created_at };
   });
@@ -51,7 +51,12 @@ export async function queueView(_orgId: string, database: DatabaseSync = db()): 
 
 export async function todayView(orgId: string, database: DatabaseSync = db()): Promise<Record<string, unknown>> {
   const queue = await queueView(orgId, database);
-  const money = await moneyView(orgId);
+  let money: unknown;
+  try { money = await moneyView(orgId); }
+  catch (error) {
+    if (!(error instanceof Error) || error.message !== "organization_not_found") throw error;
+    money = { cash: [], committed_by_supplier: [], next_60d: { out: [] }, stock_value: null, risks: [], empty_reason: "organization_not_found" };
+  }
   const risks = database.prepare(`SELECT r.code_1c,s.name,r.urgency,r.components,sup.lead_time_days
     FROM recommendation r JOIN sku s ON s.code_1c=r.code_1c JOIN supplier sup ON sup.id=s.supplier_id
     WHERE r.id=(SELECT r2.id FROM recommendation r2 JOIN calc_run c2 ON c2.id=r2.run_id WHERE r2.code_1c=r.code_1c ORDER BY c2.finished_at DESC,r2.id DESC LIMIT 1)
@@ -89,5 +94,5 @@ export async function ordersView(_orgId: string, database: DatabaseSync = db()):
   const shaped = orders.map((order) => ({ ...order,
     total_cost: order.total_cost ? { amount: order.total_cost, currency: "KZT" } : null,
     lines: database.prepare("SELECT code_1c,qty,unit_cost,rationale_ru FROM purchase_order_line WHERE po_id=? ORDER BY code_1c").all(order.id as string) }));
-  return shaped.length ? { orders: shaped } : { orders: [], empty_reason: "Одобренных заказов пока нет" };
+  return shaped.length ? { orders: shaped } : { orders: [], empty_reason: "Заказов пока нет" };
 }
