@@ -29,7 +29,7 @@
       "code_1c": "010500008_",
       "supplier_id": "IEK",
       "name": "ВА47-29 (1ф) 25А IEK (12/144)",
-      "qualifying_stat": { "doc_no": "20000099834", "doc_qty": 7488, "p95_doc_qty": 144, "multiple_of_p95": 52 }
+      "qualifying_stat": { "doc_no": "20000099834", "doc_qty": 7488, "median_month_qty": 14502, "p95_doc_qty": 144, "exclusion_threshold": 720, "multiple_of_p95": 52 }
     },
     "intransit": {
       "code_1c": "010500006_",

@@ -23,8 +23,9 @@ function fixture(options: { seasonal?: boolean; stockout?: boolean; oneoff?: boo
     const censored = options.stockout && ym === "2025-08";
     database.prepare("INSERT INTO sales_month (code_1c,ym,qty_file,stockout) VALUES (?,?,?,?)")
       .run("TEST", ym, censored ? "0" : String(quantity), censored ? 1 : 0);
-    if (!censored) database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty) VALUES ('TEST',?,?,?)")
-      .run(`DOC-${ym}`, `${ym}-15`, String(quantity));
+    if (!censored) for (let part = 0; part < (quantity > 20 ? 2 : 1); part++)
+      database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty) VALUES ('TEST',?,?,?)")
+        .run(`DOC-${ym}-${part}`, `${ym}-15`, String(quantity > 20 ? quantity / 2 : quantity));
   }
   if (options.oneoff) database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty,source) VALUES ('TEST','ONEOFF','2025-08-20','5000','judge')").run();
   database.prepare("INSERT INTO stock_month (code_1c,ym,opening_qty) VALUES ('TEST','2025-01','20')").run();
@@ -72,6 +73,22 @@ describe("deterministic replenishment need", () => {
     expect(spiked.components.outliers_excluded).toEqual(expect.arrayContaining([expect.objectContaining({ doc_no: "ONEOFF" })]));
     expect(Math.abs(spiked.need - baseline.need)).toBeLessThanOrEqual(1);
     expect(spiked.rationale_ru).toContain("ONEOFF");
+  });
+
+  it("excludes the eval document and a 5000-unit injection on a high-volume SKU", async () => {
+    const database = fixture();
+    database.prepare("UPDATE sku SET median_month_qty='14502',p95_doc_qty='144' WHERE code_1c='TEST'").run();
+    database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty) VALUES ('TEST','20000099834','2025-07-20','7488')").run();
+    const before = await computeNeed("TEST", params, context(database));
+    database.prepare("INSERT INTO sales_line (code_1c,doc_no,at,qty) VALUES ('TEST','INJECTED','2025-08-20','5000')").run();
+    const after = await computeNeed("TEST", params, context(database));
+    expect(after.components.outlier_threshold).toBe(720);
+    expect(after.components.outliers_excluded).toEqual(expect.arrayContaining([
+      expect.objectContaining({ doc_no: "20000099834" }), expect.objectContaining({ doc_no: "INJECTED" }),
+    ]));
+    expect(after.rationale_ru).toContain("исключено");
+    expect(after.rationale_ru).toContain("20000099834");
+    expect(Math.abs((after.components.base_rate as number) / (before.components.base_rate as number) - 1)).toBeLessThan(0.1);
   });
 
   it("refuses a missing stock source", async () => {

@@ -88,7 +88,7 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
   const p95Index = Math.max(0, Math.ceil(positiveDocs.length * 0.95) - 1);
   const medianMonth = sku.median_month_qty ? dec(sku.median_month_qty) : median(fileMonths);
   const p95Doc = sku.p95_doc_qty ? dec(sku.p95_doc_qty) : (positiveDocs[p95Index] ?? new Decimal(0));
-  const threshold = Decimal.max(medianMonth.times(params.outlier.k_month), p95Doc.times(params.outlier.k_doc), params.outlier.min_units);
+  const threshold = Decimal.max(params.outlier.min_units, Decimal.min(medianMonth.times(params.outlier.k_month), p95Doc.times(params.outlier.k_doc)));
   const byMonth = new Map<string, Decimal>();
   const seenLineMonths = new Set<string>();
   const excluded: { doc_no: string; ym: string; qty: number; threshold: number }[] = [];
@@ -172,6 +172,6 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     in_transit_sources: transitRows, raw_need: rawNeed.toDecimalPlaces(3).toNumber(), moq: sku.moq, urgency,
     days_of_cover: coverDays?.toDecimalPlaces(1).toNumber() ?? null,
   };
-  const rationale_ru = `Код 1С ${code_1c}: регулярный спрос ${components.base_rate} шт/мес; сезонность ${ownSeason ? "SKU" : "поставщика"}, рост ×${components.growth}; прогноз на ${horizonDays} дн ${components.forecast_qty} + запас ${components.safety} − остаток ${components.on_hand} − в пути ${components.in_transit} = потребность ${need} шт (кратность ${sku.moq}). Без продаж из-за отсутствия остатка: ${stockoutMonths.join(", ") || "нет"}; исключены разовые документы: ${excluded.map((doc) => doc.doc_no).join(", ") || "нет"}.`;
+  const rationale_ru = `Код 1С ${code_1c}: регулярный спрос ${components.base_rate} шт/мес; сезонность ${ownSeason ? "SKU" : "поставщика"}, рост ×${components.growth}; прогноз на ${horizonDays} дн ${components.forecast_qty} + запас ${components.safety} − остаток ${components.on_hand} − в пути ${components.in_transit} = потребность ${need} шт (кратность ${sku.moq}). Без продаж из-за отсутствия остатка: ${stockoutMonths.join(", ") || "нет"}; исключено разовых документов: ${excluded.map((doc) => doc.doc_no).join(", ") || "нет"}.`;
   return { forecast: { horizon_months: horizonDays / 30, base_rate: components.base_rate, season: components.season, growth: components.growth, stockout_uplift: components.stockout_uplift, safety: components.safety, method_ru: "Сезонный спрос × рост; цензурирование дефицита; исключение разовых документов" }, need, rationale_ru, components };
 }

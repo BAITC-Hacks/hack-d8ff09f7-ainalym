@@ -18,7 +18,7 @@ const num = v => { const s = str(v).replace(/[\s,\u00a0]/g, ''); if (!s || s ===
 const dec = v => String(num(v));
 const files = Object.fromEntries(['IEK', 'SE'].map(s => [s, readdirSync(join(root, 'fixtures/partner', s)).map(n => ({ name:n, path:join(root, 'fixtures/partner', s, n) }))]));
 const file = (s, starts) => { const f = files[s].find(x => x.name.startsWith(starts)); if (!f) throw new Error(`Missing ${s} ${starts}`); return f; };
-const rows = (f, sheet) => { const w = XLSX.readFile(f.path, { cellDates:false }); const n = sheet || w.SheetNames[0]; if (!w.Sheets[n]) throw new Error(`Missing sheet ${n}: ${f.name}`); return XLSX.utils.sheet_to_json(w.Sheets[n], { header:1, raw:false, defval:'' }); };
+const rows = (f, sheet) => { const w = XLSX.readFile(f.path, { cellDates:false }); const n = sheet || w.SheetNames[0]; if (!w.Sheets[n]) throw new Error(`Missing sheet ${n}: ${f.name}`); const display=XLSX.utils.sheet_to_json(w.Sheets[n], { header:1, raw:false, defval:'' }); const raw=XLSX.utils.sheet_to_json(w.Sheets[n], { header:1, raw:true, defval:'' }); return display.map((row,i)=>row.map((value,j)=>typeof raw[i]?.[j]==='number' && !/^\d\d\.\d\d\.\d{4}/.test(str(value)) ? raw[i][j] : value)); };
 const requireHeaders = (header, fields, f) => { for (const x of fields) if (!header.map(str).includes(x)) throw new Error(`Missing header ${x}: ${f.name}`); };
 const at = value => { const m = str(value).match(/^(\d\d)\.(\d\d)\.(\d{4})\s+(\d{1,2}):(\d\d):(\d\d)$/); if (!m) throw new Error(`Bad sales date: ${value}`); return `${m[3]}-${m[2]}-${m[1]}T${m[4].padStart(2,'0')}:${m[5]}:${m[6]}`; };
 const catalog = new Map();
