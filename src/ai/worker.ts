@@ -7,10 +7,11 @@ import { paramsForSupplier } from "../domain/params";
 import { startRun, recordAction, finishRun } from "../server/ledger";
 import { decide } from "./decisions";
 import { judgeOutlier, summarizeChanges } from "./interpret";
+import { proposeSupplierReply } from "./supplier-reply";
 
 export interface ProcessResult { run_id: string | null; actions: number; escalations: number; reason?: string }
 export interface TickResult { runs: string[]; processed: number }
-interface EventRow { id: string; org_id: string; seq: number | null; kind: string; code_1c: string | null; po_id: string | null; source_id: string; text: string | null; payload: string; at: string | null; state: string; run_id: string | null; claimed_at: string | null; attempt: number; processing_stage: string; affected_codes: string }
+interface EventRow { id: string; org_id: string; seq: number | null; kind: string; actor_id: string | null; code_1c: string | null; po_id: string | null; source_id: string; text: string | null; payload: string; at: string | null; state: string; run_id: string | null; claimed_at: string | null; attempt: number; processing_stage: string; affected_codes: string }
 const CLAIM_TIMEOUT_MS = 5 * 60_000;
 const processing = new Map<string, Promise<ProcessResult>>();
 const ticking = new Map<string, Promise<TickResult>>();
@@ -90,9 +91,6 @@ interface PendingOutlierReview { subject: string; answer: string | null; decisio
 async function maybeSemanticDecisions(row: EventRow, payload: Record<string, unknown>, runId: string): Promise<PendingOutlierReview | null> {
   const text = row.text || String(payload.text || "");
   let review: PendingOutlierReview | null = null;
-  if (row.kind === "supplier_reply" && text) {
-    await recordDecision(runId, row.id, "supplier_terms_hint", row.po_id || row.source_id, { text, org_id: row.org_id });
-  }
   if (row.kind === "judge_message") {
     const line = payload.line && typeof payload.line === "object" ? payload.line as Record<string, unknown> : {};
     const qty = Number(line.qty ?? payload.document_qty ?? payload.qty);
@@ -188,8 +186,10 @@ async function runEvent(id: string, orgId?: string): Promise<ProcessResult> {
     if (!applied.applied) throw new Error("reason" in applied ? applied.reason || "event_not_applied" : "event_not_applied");
     await recordAction(runId, {
       kind: "status_change", subject_ref: row.id, world_event_id: row.id,
-      summary_ru: `Событие ${row.kind} применено`, sources: [row.source_id], idempotency_key: `worker:${row.id}:applied`,
+      summary_ru: row.kind === "supplier_reply" ? "Ответ поставщика учтён" : `Событие ${row.kind} применено`,
+      sources: [row.source_id], idempotency_key: `worker:${row.id}:applied`,
     });
+    if (row.kind === "supplier_reply") await proposeSupplierReply(row, payload, runId);
     if (review) await proposeOutlierReview(row, runId, review.subject, review.answer, review.decisionId, review.at);
     await recomputeAffected(row, applied.affected_codes, runId);
     withTx(tx => {
