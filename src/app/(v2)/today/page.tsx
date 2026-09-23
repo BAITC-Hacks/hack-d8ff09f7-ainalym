@@ -94,7 +94,7 @@ function Pulse({ d, stale }: { d: Today; stale: boolean }) {
         <p className={`v2-metric-value ${styles.tileValue}`}>{sv ? fmtMoney(sv, true) : "—"}</p>
         {sv ? <><div className={styles.bar} aria-hidden="true"><span style={{ width: `${share}%` }} className={styles.barA} /></div><p className={styles.tileMeta}>себестоимость известна для {share} % · {fmtInt(sv.cost_unknown_count)} позиций без цены</p></> : <p className={styles.tileMeta}>{risks.find(r => r.code === "cost_unknown")?.label_ru ?? "нет данных"}</p>}
       </div>
-      <Link href="/replenishment?urgency=critical" className={`${styles.tile} ${styles.tileLink}`} title="Позиции, чьё покрытие меньше срока поставки">
+      <Link href="/replenishment?urgency=critical" className={`v2-priority-link ${styles.tile} ${styles.tileLink}`} title="Позиции, чьё покрытие меньше срока поставки">
         <p className={`v2-metric-label ${styles.tileLabel}`}>Риск дефицита</p>
         <p className={`v2-metric-value ${styles.tileValue}`}>{fmtInt(d.pulse.stockout_risk.count)} <span className={styles.unit}>позиций</span> <ArrowRight size={18} className={styles.arrow} aria-hidden="true" /></p>
         <p className={styles.tileMeta}>покрытие меньше срока поставки (IEK 40 дн · SE 50 дн)</p>

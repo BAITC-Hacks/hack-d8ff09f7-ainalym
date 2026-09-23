@@ -9,6 +9,7 @@
   --v2-shadow-card: 0 1px 2px #13131105, 0 4px 12px #13131106;
   --v2-metric-label: 400 13px/18px var(--v2-font);
   --v2-metric-value: 600 32px/1.15 var(--v2-font);
+  --v2-pill-font: 500 12.5px/22px var(--v2-font);
   --v2-wash: #ecebe6;
   --v2-line: #e1ded6;
   --v2-line-strong: #cfcbc1;

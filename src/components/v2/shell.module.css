@@ -42,6 +42,7 @@
 .root :global(.v2-metric-label) { font: var(--v2-metric-label); color: var(--v2-muted); }
 .root :global(.v2-metric-value) { font: var(--v2-metric-value); letter-spacing: var(--v2-value-tracking); font-variant-numeric: tabular-nums; }
 .root :global(.v2-hero-card) { padding: 24px; }
+.root :global(.v2-priority-link):hover { background: var(--v2-card); }
 
 @media (max-width: 767px) { .root :global(.v2-hero-card) { padding: 20px 16px; } }
 

@@ -1,4 +1,4 @@
-.pill { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: var(--v2-r-pill); border: 1px solid var(--v2-line); background: var(--v2-neutral-bg); color: var(--v2-ink-2); font: 500 12.5px/22px var(--v2-font); white-space: nowrap; }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: var(--v2-r-pill); border: 1px solid var(--v2-line); background: var(--v2-neutral-bg); color: var(--v2-ink-2); font: var(--v2-pill-font); white-space: nowrap; }
 .u_critical, .t_danger { background: var(--v2-danger-bg); border-color: var(--v2-danger-line); color: var(--v2-danger); }
 .u_soon, .t_warn { background: var(--v2-warn-bg); border-color: var(--v2-warn-line); color: var(--v2-warn); }
 .u_normal, .t_ok { background: var(--v2-ok-bg); border-color: var(--v2-ok-line); color: var(--v2-ok); }
@@ -15,7 +15,7 @@
 .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 .b_primary { background: var(--v2-accent); border-color: var(--v2-accent); color: var(--v2-accent-ink); }
 .b_primary:hover { background: var(--v2-accent-hover); border-color: var(--v2-accent-hover); }
-.b_dark { background: var(--v2-ink); border-color: var(--v2-ink); color: #fff; border-radius: 2px; }
+.b_dark { background: var(--v2-ink); border-color: var(--v2-ink); color: #fff; }
 .b_dark:hover { background: #2b2b28; }
 .b_quiet { background: transparent; border-color: transparent; color: var(--v2-ink-2); }
 .b_quiet:hover { background: var(--v2-wash); }
