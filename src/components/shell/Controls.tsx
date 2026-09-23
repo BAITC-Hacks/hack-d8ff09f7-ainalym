@@ -1,4 +1,5 @@
 "use client";
+import { Spinner } from "@/components/v2/loading";
 import { useRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { ApiError, useApiSync } from "./api";
 import styles from "./controls.module.css";
@@ -17,5 +18,5 @@ export function useApiAction() {
 }
 export function ActionStatus({ error, receipt }: { error: ApiError | null; receipt: string }) { return <p className={`${styles.status} ${error ? styles.error : ""}`} role="status">{error ? (error.status === 409 ? "Версия устарела — данные обновляются. Проверьте новое предложение." : error.message) : receipt}</p>; }
 export function LoadError({ message, retry }: { message?: string; retry: () => void }) { return <div className={styles.loadError}><p>{message ?? "Не удалось загрузить данные."}</p><Button onClick={retry}>Повторить</Button></div>; }
-export function Skeleton({ lines = 3 }: { lines?: number }) { return <div className={styles.skeleton} aria-busy="true" aria-label="Загружаем данные">{Array.from({ length: lines }, (_, i) => <span key={i} />)}</div>; }
+export function Skeleton({ lines = 3 }: { lines?: number }) { return <div className={styles.skeleton} aria-busy="true" aria-label="Загружаем данные">{Array.from({ length: lines }, (_, i) => <span key={i} />)}<div style={{ display: "flex", alignItems: "center", gap: 8, font: "var(--v2-meta, inherit)", color: "var(--v2-muted, inherit)" }}><Spinner size={14} />Загружаем…</div></div>; }
 export function EmptyState({ children }: { children: ReactNode }) { return <p className={styles.empty}>{children}</p>; }

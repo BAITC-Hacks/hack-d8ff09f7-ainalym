@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { arrivalFromHeader, buildPipeline, CUSTOMS_LINE, daysUntil, mapPartnerTransit, mapSystemOrder } from "@/app/(v2)/v2/orders/pipeline";
+import { arrivalFromHeader, buildPipeline, CUSTOMS_LINE, daysUntil, mapPartnerTransit, mapSystemOrder } from "@/app/(v2)/orders/pipeline";
 
 const now = new Date("2026-09-23T10:00:00Z");
 const byKey = (steps: { key: string; state: string }[]) => Object.fromEntries(steps.map(s => [s.key, s.state]));

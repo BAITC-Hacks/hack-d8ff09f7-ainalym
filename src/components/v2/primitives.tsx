@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { CircleAlert, Clock3, CircleCheck, Circle, RefreshCw } from "lucide-react";
 import { ApiError } from "@/components/shell/api";
 import styles from "./primitives.module.css";
+import { Spinner } from "./loading";
 
 export type Money = { amount: string; currency: string };
 export type Urgency = "critical" | "soon" | "normal" | "none";
@@ -47,7 +48,7 @@ export function Button({ variant = "secondary", busy, className = "", children, 
 }
 
 export function Skeleton({ rows = 3, height = 16 }: { rows?: number; height?: number }) {
-  return <div className={styles.skeleton} aria-busy="true" aria-label="Загружаем">{Array.from({ length: rows }, (_, i) => <span key={i} style={{ height, width: `${100 - (i % 3) * 18}%` }} />)}</div>;
+  return <div className={styles.skeleton} aria-busy="true" aria-label="Загружаем">{Array.from({ length: rows }, (_, i) => <span key={i} style={{ height, width: `${100 - (i % 3) * 18}%` }} />)}<div style={{ display: "flex", alignItems: "center", gap: 8, font: "var(--v2-meta)", color: "var(--v2-muted)" }}><Spinner size={14} />Загружаем…</div></div>;
 }
 export function StateBlock({ kind, title, detail, action }: { kind: "empty" | "unavailable" | "stale" | "offline"; title: string; detail?: string; action?: ReactNode }) {
   return (

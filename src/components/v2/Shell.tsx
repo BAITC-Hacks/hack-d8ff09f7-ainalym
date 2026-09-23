@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { House, Package, ClipboardCheck, Truck, Boxes, Wallet, Activity, Workflow, AudioLines, Search, Bell, WifiOff, Menu, X } from "lucide-react";
 import { useApi, useApiSync } from "@/components/shell/api";
 import styles from "./shell.module.css";
+import { LoadRibbon } from "./loading";
 
 const NAV = [
   { href: "/today", label: "Сегодня", icon: House, count: "queue" as const },
@@ -94,6 +95,7 @@ export function V2Shell({ children }: { children: ReactNode }) {
             <span className={styles.avatar} aria-label="Менеджер по закупкам">МЗ</span>
           </div>
         </header>
+        <LoadRibbon />
         <main id="v2-main" className={styles.main}>{children}</main>
       </div>
     </div>
