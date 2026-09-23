@@ -1,12 +1,14 @@
 // Root seam (T+8). L1 extends additively; every lane may use db()/withTx directly for its own tables.
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 let instance: DatabaseSync | null = null;
 
 export function dbPath(): string {
-  return process.env.DATABASE_PATH || join(process.cwd(), "data", "partner.db");
+  const configured = process.env.DATABASE_PATH;
+  // An older local demo file may still be configured after the case reframe.
+  return configured && basename(configured) !== "ainalym.db" ? configured : join(process.cwd(), "data", "partner.db");
 }
 
 export function db(): DatabaseSync {

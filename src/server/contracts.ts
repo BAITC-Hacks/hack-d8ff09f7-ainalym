@@ -1,0 +1,30 @@
+import { z } from "zod";
+
+export const MoneySchema = z.object({ amount: z.string(), currency: z.string() });
+export const ErrorSchema = z.object({ ok: z.literal(false), code: z.string(), message: z.string(), field: z.string().optional() });
+export const SuccessSchema = z.object({ ok: z.literal(true), state_version: z.number().int().nonnegative() });
+export const HealthSchema = z.object({ ok: z.literal(true), mode: z.enum(["live", "offline"]), ai_provider: z.enum(["jev", "openai", "rules", "offline"]), providers: z.object({ jev: z.enum(["configured", "missing"]), openai: z.enum(["configured", "missing"]), voice: z.enum(["configured", "missing"]) }), db: z.literal("ok"), version: z.number().int() });
+export const StateSchema = SuccessSchema.extend({ fingerprint: z.string(), at: z.string() });
+export const ScopeSchema = z.object({ supplier: z.enum(["IEK", "SE"]).optional(), category: z.string().min(1).optional() });
+export const CalcRunRequestSchema = z.object({ scope: ScopeSchema.default({}), params: z.record(z.string(), z.unknown()).optional() });
+export const CalcRunResponseSchema = SuccessSchema.extend({ run_id: z.string(), skus: z.number().int(), recommended: z.number().int(), proposals: z.array(z.unknown()) });
+export const CalcRunSchema = z.object({ id: z.string(), scope: z.record(z.string(), z.unknown()), params: z.record(z.string(), z.unknown()), started_at: z.string(), finished_at: z.string().nullable(), skus: z.number().int(), recommended: z.number().int(), agent_run_id: z.string().nullable() });
+export const RecommendationSchema = z.object({ id: z.string(), code_1c: z.string(), name: z.string(), on_hand: z.string(), in_transit: z.string(), forecast_qty: z.string().nullable(), qty_recommended: z.number().int(), qty_adjusted: z.number().int().nullable(), moq: z.number().int(), urgency: z.enum(["critical", "soon", "normal", "none"]), rationale_ru: z.string(), components: z.record(z.string(), z.unknown()), outliers_excluded: z.array(z.unknown()), stockout_months: z.array(z.string()) });
+export const RecommendationGroupSchema = z.object({ supplier_id: z.string(), total_qty: z.number().int(), total_cost: MoneySchema.nullable(), cost_known_lines: z.number().int(), rows: z.array(RecommendationSchema) });
+export const RecommendationsResponseSchema = SuccessSchema.extend({ groups: z.array(RecommendationGroupSchema) });
+export const SkuListResponseSchema = SuccessSchema.extend({ items: z.array(z.unknown()), total: z.number().int() });
+export const SkuDetailResponseSchema = SuccessSchema.extend({ sku: z.unknown(), series: z.array(z.unknown()), forecast: z.unknown().nullable(), recommendation: z.unknown().nullable(), in_transit: z.array(z.unknown()), timeline: z.array(z.unknown()) });
+export const ParamsSchema = z.object({ lead_time_days: z.number().int().positive(), review_days: z.number().int().positive(), service_level: z.number().positive(), growth_cap: z.number().positive(), outlier: z.object({ k_month: z.number().positive(), k_doc: z.number().positive(), min_units: z.number().positive() }) });
+export const WorldEventInputSchema = z.object({ org_id: z.string().optional(), actor_id: z.string().optional(), code_1c: z.string().optional(), po_id: z.string().optional(), at: z.string().optional(), text: z.string().optional(), payload: z.record(z.string(), z.unknown()).optional() });
+export const AgentActionSchema = z.object({ id: z.string(), run_id: z.string(), org_id: z.string(), kind: z.string(), subject_ref: z.string().nullable(), summary_ru: z.string(), rationale_ru: z.string().nullable(), sources: z.array(z.unknown()), autonomy: z.enum(["auto", "escalated"]), result: z.enum(["done", "needs_owner", "failed"]), at: z.string() });
+export const AgentLedgerResponseSchema = SuccessSchema.extend({ rows: z.array(AgentActionSchema), stats: z.object({ auto: z.number().int(), needs_you: z.number().int() }) });
+export const AgentTickResponseSchema = SuccessSchema.extend({ runs: z.array(z.string()), processed: z.number().int() });
+export const QueueResponseSchema = SuccessSchema.extend({ items: z.array(z.unknown()), empty_reason: z.string().optional() });
+export const MoneyResponseSchema = SuccessSchema.extend({ cash: z.array(z.unknown()), committed_by_supplier: z.array(z.unknown()), next_60d: z.object({ out: z.array(z.unknown()) }), stock_value: z.unknown().nullable().optional(), risks: z.array(z.unknown()) });
+export const TodayResponseSchema = SuccessSchema.extend({ lead: z.string(), decision: z.unknown().nullable(), queue_count: z.number().int(), pulse: z.object({ money: z.unknown(), stockout_risk: z.unknown(), agents: z.object({ auto: z.number().int(), needs_you: z.number().int(), ratio: z.number() }) }), commitments: z.array(z.unknown()), background: z.array(z.unknown()), feed_next: z.array(z.unknown()), empty_reason: z.string().optional() });
+
+export type Money = z.infer<typeof MoneySchema>;
+export type CalcRunRequest = z.infer<typeof CalcRunRequestSchema>;
+export type CalcRunResponse = z.infer<typeof CalcRunResponseSchema>;
+export type Params = z.infer<typeof ParamsSchema>;
+export type WorldEventInput = z.infer<typeof WorldEventInputSchema>;
