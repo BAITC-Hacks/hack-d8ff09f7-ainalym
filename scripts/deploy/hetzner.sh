@@ -36,7 +36,7 @@ if [ -n "$(git status --porcelain)" ]; then printf 'Commit the release before de
 command -v rsync >/dev/null
 command -v ssh >/dev/null
 
-release=$(git rev-parse --short=12 HEAD)
+release="$(git rev-parse --short=12 HEAD)-$(date -u +%Y%m%d%H%M%S)"
 domain=${AINALYM_DOMAIN:-$ip.sslip.io}
 case "$domain" in *[!a-zA-Z0-9.-]*|""|.*|*.) printf 'Invalid domain.\n' >&2; exit 2 ;; esac
 ssh_key=${AINALYM_HOST_SSH_KEY:-$HOME/.ssh/ainalym_demo}

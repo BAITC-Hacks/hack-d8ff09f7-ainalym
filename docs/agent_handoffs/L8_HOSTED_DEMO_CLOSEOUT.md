@@ -5,7 +5,7 @@ AFTER: `Dockerfile:1,11,17,22,26` builds Node 24 with `npm ci`, initializes the 
 AFTER: `.dockerignore:1` excludes local dependencies, build cache, data, `.env*`, and evidence. `scripts/start_prod.sh:1` builds in a clean temporary copy, then starts with shell runtime env and persistent local data.
 AFTER: `src/server/demo_guard.ts:24,57,65,89,101,130` signs a seven-day cookie, limits 60 API requests/min/IP and five code attempts/min/IP, persists a 500-call default daily UTC budget in SQLite, and exposes a per-request provider fetch wrapper.
 AFTER: `src/middleware.ts:15,30,35` provides the RU/EN code page, access cookie, trusted ingress IP selection, API throttling, and honest 503 on exhausted AI routes. `/api/health` continues to the app route.
-AFTER: `scripts/deploy/hetzner.sh:4,47,94,102` builds standalone on the Mac without `.env*`, uploads a release, transfers the owner-built environment at mode 600, runs Node 24/systemd/Caddy, checks HTTPS health, and rolls back on failure. `scripts/deploy/tunnel.sh:1` is the Mac fallback; `scripts/deploy/first_etl.sh:1` initializes its host volume.
+AFTER: `scripts/deploy/hetzner.sh:4,47,94,102` builds standalone on the Mac without `.env*`, uploads a fresh versioned release, transfers the owner-built environment at mode 600, runs Node 24/systemd/Caddy, checks HTTPS health, and rolls back on failure. `scripts/deploy/tunnel.sh:1` is the Mac fallback; `scripts/deploy/first_etl.sh:1` initializes its host volume.
 AFTER: `docs/DEMO_ACCESS.md:1` gives the form text, env handover, restart path, and README «Демо-доступ» copy. Tests: `tests/demo/build.test.ts`, `guard.test.ts`, `database-path.test.ts`.
 
 Runtime env names: `AINALYM_MODE=live`, `DATABASE_PATH`, `DEMO_ACCESS_CODE`, `DEMO_DAILY_LIVE_CALLS`, `OPENAI_API_KEY`, `AI_GATEWAY_API_KEY`; optional `TYPESAFE_API_KEY`, `AI_PROVIDER`, `OPENAI_MODEL`. Local deploy input names: `AINALYM_DEPLOY_ENV_FILE`, `AINALYM_HOST_SSH_KEY`, optional `AINALYM_DOMAIN`. No values belong in git or this file.
@@ -18,4 +18,4 @@ The requested full-branch secret-pattern grep still names `.env.example` and `pa
 
 Next route: L1 honors `DATABASE_PATH`, seeds `organization`, and passes `--db` on reset; merge its route floor, rebuild and repeat `POST /api/demo/example` plus `GET /api/today` with `/data/ainalym.db`. Root then wires L3/L5 fetch budgeting, syncs the README demo wording, and performs the approved live HTTPS/mobile gate before handing form values to the owner.
 Gate: RED
-tip: c121750
+tip: ae26459
