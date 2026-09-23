@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import XLSX from 'xlsx';
+import Decimal from 'decimal.js';
 
 const root = process.cwd();
 const dbArg = process.argv.indexOf('--db');
@@ -10,6 +11,8 @@ if (!dbPath) throw new Error('--db requires a path');
 mkdirSync(dirname(dbPath), { recursive: true });
 const d = new DatabaseSync(dbPath);
 d.exec(readFileSync(join(root, 'src/db/schema.sql'), 'utf8'));
+const skuColumns = new Set(d.prepare('PRAGMA table_info(sku)').all().map(row => row.name));
+for (const name of ['on_hand_qty','on_hand_as_of']) if (!skuColumns.has(name)) d.exec(`ALTER TABLE sku ADD COLUMN ${name} TEXT`);
 
 const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 const monthOf = h => { const v = String(h ?? '').trim().toLowerCase(); const m = v.match(/20\d\d/); if (!m) return null; const i = months.findIndex(x => v.startsWith(x)); return i < 0 ? null : `${m[0]}-${String(i + 1).padStart(2, '0')}`; };
@@ -32,6 +35,7 @@ function sku(s, code, fields={}) {
 }
 const source = f => relative(root, f.path);
 const run = (sql, data) => d.prepare(sql).run(...data);
+const outgoingIEK = new Map();
 
 d.exec('BEGIN');
 try {
@@ -53,6 +57,8 @@ try {
       const type = doc.startsWith('Расходная накладная') ? 'Расходная накладная' : doc.startsWith('Приходная накладная') ? 'Приходная накладная' : doc.startsWith('Заказ покупателя') ? 'Заказ покупателя' : doc.split(/\s+\d/)[0];
       sku(s,code,{name:str(r[4]),unit:str(r[5])});
       lineInsert.run(code,str(r[1]),type,date,str(r[6]),String(q),source(f));
+      if (s==='IEK' && type==='Расходная накладная' && date>='2026-09-01' && date<'2026-09-23')
+        outgoingIEK.set(code, (outgoingIEK.get(code)||new Decimal(0)).plus(dec(r[7])));
       if (type === 'Расходная накладная' && q > 0) { const k = `${code}|${date.slice(0,7)}`; lineMonths.set(k, (lineMonths.get(k)||0)+q); }
     }
     f = file(s, 'Ежемесячные продажи'); a = rows(f); requireHeaders(a[0], ['Номенклатура','Номенклатура.Код'],f);
@@ -65,7 +71,7 @@ try {
     const nameCol=a[0].indexOf('Номенклатура'), stockCodeCol=a[0].indexOf('Номенклатура.Код'), unitCol=a[0].indexOf(s==='IEK'?'Ед.':'Ед.изм');
     const stockCols = a[0].map((h,i)=>[i,monthOf(h)]).filter(x=>x[1]);
     if (stockCols.length !== 33) throw new Error(`Expected 33 stock months: ${f.name} got ${stockCols.length}`);
-    for (const r of a.slice(s==='IEK'?3:3)) { const code=str(r[stockCodeCol]); if (!code) continue; sku(s,code,{name:str(r[nameCol]),unit:str(r[unitCol])}); for (const [i,ym] of stockCols) { const known=str(r[i])!==''; stockInsert.run(code,ym,dec(r[i]),known?1:0); } }
+    for (const r of a.slice(s==='IEK'?3:3)) { const code=str(r[stockCodeCol]); if (!code) continue; sku(s,code,{name:str(r[nameCol]),unit:str(r[unitCol])}); for (const [i,ym] of stockCols) { const known=str(r[i])!==''; stockInsert.run(code,ym,dec(r[i]),known?1:0); if(s==='IEK' && ym==='2026-09' && known) sku(s,code,{on_hand_qty:new Decimal(dec(r[i])).minus(outgoingIEK.get(code)||0).toString(),on_hand_as_of:'2026-09-22'}); } }
     f = file(s,'MOQ'); a = rows(f); const head=a[0].map(str); const mc=head.indexOf(s==='IEK'?'Код 1с':'Номенклатура.Код'); const qcol=head.indexOf(s==='IEK'?'Мин. разр. к отгр.':'Кратность');
     if (mc<0 || qcol<0) throw new Error(`Bad MOQ header: ${f.name}`);
     for (const r of a.slice(1)) { const code=str(r[mc]); if (!code) continue; sku(s,code,{name:str(r[head.indexOf(s==='IEK'?'Наименование':'Номенклатура')]),article:str(r[head.indexOf(s==='IEK'?'Артикул поставщика':'Артикул')]),moq:num(r[qcol])||1}); }
@@ -74,9 +80,9 @@ try {
       requireHeaders(a[0],['Код 1с','Артикул ИЭК'],f);
       for (const r of a.slice(1)) { const code=str(r[0]); if (!code) continue; sku(s,code,{article:str(r[1]),name:str(r[2])}); for(let i=3;i<a[0].length;i++){const q=num(r[i]);if(q>0)transitInsert.run(code,str(a[0][i]),String(q),'2026-11-01',source(f));} }
     } else {
-      const h=a[1].map(str); requireHeaders(h,['Код 1с','СЭ в пути 24.09','Категория 2026','СС реал','Вес'],f);
+      const h=a[1].map(str); requireHeaders(h,['Код 1с','СЭ в пути 24.09','Свободный остаток','Категория 2026','СС реал','Вес'],f);
       const pos=x=>h.indexOf(x);
-      for (const r of a.slice(2)) { const code=str(r[pos('Код 1с')]); if (!code) continue; const cost=num(r[pos('СС реал')]); sku(s,code,{article:str(r[pos('Артикул поставщика')]),name:str(r[pos('Наименование')]),category:str(r[pos('Категория 2026')]),unit_cost:cost>0?String(cost):null,weight:str(r[pos('Вес')])}); const q=num(r[pos('СЭ в пути 24.09')]); if(q>0)transitInsert.run(code,'СЭ 24.09',String(q),'2026-11-11',source(f)); }
+      for (const r of a.slice(2)) { const code=str(r[pos('Код 1с')]); if (!code) continue; const cost=num(r[pos('СС реал')]); const free=r[pos('Свободный остаток')]; sku(s,code,{article:str(r[pos('Артикул поставщика')]),name:str(r[pos('Наименование')]),category:str(r[pos('Категория 2026')]),unit_cost:cost>0?String(cost):null,weight:str(r[pos('Вес')]),on_hand_qty:str(free)===''?null:dec(free),on_hand_as_of:str(free)===''?null:'2026-09-22'}); const q=num(r[pos('СЭ в пути 24.09')]); if(q>0)transitInsert.run(code,'СЭ 24.09',String(q),'2026-11-11',source(f)); }
     }
     f = file(s,'Сезонность'); a=rows(f,s==='IEK'?'Сезонность':'Лист1'); const header=a.findIndex(r=>str(r[0])==='год'); if(header<0)throw new Error(`Bad seasonality header: ${f.name}`);
     for(const r of a.slice(header+1)){const year=Number(r[0]);if(year<2024||year>2026)continue;for(let m=1;m<=12;m++){if(str(r[m])==='')continue;seasonInsert.run(s,year,m,dec(r[m]));}}
@@ -84,8 +90,8 @@ try {
   const lineMonthInsert=d.prepare('INSERT INTO sales_month (code_1c,ym,qty_lines) VALUES (?,?,?) ON CONFLICT(code_1c,ym) DO UPDATE SET qty_lines=excluded.qty_lines');
   for (const [k,q] of lineMonths) { const [code,ym]=k.split('|'); lineMonthInsert.run(code,ym,String(q)); }
   d.exec("UPDATE sales_month SET qty_lines='0' WHERE qty_lines IS NULL");
-  const skuInsert=d.prepare('INSERT INTO sku (code_1c,supplier_id,article,name,unit,category,unit_cost,moq,weight) VALUES (?,?,?,?,?,?,?,?,?)');
-  for(const x of catalog.values()) skuInsert.run(x.code_1c,x.supplier_id,x.article,x.name,x.unit,x.category,x.unit_cost,x.moq,x.weight);
+  const skuInsert=d.prepare('INSERT INTO sku (code_1c,supplier_id,article,name,unit,category,unit_cost,moq,weight,on_hand_qty,on_hand_as_of) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+  for(const x of catalog.values()) skuInsert.run(x.code_1c,x.supplier_id,x.article,x.name,x.unit,x.category,x.unit_cost,x.moq,x.weight,x.on_hand_qty??null,x.on_hand_as_of??null);
   d.exec('COMMIT');
 } catch(e) { d.exec('ROLLBACK'); d.close(); throw e; }
 

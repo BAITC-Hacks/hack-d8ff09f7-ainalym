@@ -103,4 +103,12 @@ describe("deterministic replenishment need", () => {
     expect(result.rationale_ru).toContain("20");
     expect(result.need).toBeGreaterThan(0);
   });
+
+  it("uses a fresh on-hand snapshot only once it is dated", async () => {
+    const database = fixture();
+    database.prepare("UPDATE sku SET on_hand_qty='7',on_hand_as_of='2025-09-22' WHERE code_1c='TEST'").run();
+    expect((await computeNeed("TEST", params, context(database, "2025-09-01"))).components.on_hand).toBe(20);
+    const fresh = await computeNeed("TEST", params, context(database));
+    expect(fresh.components).toMatchObject({ on_hand: 7, on_hand_as_of: "2025-09-22" });
+  });
 });
