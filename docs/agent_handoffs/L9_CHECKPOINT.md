@@ -1,5 +1,5 @@
-L9 checkpoint — derived step
-Done: loader and season indices, stockouts, per-SKU sales statistics implemented.
+L9 checkpoint — eval step
+Done: loader, derived series, five named eval SKUs and M1–M5 properties.
 SKU union is 3909 (IEK 3185, SE 724), above the estimated gate; all-file union retained.
-Undone: eval expectations, world events, provenance, tests.
-Resume: run `npm run etl`, choose five evidence-backed eval SKUs from SQLite.
+Undone: world events, provenance, tests.
+Resume: build sales-day and judge events from loaded SQLite; document provenance.
