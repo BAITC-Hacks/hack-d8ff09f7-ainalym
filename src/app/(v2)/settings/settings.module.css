@@ -17,8 +17,10 @@
 .count { font: var(--v2-num); letter-spacing: -.025em; margin: 0 0 6px; }
 .costText { margin: 0 0 14px; font: var(--v2-body); color: var(--v2-ink-2); max-width: 620px; }
 .options { display: flex; flex-direction: column; gap: 10px; }
-.option { display: flex; align-items: baseline; gap: 10px; font: var(--v2-body); }
-.option a { font-weight: 500; }
+.option { display: flex; align-items: baseline; gap: 6px 10px; flex-wrap: wrap; font: var(--v2-body); }
+.option a { font-weight: 500; border-radius: var(--v2-r-control); }
+.option a:hover { text-decoration-thickness: 2px; }
+.option a:focus-visible { outline: 2px solid var(--v2-ring); outline-offset: 3px; }
 .sources { display: flex; flex-direction: column; gap: 10px; font: var(--v2-body); color: var(--v2-ink-2); }
 .sources p { margin: 0; }
 .sources b { color: var(--v2-ink); font-weight: 500; }
