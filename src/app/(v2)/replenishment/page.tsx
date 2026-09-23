@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { ChevronRight, Search, CircleAlert, PencilLine, Undo2, ArrowRight, ArrowUp, ArrowDown, ArrowUpDown, Mail, RefreshCw } from "lucide-react";
 import { ApiError, apiRequest, useApi, useApiSync } from "@/components/shell/api";
 import { Button, MiniBars, Pill, Skeleton, Sparkline, StateBlock, TruthStrip, UrgencyPill, URGENCY_RU, errorKind, errorTitle, fmtInt, fmtMoney, fmtNum, fmtYm, stakeTier, type Money, type Urgency } from "@/components/v2/primitives";
+import { CartButton, CartPanel, type CartSupplier } from "@/components/v2/CartPanel";
 import styles from "./replenishment.module.css";
 
 type Components = { source_months?: number; sales_lines?: number; stock_month?: string; stock_stale?: boolean; transit_rows?: number; base_rate?: number; season_source?: string; season?: Record<string, number>; growth?: number; horizon_days?: number; forecast_qty?: number; monthly_forecast?: Record<string, number>; stockout_uplift?: number; safety?: number; on_hand?: number; on_hand_as_of?: string; in_transit?: number; in_transit_sources?: unknown[]; net_need?: number; raw_need?: number; moq?: number; days_of_cover?: number; outlier_threshold?: number; median_month_qty?: number; p95_doc_qty?: number; raw_observed_forecast?: number };
@@ -15,6 +16,7 @@ type Proposals = { proposals: { id: string; kind: string; subject_id: string; st
 type Runs = { runs: { id: string; started_at: string; skus: number; recommended: number }[] };
 type Skus = { items: { code_1c: string; unit_cost: string | null }[]; total: number };
 type Orders = { orders: { id: string; supplier_id: string; state: string; created_at?: string | null }[] };
+type Params = { suppliers?: { id: string; lead_time_days?: number | null; prepay_pct?: number }[] };
 type CalcResult = { run_id: string; skus: number; recommended: number; partial?: boolean };
 type SortKey = "name" | "urgency" | "on_hand" | "in_transit" | "forecast" | "qty" | "cost";
 const SORT_KEYS: SortKey[] = ["name", "urgency", "on_hand", "in_transit", "forecast", "qty", "cost"];
@@ -39,6 +41,8 @@ function Replenishment() {
   const [query, setQuery] = useState(""); const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, number>>({});
+  const [cartOpen, setCartOpen] = useState(false);
+  const [flash, setFlash] = useState<{ code: string; at: number } | null>(null);
   const search = useRef<HTMLInputElement>(null);
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
   const { refresh } = useApiSync();
@@ -48,6 +52,7 @@ function Replenishment() {
   const runs = useApi<Runs>("/api/calc/runs");
   const run = runs.data?.runs[0];
   const orders = useApi<Orders>("/api/orders");
+  const paramsApi = useApi<Params>("/api/params");
   // Unit cost lives on the SKU (SE only — IEK has none); recommendation rows do not carry it.
   const seA = useApi<Skus>("/api/skus?supplier=SE&limit=500"); const seB = useApi<Skus>("/api/skus?supplier=SE&limit=500&offset=500");
   const costByCode = useMemo(() => { const m: Record<string, string> = {}; for (const i of [...(seA.data?.items ?? []), ...(seB.data?.items ?? [])]) if (i.unit_cost) m[i.code_1c] = i.unit_cost; return m; }, [seA.data, seB.data]);
@@ -72,6 +77,17 @@ function Replenishment() {
   const group = groups.find(g => g.supplier_id === supplier);
   const proposal = proposals.data?.proposals.find(p => p.kind === "supplier_order" && p.subject_id === supplier && p.state === "needs_review");
   const draftCount = Object.keys(drafts).filter(code => group?.rows.some(r => r.code_1c === code)).length;
+  // The cart = every supplier's open proposal lines with the manager's drafts on top (the same drafts «Подготовить заказ» applies).
+  const cartSuppliers = useMemo<CartSupplier[]>(() => groups.map(g => {
+    const p = paramsApi.data?.suppliers?.find(x => x.id === g.supplier_id);
+    const prop = proposals.data?.proposals.find(x => x.kind === "supplier_order" && x.subject_id === g.supplier_id && x.state === "needs_review");
+    return { id: g.supplier_id, proposalId: prop?.id ?? null, leadTimeDays: p?.lead_time_days ?? null, prepayPct: p?.prepay_pct ?? 30,
+      lines: g.rows.map(r => { const base = r.qty_adjusted ?? r.qty_recommended; const d = drafts[r.code_1c]; const cost = costByCode[r.code_1c]; return { id: r.id, code: r.code_1c, name: r.name, qty: d ?? base, base, drafted: d !== undefined, unitCost: cost ? Number(cost) : null, urgency: r.urgency, image: r.image_url ?? null }; }) };
+  }), [groups, drafts, costByCode, proposals.data, paramsApi.data]);
+  const setDraft = useCallback((code: string, q: number | null) => setDrafts(d => { const n = { ...d }; if (q === null) delete n[code]; else n[code] = q; return n; }), []);
+  const closeCart = useCallback(() => setCartOpen(false), []);
+  const added = useCallback((code: string) => { setFlash({ code, at: Date.now() }); setCartOpen(true); }, []);
+  useEffect(() => { if (!flash) return; const t = setTimeout(() => setFlash(null), 2200); return () => clearTimeout(t); }, [flash]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -98,6 +114,7 @@ function Replenishment() {
       <div className={styles.head}>
         <h1 className={styles.display}>Пополнение</h1>
         <div className={styles.headStack}>
+          <CartButton suppliers={cartSuppliers} onClick={() => setCartOpen(true)} />
           <CalcRun supplier={supplier} run={run} onDone={() => { refresh(); recs.reload(); runs.reload(); proposals.reload(); }} />
           <PrepareOrder supplier={supplier} group={group} groups={groups} proposal={proposal} proposalsAll={proposals.data?.proposals ?? []} proposalsError={proposals.error} drafts={drafts} draftCount={draftCount} letterPo={supplierOrders[0]?.id ?? null} onDone={() => { setDrafts({}); refresh(); recs.reload(); proposals.reload(); orders.reload(); }} />
         </div>
@@ -149,7 +166,7 @@ function Replenishment() {
                     <td className={`${styles.num} ${styles.qty}`} data-stake={stakeTier(line?.amount)}><span className={styles.qtyValue}>{fmtInt(qty)}{draft !== undefined && <PencilLine size={13} className={styles.draftMark} aria-label="в корзине" />}</span><span className={styles.meta}>{draft !== undefined ? `в корзине · было ${fmtInt(r.qty_adjusted ?? r.qty_recommended)}` : r.qty_adjusted != null ? `скорректировано · расчёт ${fmtInt(r.qty_recommended)}` : "по расчёту"}</span></td>
                     <td className={styles.num} data-stake={stakeTier(line?.amount)}>{line ? <><span>{fmtMoney(line)}</span><span className={styles.meta}>{fmtMoney({ amount: cost!, currency: "KZT" })} / шт</span></> : <span className={styles.none}>не задана</span>}</td>
                   </tr>,
-                  open && <tr key={`${r.id}-x`} id={`x-${r.id}`} className={styles.detailRow}><td colSpan={8}><Rationale r={r} draft={draft} onDraft={q => setDrafts(d => { const n = { ...d }; if (q === null) delete n[r.code_1c]; else n[r.code_1c] = q; return n; })} /></td></tr>,
+                  open && <tr key={`${r.id}-x`} id={`x-${r.id}`} className={styles.detailRow}><td colSpan={8}><Rationale r={r} draft={draft} onDraft={q => setDraft(r.code_1c, q)} onAdded={() => added(r.code_1c)} /></td></tr>,
                 ];
               })}
             </tbody>
@@ -162,6 +179,7 @@ function Replenishment() {
       )}
       <p className={styles.keys}><kbd>/</kbd> поиск · <kbd>j</kbd>/<kbd>k</kbd> по строкам · <kbd>Enter</kbd> раскрыть · <kbd>Esc</kbd> закрыть</p>
       <footer className={styles.foot}><TruthStrip ai={recs.data?.ai} external={recs.data?.external} /></footer>
+      <CartPanel open={cartOpen} onClose={closeCart} suppliers={cartSuppliers} highlight={flash} onQty={(_s, code, q) => setDraft(code, q)} />
     </div>
   );
 }
@@ -232,11 +250,11 @@ function EmptyRun({ onDone }: { onDone: () => void }) {
   return <StateBlock kind="empty" title="Расчёт ещё не запускался" detail={error ? error.message : "Агент просчитает потребность по всем источникам: продажи, сезонность, рост, дефицит, разовые документы, в пути, кратность."} action={<Button variant="primary" busy={busy} onClick={runCalc}>Запустить расчёт</Button>} />;
 }
 
-function Rationale({ r, draft, onDraft }: { r: Row & { supplier: string }; draft?: number; onDraft: (q: number | null) => void }) {
+function Rationale({ r, draft, onDraft, onAdded }: { r: Row & { supplier: string }; draft?: number; onDraft: (q: number | null) => void; onAdded: () => void }) {
   const c = r.components; const [val, setVal] = useState<string>(String(draft ?? r.qty_adjusted ?? r.qty_recommended));
   const months = Object.entries(c.monthly_forecast ?? {}).map(([k, v]) => ({ k: fmtYm(k), v }));
   const season = c.season ? Array.from({ length: 12 }, (_, i) => c.season![String(i + 1)] ?? 1) : null;
-  const apply = () => { const n = Math.max(0, Math.round(Number(val))); if (!Number.isFinite(n)) return; if (n === (r.qty_adjusted ?? r.qty_recommended)) onDraft(null); else onDraft(n); };
+  const apply = () => { const n = Math.max(0, Math.round(Number(val))); if (!Number.isFinite(n)) return; if (n === (r.qty_adjusted ?? r.qty_recommended)) onDraft(null); else onDraft(n); onAdded(); };
   return (
     <div className={styles.detail} onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
       <div className={styles.detailCols}>

@@ -70,8 +70,19 @@ test("assistant page: chip → inline card, typed «почему 130200122» →
   const surface = page.getByRole("region", { name: "Помощник" });
   await expect(surface.getByRole("heading", { name: "Помощник", level: 1 })).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Помощник" })).toHaveCount(0);
-  await expect(surface.getByRole("button", { name: "Говорить с ассистентом" })).toBeVisible();
+  const mic = surface.getByRole("button", { name: "Микрофон вкл/выкл" });
+  await expect(mic).toBeVisible();
+  await expect(mic).toHaveAttribute("aria-pressed", "false");
+  expect((await mic.boundingBox())?.width ?? 0).toBeLessThanOrEqual(44);
   await page.screenshot({ path: `${OUT2}/01_assistant_empty_1440.png` });
+  if (await mic.isEnabled()) {
+    // Toggle on inside a click; with no voice provider the session reports unavailable in plain Russian and the toggle stays off.
+    await mic.click();
+    await expect.poll(async () => (await mic.getAttribute("aria-pressed")) === "true" || /Голос сейчас недоступен/.test(await surface.getByRole("status").first().innerText()), { timeout: 15_000 }).toBe(true);
+    if ((await mic.getAttribute("aria-pressed")) === "true") { await mic.click(); await expect(mic).toHaveAttribute("aria-pressed", "false"); }
+  } else {
+    await expect(surface.getByText("Голос сейчас недоступен — печатайте")).toBeVisible();
+  }
   await surface.getByRole("button", { name: "Что нужно от меня?" }).click();
   const queue = surface.getByRole("article", { name: "Что нужно от меня?" });
   await expect(queue).toBeVisible({ timeout: 20_000 });
@@ -89,7 +100,7 @@ test("assistant page: chip → inline card, typed «почему 130200122» →
   await page.setViewportSize({ width: 390, height: 844 });
   await go(page, `${PREFIX}/assistant`);
   await expect(surface.getByRole("article", { name: "почему 130200122" })).toBeVisible();
-  await expect(surface.getByRole("button", { name: "Говорить с ассистентом" })).toBeVisible();
+  await expect(surface.getByRole("button", { name: "Микрофон вкл/выкл" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.screenshot({ path: `${OUT2}/03_assistant_390.png` });
   // The dock still works on other pages and shares the same conversation.

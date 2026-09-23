@@ -26,6 +26,11 @@ export const SkuDetailResponseSchema = SuccessSchema.extend({ sku: z.unknown(), 
 export const ParamsSchema = z.object({ lead_time_days: z.number().int().positive(), review_days: z.number().int().positive(), service_level: z.number().positive(), growth_cap: z.number().positive(), outlier: z.object({ k_month: z.number().positive(), k_doc: z.number().positive(), min_units: z.number().positive() }) });
 export const ParamsUpdateRequestSchema = z.object({ supplier_id: z.enum(["IEK", "SE"]), lead_time_days: z.number().int().positive().optional(), review_days: z.number().int().positive().optional(), service_level: z.number().min(0.5).max(0.999).optional(), growth_cap: z.number().min(0).max(1).optional() });
 export const ParamsResponseSchema = SuccessSchema.extend({ suppliers: z.array(z.object({ id: z.string(), lead_time_days: z.number().int(), review_days: z.number().int(), terms: z.record(z.string(), z.unknown()), currency: z.string(), version: z.number().int() })), defaults: ParamsSchema.pick({ service_level: true, growth_cap: true, outlier: true }) });
+export const SettingsUpdateRequestSchema = z.object({
+  opening_cash: z.object({ amount: z.string().regex(/^\d+(\.\d{1,2})?$/), currency: z.string().length(3), as_of: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).nullable().optional(),
+  currency: z.string().length(3).optional(),
+  suppliers: z.array(z.object({ id: z.enum(["IEK", "SE"]), prepay_pct: z.number().min(0).max(100) })).optional(),
+});
 export const ParamsUpdateResponseSchema = SuccessSchema.extend({ proposal_id: z.string(), state: z.literal("needs_review") });
 export const WorldEventInputSchema = z.object({ org_id: z.string().optional(), actor_id: z.string().optional(), code_1c: z.string().optional(), po_id: z.string().optional(), at: z.string().optional(), text: z.string().optional(), payload: z.record(z.string(), z.unknown()).optional() });
 export const OnEventResultSchema = z.object({ event_id: z.string(), run_id: z.string().nullable().optional(), replayed: z.boolean().optional() });

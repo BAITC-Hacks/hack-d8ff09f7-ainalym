@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ApiError, apiRequest, useApi, useApiSync } from "@/components/shell";
 import { Btn, Card, Empty, Kpis, PageHead, Pill, PO_STATE, Section, StaleBanner, Truth, fmtDate, fmtMoney, fmtNum, fmtQty, useRowKeys, type Tone } from "@/components/v2/ui";
+import { ExportButton } from "@/components/v2/ExportButton";
 import styles from "./supplier.module.css";
 
 export type ChannelState = "draft" | "sent" | "confirmed";
@@ -60,19 +61,19 @@ export function SupplierDraft({ poId, initial }: { poId: string; initial: Suppli
       const e = failure instanceof ApiError ? failure : new ApiError(500, "unknown", "Действие не выполнено.");
       if (e.status === 409) { setStale("Данные обновились — состояние заказа или канала изменилось. Показываю актуальную версию."); refresh(); router.refresh(); }
       else if (e.status === 403) setStatus("Канал закрыт: заказ ещё не утверждён менеджером.");
-      else setStatus(`${e.message} (${e.code})`);
+      else setStatus(e.message);
     } finally { setBusy(false); }
   }
   return <>
     {stale && <StaleBanner>{stale}</StaleBanner>}
-    {live.error && !live.data && <StaleBanner>Живые данные заказа недоступны ({live.error.code}) — показываю снимок сервера, версия состояния {initial.state_version}.</StaleBanner>}
+    {live.error && !live.data && <StaleBanner>Свежие данные заказа недоступны — показываю последний сохранённый снимок.</StaleBanner>}
     <PageHead crumbs={[{ href: "/money", label: "Деньги" }, { label: "Поставщики" }, { label: order.supplier_name }]}
       title="Черновик заказа"
       badges={<><Pill tone={CHANNEL_TONE[channel.state]}>{channel.label}</Pill><Pill tone={poState.tone}>заказ: {poState.label}</Pill></>}
-      sub={<>{order.id} · {order.supplier_name} · ETA {fmtDate(order.eta)} · версия {version}</>}
+      sub={<>{order.supplier_name} · дата поставки {fmtDate(order.eta)} · версия {version}</>}
       actions={<>
-        <a className={styles.linkBtn} href={`/api/orders/${encodeURIComponent(poId)}/export.xlsx`}>Экспорт для 1С (файл) · xlsx</a>
-        <a className={styles.linkBtn} href={`/api/orders/${encodeURIComponent(poId)}/export.csv`}>csv</a>
+        {approved ? <><ExportButton poId={poId} format="xlsx" lines={merged.length} className={styles.linkBtn}>Экспорт для 1С (файл) · xlsx</ExportButton><ExportButton poId={poId} format="csv" lines={merged.length} className={styles.linkBtn}>csv</ExportButton></>
+          : <span className={styles.linkBtn} aria-disabled="true" title="Экспорт доступен после утверждения заказа">Экспорт для 1С — после утверждения</span>}
       </>} />
     <Kpis items={[
       { label: "Позиций", value: fmtNum(merged.length), meta: `кратность соблюдена по каждой строке` },
@@ -106,7 +107,7 @@ export function SupplierDraft({ poId, initial }: { poId: string; initial: Suppli
               <p className={styles.why}>{l.rationale_ru ?? "Обоснование не сохранено."}</p>
             </details>)}
             {merged.length > visible.length && <div className={styles.more}><Btn onClick={() => setShowAll(true)}>Показать все {fmtNum(merged.length)} строк</Btn></div>}
-            {merged.length === 0 && <Empty title="В заказе нет строк" />}
+            {merged.length === 0 && <Empty title="В заказе нет строк">Экспортировать нечего — добавьте позиции через «Закупки».</Empty>}
           </div>
         </Section>
       </div>
@@ -129,9 +130,9 @@ export function SupplierDraft({ poId, initial }: { poId: string; initial: Suppli
         </Card>
         <Section id="truth" title="Откуда данные">
           <div className={styles.sources}>
-            <p><b>Строки</b> — <code>purchase_order_line</code> заказа {order.id.slice(0, 11)}…, количества после кратности.</p>
+            <p><b>Строки</b> — позиции заказа, количества округлены до кратности отгрузки.</p>
             <p><b>Цены</b> — «СС реал» из файла SE; у IEK не передаются.</p>
-            <p><b>Канал</b> — <code>ledger_peer_record</code>, локальный симулятор; передача наружу не выполняется.</p>
+            <p><b>Канал</b> — локальный симулятор; письмо не покидает приложение.</p>
             <p><Truth>Данные партнёра · обезличены</Truth> · <Truth>Экспорт для 1С (файл)</Truth></p>
           </div>
         </Section>

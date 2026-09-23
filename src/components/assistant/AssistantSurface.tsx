@@ -1,8 +1,9 @@
 "use client";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, AudioLines, Mic, Sparkles, Square, Volume2 } from "lucide-react";
+import { ArrowUp, AudioLines, Mic, MicOff, Sparkles, Square, Volume2 } from "lucide-react";
 import { ResultCard } from "./ResultCard";
+import { isRenderSpec, StructuredCard } from "./StructuredCard";
 import { VoiceWave } from "./VoiceWave";
 import { useAssistantVoice } from "./useAssistantVoice";
 import { contextTitle, detectBase, pageContext, parseContext, suggestedPrompts, type AssistantContext } from "./context";
@@ -75,7 +76,6 @@ export function AssistantSurface({ base: baseProp }: { base?: string }) {
   const title = contextTitle(ctx);
   const chips = suggestedPrompts(ctx);
   const live = voice.active;
-  const MicIcon = live ? Square : Mic;
 
   return <section className={styles.surface} aria-label="Помощник" aria-busy={busy}>
     <div className={styles.column}>
@@ -87,7 +87,7 @@ export function AssistantSurface({ base: baseProp }: { base?: string }) {
         {entries.length === 0 && !busy && <div className={styles.empty}>
           <span className={styles.spark}><Sparkles size={22} aria-hidden="true" /></span>
           <h2>Чем помочь?</h2>
-          <p>Нажмите на микрофон и спросите — или выберите вопрос ниже. Что срочно, что заплатить, почему такое количество.</p>
+          <p>Напишите вопрос или включите микрофон — отвечу по данным склада: что срочно, что заплатить, почему такое количество.</p>
         </div>}
         {entries.map(entry => entry.say
           ? <div key={entry.id} className={`${styles.turn} ${entry.say.who === "user" ? styles.user : styles.assistant}`} data-who={entry.say.who}>
@@ -98,7 +98,7 @@ export function AssistantSurface({ base: baseProp }: { base?: string }) {
               <div className={`${styles.turn} ${styles.user}`} data-who="user"><p className={styles.bubble}>{entry.question}</p></div>
               <div className={`${styles.turn} ${styles.assistant}`} data-who="assistant">
                 <span className={styles.mark} aria-hidden="true"><Sparkles size={14} /></span>
-                <div className={styles.card}><ResultCard title={entry.question ?? ""} response={entry.response ?? { ok: false, reply_ru: CANNOT_ANSWER }} plain base={base} hideTitle /></div>
+                <div className={styles.card}>{isRenderSpec(entry.render) ? <StructuredCard title={entry.question ?? ""} render={entry.render} base={base} /> : <ResultCard title={entry.question ?? ""} response={entry.response ?? { ok: false, reply_ru: CANNOT_ANSWER }} plain base={base} hideTitle />}</div>
               </div>
             </div>)}
         {busy && <div className={`${styles.turn} ${styles.assistant}`}><span className={styles.mark} aria-hidden="true"><Sparkles size={14} /></span><p className={`${styles.bubble} ${styles.typing}`} role="status" aria-label="Помощник готовит ответ"><i /><i /><i /><span>Смотрю данные…</span></p></div>}
@@ -108,24 +108,23 @@ export function AssistantSurface({ base: baseProp }: { base?: string }) {
     <div className={styles.bar}>
       <div className={styles.column}>
         <div className={styles.chips} aria-label="Быстрые действия">{chips.map(chip => <button key={chip.id} type="button" className={styles.chip} disabled={busy} onClick={() => void ask(chip.text)}>{chip.text}</button>)}</div>
-        <div className={styles.waveRow} data-live={live ? "1" : undefined}>
-          {live || busy ? <VoiceWave local={voice.local} remote={voice.remote} state={voice.mic === "idle" ? "listening" : voice.mic} /> : null}
-        </div>
         <div className={styles.controls}>
+          <button type="button" className={styles.micToggle} data-state={voice.micOn ? voice.mic : "off"} aria-pressed={voice.micOn} aria-label="Микрофон вкл/выкл" title={voice.unavailable ? voice.label : voice.micOn ? "Выключить микрофон" : "Включить микрофон"} disabled={voice.unavailable} onClick={voice.toggleMic}>
+            {voice.micOn ? <Mic size={18} aria-hidden="true" /> : <MicOff size={18} aria-hidden="true" />}
+          </button>
+          {live && <div className={styles.waveInline}><VoiceWave local={voice.local} remote={voice.remote} state={voice.micOn ? (voice.mic === "idle" ? "listening" : voice.mic) : "thinking"} size="mini" /></div>}
           <form className={styles.composer} onSubmit={event => { event.preventDefault(); void ask(text); }}>
             <textarea ref={input} rows={1} value={text} maxLength={2000} aria-label="Вопрос ассистенту" placeholder="Спросите о складе, заказе или позиции…" onChange={event => setText(event.target.value)}
               onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void ask(text); } }} />
             <button type="submit" className={styles.send} aria-label="Отправить" disabled={busy || !text.trim()}><ArrowUp size={16} aria-hidden="true" /></button>
           </form>
-          <button type="button" className={styles.mic} data-state={voice.mic} aria-pressed={live} aria-label={live ? "Остановить разговор (Esc)" : "Говорить с ассистентом"} title={voice.label} disabled={voice.unavailable} onClick={voice.toggle}>
-            <MicIcon size={live ? 22 : 26} aria-hidden="true" />
-          </button>
         </div>
         <div className={styles.state} role="status">
           <span>{voice.label}</span>
+          {live && <button type="button" className={styles.soundBtn} onClick={voice.stop}><Square size={12} aria-hidden="true" />Завершить разговор</button>}
           {voice.audioBlocked && voice.enableAudio && <button type="button" className={styles.soundBtn} onClick={voice.enableAudio}><Volume2 size={14} aria-hidden="true" />Включить звук</button>}
         </div>
-        <p className={styles.hint}><span>Enter — отправить</span><span>⌘K — ввод</span><span>Esc — стоп</span></p>
+        <p className={styles.hint}><span>Enter — отправить</span><span>⌘K — ввод</span><span>Esc — завершить разговор</span></p>
       </div>
     </div>
   </section>;

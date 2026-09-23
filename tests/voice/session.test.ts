@@ -41,6 +41,8 @@ describe("ephemeral voice session", () => {
     expect(JSON.parse(fetcher.mock.calls[0][1].body).expires_after).toEqual({ anchor: "created_at", seconds: 50 });
     expect(JSON.parse(fetcher.mock.calls[0][1].body).session.tools).toHaveLength(4);
     expect(JSON.parse(fetcher.mock.calls[0][1].body).session.instructions).toContain("никаких вводных фраз — отвечай данными инструмента или задай один уточняющий вопрос");
+    expect(JSON.parse(fetcher.mock.calls[0][1].body).session.instructions).toContain('Не говори "сейчас скажу", "секунду", "подождите"');
+    expect(JSON.parse(fetcher.mock.calls[0][1].body).session.audio.input.transcription.language).toBe("ru");
     expect(JSON.parse(fetcher.mock.calls[0][1].body).session.audio.input.turn_detection.create_response).toBe(false);
     expect(JSON.stringify(body)).not.toContain("unit-test-only");
   });

@@ -29,7 +29,11 @@ export class TranscriptGate {
   completed(itemId: string | undefined, text: string): boolean {
     if (!this.active) return false;
     if (this.inputItemId && itemId !== this.inputItemId) return false;
-    this.transcript = text.trim();
+    const clean = text.trim();
+    // Reject unsupported scripts and tiny VAD noise before it can enter the UI or a tool.
+    if (/[^\p{Script=Cyrillic}\p{Script=Latin}\p{Number}\p{Punctuation}\p{Separator}\p{Symbol}]/u.test(clean) ||
+        (clean.match(/[\p{Script=Cyrillic}\p{Script=Latin}\p{Number}]/gu)?.length ?? 0) < 3) return false;
+    this.transcript = clean;
     return Boolean(this.transcript);
   }
   peek() { return this.transcript; }

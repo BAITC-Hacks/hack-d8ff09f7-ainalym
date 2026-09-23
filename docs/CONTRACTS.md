@@ -59,8 +59,8 @@ App Router handlers use the zod schemas in src/server/contracts.ts. A successful
 | POST /api/demo/example | Empty body; performs the SE calculation; same result as /api/calc/run | 200, 500 |
 | POST /api/calc/run | {scope:{supplier?:IEK or SE,category?:s},params?:{lead_time_days?:i,review_days?:i,service_level?:number,growth_cap?:number,outlier?:{k_month,k_doc,min_units:number}}} → {run_id:s,skus:i,recommended:i,proposals:[{id,kind,subject_id,state,money_at_stake}],excluded:{missing_sales:i,missing_stock:i}} | 200, 400, 500 |
 | GET /api/calc/runs; GET /api/calc/runs/:id | {runs:[calc_run]} newest first; {run:calc_run} with parsed scope and params | 200, 404 |
-| GET /api/recommendations?run_id=&supplier=&category=&urgency= | {groups:[{supplier_id:s,total_qty:i,total_cost:Money or null,cost_known_lines:i,rows:[{id,code_1c,name,version,state,proposal_id,adjust_reason,on_hand,in_transit,forecast_qty,qty_recommended,qty_adjusted,moq,urgency,rationale_ru,components,outliers_excluded,stockout_months}]}]}; only positive quantities | 200 |
-| GET /api/recommendations/:id | {recommendation:single row with rationale_ru, parsed components, version and proposal_id} | 200, 404 |
+| GET /api/recommendations?run_id=&supplier=&category=&urgency= | {groups:[{supplier_id:s,total_qty:i,total_cost:Money or null,cost_known_lines:i,rows:[{id,code_1c,name,version,state,proposal_id,adjust_reason,needs_review:boolean,on_hand,in_transit,forecast_qty,qty_recommended,qty_adjusted,moq,urgency,rationale_ru,components,outliers_excluded,stockout_months}]}]}; only positive quantities; `needs_review` when the adjusted quantity exceeds the current calculation | 200 |
+| GET /api/recommendations/:id | {recommendation:single row with rationale_ru, parsed components, version, proposal_id and needs_review:boolean} | 200, 404 |
 | POST /api/recommendations/:id/adjust | {qty:integer ≥ 0, reason:non-empty string ≤ 200, version:integer} → {recommendation:updated row,proposal:{id,version}}; stale version → {code:stale_version,current_version} | 200, 400, 404, 409 |
 | GET /api/skus?q=&supplier=&category=&limit=&offset=; GET /api/skus/:code | {items:[sku],total:i}; {sku,series:[{ym,qty_file,qty_lines,qty_regular,stock,stock_known,stockout,outliers}],forecast?,recommendation?,in_transit:[],timeline:[]} | 200, 404 |
 | GET /api/ekt/status | `{configured,live_reachable,last_snapshot_at,products,mapped_skus,source,as_of,label}`; read-only catalog status | 200 |
@@ -98,6 +98,18 @@ Delegated surface remains: GET /api/orders[/:id], POST /api/orders/:id/approve a
 | what_changed | `{since?: state_version}` | `{summary_ru, changes:[{object, id, field, before, after}], state_version, labels}` |
 | recommend_for | `{supplier_id?|category?}` | runs the engine on the scope → `{run_id, recommended, top:[{code_1c, qty, urgency}]}`; never approves |
 | explain_sku | `{code_1c}` | `{rationale_ru, components, outliers_excluded, stockout_months, forecast}` |
+
+Every successful voice tool result has additive `render` on the `ainalym:voice-tool-result` client event as both `detail.render` and `detail.result.render`:
+
+| Tool | `render` shape |
+|---|---|
+| `what_needs_me` | `{kind:"queue", purpose:"approvals", title, items}` |
+| `what_changed` | `{kind:"queue", purpose:"changes", title, items:[{object,id,field,before,after,title}]}` |
+| `explain_sku` | `{kind:"sku_explain", code_1c, name, qty, unit, urgency, rationale_ru, components, outliers_excluded, stockout_months, forecast}` |
+| `recommend_for` | `{kind:"calc_result", total, items:[{code_1c,name,qty,unit,urgency}], proposal_ids}` |
+
+The card vocabulary also reserves `urgent_list` and `cashflow` with `items`. `render.items` holds the full tool result; the Realtime `function_call_output` contains only `{ok,total:{count,unit},top_items:[{name,qty,unit,urgency}] (at most 3),reason? (short SKU rationale),next_step}` (or a compact error). Audio output includes a text transcript; the follow-up uses `output_modalities:["audio"]` and one short summary instruction.
+
 Client seam (L5 exports, L4 imports): `useVoiceSession(scope) → {state: idle|connecting|listening|checking|preparing|waiting_review|ended|unavailable, reason?, start, stop, mute, interrupt, captions:[{who, text}]}` from `src/voice/useVoiceSession.ts`; `<Captions lines/>` from `src/voice/Captions.tsx`.
 
 ## 5. Labels — the single table (served by `GET /api/modes`; UI, tests and README use these strings and no variants; never a badge that reads «connected» or «1С подключена»)

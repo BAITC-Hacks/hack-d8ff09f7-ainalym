@@ -1,6 +1,10 @@
-import { ProposalDesk } from "@/components/review/ProposalDesk";
+import type { Metadata } from "next";
 import { db } from "@/db/client";
+import ProposalReviewPage from "./ProposalReviewPage";
 import SupplierReplyReview, { type SupplierReplyProposal } from "./SupplierReplyReview";
+
+export const metadata: Metadata = { title: "Проверка" };
+
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const row = db().prepare("SELECT id,kind,subject_id,version,state,rationale_ru,payload FROM proposal WHERE id=?").get(id) as
@@ -12,5 +16,5 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       .all(row.subject_id) as { code_1c: string; name: string }[]).map(line => [line.code_1c, line.name]));
     return <SupplierReplyReview key={id} proposal={{ ...row, payload, supplier_name: supplier?.name ?? "Поставщик", line_names: lineNames }} />;
   }
-  return <ProposalDesk key={id} id={id} />;
+  return <ProposalReviewPage key={id} id={id} />;
 }

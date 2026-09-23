@@ -12,7 +12,26 @@ export const LABELS = {
   task: { preparing: "Готовлю", awaiting_supplier: "Ждём поставщика", needs_review: "Нужна ваша проверка", ready_to_handover: "Готово к передаче", handed_over: "Передано", handover_failed: "Ошибка передачи" },
   proposal: { draft: "черновик", needs_review: "ждёт вас", approved: "утверждено", stale: "устарело — есть новая версия", rejected: "отклонено", delivered: "передано", delivery_failed: "ошибка передачи" },
   urgency: { critical: "критично", soon: "скоро", normal: "планово", none: "не требуется" },
+  role: { purchasing_manager: "менеджер по закупкам", manager: "менеджер", agent: "агент", judge: "жюри", system: "система", supplier: "поставщик" },
+  order: { draft: "черновик — не отправлен", approved: "утверждено", exported: "передано в 1С", sent: "отправлен поставщику", confirmed: "подтверждён поставщиком", received: "получен", done: "готово", cancelled: "отменён" },
 } as const;
+/** Technical enum → purchasing language; unknown tokens fall back to a neutral phrase, never to the raw enum. */
+const HUMAN: Record<string, string> = {
+  ...Object.fromEntries(Object.entries({ preparing: "готовится", awaiting_supplier: "ждём поставщика", needs_review: "ждёт решения", ready_to_handover: "готово к передаче", handed_over: "передано", handover_failed: "ошибка передачи", proposed: "ждёт решения", stale: "устарело", rejected: "отклонено", delivered: "передано", delivery_failed: "ошибка передачи", adjusted: "скорректировано" })),
+  purchasing_manager: "менеджер по закупкам", supplier_reply: "ответ поставщика", order_drafted: "черновик заказа", order_approved: "заказ утверждён", proposal_created: "предложение подготовлено", recommendation_run: "расчёт выполнен", sales_day: "продажи за день", stock_snapshot: "снимок остатков", in_transit_update: "товар в пути", price_update: "изменение цены", judge_message: "разовый заказ", export_only: "экспорт для 1С", local_simulator: "локальный симулятор", partner_anonymised: "данные партнёра",
+};
+export function roleLabel(role?: string | null): string { return role ? LABELS.role[role as keyof typeof LABELS.role] ?? HUMAN[role] ?? "сотрудник" : "—"; }
+export function orderStateLabel(state?: string | null): string { return state ? LABELS.order[state as keyof typeof LABELS.order] ?? HUMAN[state] ?? "в работе" : "—"; }
+/** Rewrites enum tokens and internal routes inside free text so that nothing technical reaches the screen. */
+export function humanize(text?: string | null): string {
+  if (!text) return "";
+  return text
+    .replace(/\/api\/[a-z0-9_\/-]+/gi, "система")
+    .replace(/\b(TK|PR|PO|WE|RUN|SCRIPT)-[0-9a-f-]{8,}\b/gi, m => ({ TK: "задача", PR: "предложение", PO: "заказ", WE: "событие", RUN: "запуск", SCRIPT: "сценарий" })[m.slice(0, m.indexOf("-")).toUpperCase()] ?? "запись")
+    .replace(/\b[a-z]+(?:_[a-z0-9]+)+\b/g, m => HUMAN[m] ?? m.replace(/_/g, " "))
+    .replace(/\b(unchanged|changed|failed|pending|skipped|done|ok|draft|approved|rejected|stale)\b/g, m => PLAIN[m] ?? m);
+}
+const PLAIN: Record<string, string> = { unchanged: "без изменений", changed: "изменилось", failed: "ошибка", pending: "в работе", skipped: "пропущено", done: "готово", ok: "выполнено", draft: "черновик", approved: "утверждено", rejected: "отклонено", stale: "устарело" };
 export function Chip({ children, tone = "neutral", title }: { children: ReactNode; tone?: "neutral" | "warning" | "danger"; title?: string }) { return <span className={`${styles.chip} ${tone === "neutral" ? "" : styles[tone]}`} title={title}>{children}</span>; }
 export function ModeChip({ mode, ai }: { mode?: string; ai?: TruthAxes["ai"] }) { return <Chip title={mode === "offline" ? "Offline walkthrough" : ai}>{mode === "offline" ? "Офлайн-режим · записанные решения" : mode === "unavailable" ? "Режимы недоступны" : ai ? LABELS.ai[ai] : "Режим уточняется"}</Chip>; }
 export function TruthAxisLabels({ axes, provenance, ai, external }: TruthAxes & { axes?: TruthAxes }) {

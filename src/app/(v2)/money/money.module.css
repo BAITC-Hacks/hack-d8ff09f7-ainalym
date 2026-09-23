@@ -27,6 +27,32 @@
 .riskBody { margin: 0; font: var(--v2-meta); color: var(--v2-ink-2); }
 .sources { display: flex; flex-direction: column; gap: 8px; font: var(--v2-meta); color: var(--v2-ink-2); }
 .sources p { margin: 0; }
-.sources code { font: 500 12px/16px ui-monospace, Menlo, monospace; background: var(--v2-well); padding: 1px 5px; border-radius: 4px; }
+.fill { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: var(--v2-radius-sm); border: 1px solid var(--v2-accent); background: var(--v2-accent); color: var(--v2-on-accent); font: 500 13px/20px var(--v2-font); text-decoration: none; white-space: nowrap; letter-spacing: 0; }
+.fill:hover { background: var(--v2-accent-hover); border-color: var(--v2-accent-hover); }
+.risk .fill { margin-top: 12px; }
+.gapsCard { padding: 20px 24px; margin: 0 0 28px; }
+.gapsHead { margin-bottom: 12px; }
+.gapsTitle { margin: 0 0 4px; font: var(--v2-h2); }
+.gapsSub { margin: 0; font: var(--v2-meta); color: var(--v2-muted); }
+.gaps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.gaps li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--v2-line); }
+.gapText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gapText b { font: var(--v2-body); font-weight: 500; }
 @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; gap: 32px; } }
 @media (max-width: 767px) { .thead { display: none; } .tr, .tfoot { grid-template-columns: minmax(0, 1fr) auto; } .tr > :nth-child(2), .tr > :nth-child(3), .tfoot > :nth-child(2), .tfoot > :nth-child(3) { display: none; } .tr { padding: 12px 8px; min-height: 44px; } }
+
+/* Hero metrics: compact centred group, never a full-width stretch (UX-FIX-D). Doubled class beats the shared .kpi rules. */
+.hero { display: flex; justify-content: center; margin: 0 0 36px; }
+.hero.hero dl { width: 100%; max-width: 960px; margin: 0; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--v2-line); border-radius: var(--v2-r-card); background: var(--v2-card); overflow: hidden; }
+.hero.hero dl > div { padding: 20px 18px 18px; text-align: center; display: flex; flex-direction: column; align-items: center; min-width: 0; border-top: 0; border-left: 1px solid var(--v2-line); }
+.hero.hero dl > div:first-child { border-left: 0; }
+.hero.hero dl > div dt { font: 500 13px/18px var(--v2-font); color: var(--v2-muted); margin-bottom: 8px; }
+.hero.hero dl > div dd { font: 600 30px/34px var(--v2-font); letter-spacing: -.025em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hero.hero dl > div p { margin-top: 6px; max-width: 200px; }
+@media (max-width: 900px) {
+  .hero.hero dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hero.hero dl > div:nth-child(3) { border-left: 0; }
+  .hero.hero dl > div:nth-child(n+3) { border-top: 1px solid var(--v2-line); }
+  .hero.hero dl > div dd { font-size: 28px; line-height: 32px; }
+}
+@media (max-width: 767px) { .hero { margin-bottom: 28px; } .hero.hero dl > div { padding: 16px 12px 14px; } .hero.hero dl > div dd { font-size: 24px; line-height: 28px; white-space: normal; } }

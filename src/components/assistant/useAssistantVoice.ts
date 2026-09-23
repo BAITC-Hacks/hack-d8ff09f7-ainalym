@@ -4,7 +4,8 @@ import { useApi } from "@/components/shell";
 import { useVoiceSession, type VoiceScope, type VoiceSession, type VoiceState } from "@/voice/useVoiceSession";
 import { TOOLS, type AssistantResult } from "./types";
 import type { WaveState } from "./VoiceWave";
-import { newEntry, type ThreadEntry } from "./thread";
+import { cleanCaption, newEntry, type ThreadEntry } from "./thread";
+import { isRenderSpec } from "./StructuredCard";
 
 /** Fields the voice lane may expose later; read defensively so this compiles against today's hook. */
 type VoiceExtras = { audioBlocked?: boolean; enableAudio?: () => void; localStream?: MediaStream | null; remoteStream?: MediaStream | null };
@@ -15,6 +16,8 @@ export type AssistantVoice = {
   session: VoiceSession; state: VoiceState; active: boolean; unavailable: boolean;
   mic: WaveState; label: string; local: MediaStream | null; remote: MediaStream | null;
   audioBlocked: boolean; enableAudio?: () => void; toggle: () => void; stop: () => void;
+  /** Microphone on/off: on = session live and not muted. Turning on starts the session inside the click (audio unlock stays in the click stack); turning off mutes the track, the session stays. */
+  micOn: boolean; muted: boolean; toggleMic: () => void;
 };
 
 /**
@@ -27,6 +30,7 @@ export function useAssistantVoice(scope: VoiceScope, append: (entry: ThreadEntry
   const health = useApi<{ providers?: { voice?: string } }>("/api/health");
   const [speaking, setSpeaking] = useState(false);
   const [monitor, setMonitor] = useState<MediaStream | null>(null);
+  const [muted, setMuted] = useState(false);
   const seen = useRef(0);
   const appendRef = useRef(append);
   appendRef.current = append;
@@ -40,8 +44,10 @@ export function useAssistantVoice(scope: VoiceScope, append: (entry: ThreadEntry
     for (let i = seen.current; i < lines.length; i++) {
       const line = lines[i];
       if (line.who === "tool") continue;
-      appendRef.current(newEntry({ say: { who: line.who, text: line.text } }));
       if (line.who === "assistant") setSpeaking(true);
+      const text = cleanCaption(line.text);
+      if (!text) continue;
+      appendRef.current(newEntry({ say: { who: line.who, text } }));
     }
     seen.current = lines.length;
   }, [session.captions]);
@@ -50,15 +56,16 @@ export function useAssistantVoice(scope: VoiceScope, append: (entry: ThreadEntry
     const timer = window.setTimeout(() => setSpeaking(false), 3200);
     return () => window.clearTimeout(timer);
   }, [speaking]);
-  useEffect(() => { if (!active) setSpeaking(false); }, [active]);
+  useEffect(() => { if (!active) { setSpeaking(false); setMuted(false); } }, [active]);
 
   // Voice tool results become inline cards.
   useEffect(() => {
     const onResult = (event: Event) => {
-      const detail = (event as CustomEvent<{ tool?: string; result?: AssistantResult }>).detail;
+      const detail = (event as CustomEvent<{ tool?: string; result?: AssistantResult & { render?: unknown }; render?: unknown }>).detail;
       if (!detail?.result) return;
       const title = TOOLS.find(tool => tool.name === detail.tool)?.title ?? "Ответ ассистента";
-      appendRef.current(newEntry({ question: title, response: detail.result }));
+      const render = detail.render ?? detail.result.render;
+      appendRef.current(newEntry({ question: title, response: detail.result, ...(isRenderSpec(render) ? { render: render as Record<string, unknown> } : {}) }));
     };
     window.addEventListener("ainalym:voice-tool-result", onResult);
     return () => window.removeEventListener("ainalym:voice-tool-result", onResult);
@@ -76,11 +83,16 @@ export function useAssistantVoice(scope: VoiceScope, append: (entry: ThreadEntry
   const local = extras.localStream ?? monitor;
   const remote = extras.remoteStream ?? null;
   const thinking = typingBusy || session.state === "connecting" || session.state === "checking" || session.state === "preparing";
-  const mic: WaveState = thinking ? "thinking" : speaking ? "speaking" : session.state === "listening" || session.state === "waiting_review" ? "listening" : "idle";
+  const mic: WaveState = thinking ? "thinking" : speaking ? "speaking" : muted ? "idle" : session.state === "listening" || session.state === "waiting_review" ? "listening" : "idle";
+  const micOn = active && !muted;
   const label = unavailable ? NO_VOICE
     : mic === "thinking" ? (typingBusy ? "Смотрю данные…" : session.state === "connecting" ? "Подключаюсь…" : "Проверяю…")
-    : mic === "speaking" ? "Отвечаю" : session.state === "waiting_review" ? "Ждёт вашего решения" : mic === "listening" ? "Слушаю — говорите" : "Нажмите и говорите";
+    : mic === "speaking" ? "Отвечаю" : active && muted ? "Микрофон выключен — разговор на паузе" : session.state === "waiting_review" ? "Ждёт вашего решения" : mic === "listening" ? "Слушаю — говорите" : "Микрофон выключен";
 
   const toggle = useCallback(() => { if (active) session.stop(); else if (!unavailable) void session.start(); }, [active, unavailable, session]);
-  return { session, state: session.state, active, unavailable, mic, label, local, remote, audioBlocked: extras.audioBlocked === true, enableAudio: typeof extras.enableAudio === "function" ? extras.enableAudio : undefined, toggle, stop: session.stop };
+  const toggleMic = useCallback(() => {
+    if (active) { const next = !muted; session.mute(next); setMuted(next); return; }
+    if (!unavailable) { setMuted(false); void session.start(); }
+  }, [active, muted, unavailable, session]);
+  return { session, state: session.state, active, unavailable, mic, label, local, remote, audioBlocked: extras.audioBlocked === true, enableAudio: typeof extras.enableAudio === "function" ? extras.enableAudio : undefined, toggle, stop: session.stop, micOn, muted, toggleMic };
 }

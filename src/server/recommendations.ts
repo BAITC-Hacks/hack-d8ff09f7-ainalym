@@ -12,5 +12,6 @@ export function recommendationById(id: string) {
   const outliers = database.prepare("SELECT doc_no, qty, rule FROM outlier_doc WHERE code_1c=? AND state='excluded'").all(row.code_1c as string);
   const stockouts = database.prepare("SELECT ym FROM sales_month WHERE code_1c=? AND stockout=1 ORDER BY ym").all(row.code_1c as string).map(item => String(item.ym));
   return { ...row, components, forecast_qty: components.forecast_qty == null ? row.base_rate : String(components.forecast_qty),
+    needs_review: row.qty_adjusted !== null && Number(row.qty_adjusted) > Number(row.qty_recommended),
     outliers_excluded: outliers, stockout_months: stockouts };
 }

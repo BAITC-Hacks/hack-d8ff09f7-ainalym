@@ -1,5 +1,3 @@
-import type { Metadata } from "next";
-import { ConnectionsPage } from "@/components/connections/ConnectionsPage";
-export default ConnectionsPage;
-
-export const metadata: Metadata = { title: "Связи" };
+import { redirect } from "next/navigation";
+/** «Связи» merged into «Настройки»: the plain «Откуда данные» block lives there. */
+export default function Page() { redirect("/settings#sources"); }

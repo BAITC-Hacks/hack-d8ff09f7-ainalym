@@ -1,13 +1,30 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { ApiError, apiRequest, useApiSync } from "@/components/shell/api";
 import { Btn, Empty, Loading, PageHead, Pill, Row, Rows, Unavailable, fmtMoney, fmtQty } from "./ui";
 import ui from "./ui.module.css";
 
-/** Product thumbnail (public /sku/*.jpg or category fallback from /api/skus); neutral placeholder when the catalogue has no image. */
-function Thumb({ src }: { src?: string | null }) { return src ? <img src={src} alt="" loading="lazy" decoding="async" width={28} height={28} className={ui.thumb} data-sku-thumb /> : <span className={ui.thumbNone} aria-hidden="true" data-sku-thumb="none" />; }
+/** Product thumbnail (public /sku/*.jpg or category fallback from /api/skus); neutral placeholder when the catalogue has no image.
+ *  Hover / focus (or a tap on touch screens) floats a larger preview next to the thumbnail, clamped inside the viewport. */
+function Thumb({ src }: { src?: string | null }) {
+  const [pop, setPop] = useState<{ x: number; y: number } | null>(null);
+  const touch = useRef(false);
+  const place = (el: HTMLElement) => {
+    const r = el.getBoundingClientRect(); const size = Math.min(300, Math.floor(window.innerWidth * 0.8), Math.floor(window.innerHeight * 0.7)); const gap = 12;
+    const x = r.right + gap + size <= window.innerWidth ? r.right + gap : Math.max(8, r.left - gap - size);
+    const y = Math.min(Math.max(8, r.top + r.height / 2 - size / 2), window.innerHeight - size - 8);
+    setPop({ x, y });
+  };
+  useEffect(() => { if (!pop) return; const off = () => setPop(null); window.addEventListener("scroll", off, true); return () => window.removeEventListener("scroll", off, true); }, [pop]);
+  if (!src) return <span className={ui.thumbNone} aria-hidden="true" data-sku-thumb="none" />;
+  return <span className={ui.thumbWrap} onMouseEnter={e => { if (!touch.current) place(e.currentTarget); }} onMouseLeave={() => { if (!touch.current) setPop(null); }} onFocus={e => place(e.currentTarget)} onBlur={() => setPop(null)}
+    onPointerDown={e => { touch.current = e.pointerType === "touch"; }} onClick={e => { if (touch.current) { e.preventDefault(); e.stopPropagation(); if (pop) setPop(null); else place(e.currentTarget); } }} tabIndex={0} aria-label="Показать фото крупнее">
+    <img src={src} alt="" loading="lazy" decoding="async" width={28} height={28} className={ui.thumb} data-sku-thumb />
+    {pop && <span className={ui.thumbPop} style={{ left: pop.x, top: pop.y }} aria-hidden="true"><img src={src} alt="" decoding="async" /></span>}
+  </span>;
+}
 
 type Sku = { code_1c: string; name: string; article?: string | null; supplier_id: string; supplier_name?: string; category?: string | null; unit?: string | null; unit_cost?: string | null; moq?: number; on_hand_qty?: string | null; image_url?: string | null };
 type Resp = { items: Sku[]; total: number };
