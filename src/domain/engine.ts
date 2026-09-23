@@ -9,7 +9,7 @@ export interface EngineParams {
   growth_cap: number;
   outlier: { k_month: number; k_doc: number; min_units: number };
 }
-export interface NeedResult { forecast: Record<string, unknown>; need: number; rationale_ru: string; components: Record<string, unknown> }
+export interface NeedResult { forecast: Record<string, unknown>; need: number; rationale_ru: string; components: Record<string, unknown>; flags?: string[] }
 export interface EngineContext { database?: DatabaseSync; as_of?: string }
 
 type Sku = { code_1c: string; supplier_id: string; name: string; moq: number; median_month_qty: string | null; p95_doc_qty: string | null };
@@ -50,13 +50,27 @@ export async function computeNeed(code_1c: string, params: EngineParams, ctx: En
     .all(code_1c, monthOf(asOf)) as Month[];
   const sales = database.prepare("SELECT id,doc_no,at,qty FROM sales_line WHERE code_1c=? AND at<=? ORDER BY at,id")
     .all(code_1c, `${asOf}T23:59:59`) as Sale[];
-  if (!months.length && !sales.length) throw new Error(`sales source missing for ${code_1c}`);
-  const stock = database.prepare("SELECT ym,opening_qty FROM stock_month WHERE code_1c=? AND ym<=? AND known=1 ORDER BY ym DESC LIMIT 1")
+  if (!months.length && !sales.length && !(database.prepare("SELECT 1 FROM sales_month m JOIN sku s ON s.code_1c=m.code_1c WHERE s.supplier_id=? LIMIT 1").get(sku.supplier_id)))
+    throw new Error(`sales source missing for supplier ${sku.supplier_id}`);
+  const stockRow = database.prepare("SELECT ym,opening_qty FROM stock_month WHERE code_1c=? AND ym<=? AND known=1 ORDER BY ym DESC LIMIT 1")
     .get(code_1c, monthOf(asOf)) as { ym: string; opening_qty: string | null } | undefined;
-  if (!stock || stock.opening_qty === null) throw new Error(`stock source missing for ${code_1c}`);
+  if (!stockRow && !(database.prepare("SELECT 1 FROM stock_month m JOIN sku s ON s.code_1c=m.code_1c WHERE s.supplier_id=? LIMIT 1").get(sku.supplier_id)))
+    throw new Error(`stock source missing for supplier ${sku.supplier_id}`);
+  const stock = stockRow?.opening_qty !== null && stockRow ? stockRow : { ym: monthOf(asOf), opening_qty: "0" };
   const transitRows = database.prepare("SELECT po_ref,qty,expected_at,source_file FROM in_transit WHERE code_1c=?").all(code_1c) as
     { po_ref: string; qty: string; expected_at: string | null; source_file: string | null }[];
   const transit = transitRows.reduce((sum, row) => sum.plus(row.qty), new Decimal(0));
+  if (months.every((month) => dec(month.qty_file ?? month.qty_regular).isZero()) && sales.every((sale) => dec(sale.qty).isZero())) {
+    const flags = ["inactive"];
+    return {
+      forecast: { horizon_months: (params.lead_time_days + params.review_days) / 30, base_rate: 0, season: {}, growth: 1,
+        stockout_uplift: 0, safety: 0, method_ru: "Нет продаж за период" },
+      need: 0, rationale_ru: `Код 1С ${code_1c}: нет продаж за период — заказ не требуется`, flags,
+      components: { flags, source_months: months.length, sales_lines: sales.length, stock_month: stock.ym,
+        on_hand: dec(stock.opening_qty).toNumber(), in_transit: transit.toNumber(), transit_rows: transitRows.length,
+        forecast_qty: 0, safety: 0, raw_need: 0, moq: sku.moq, urgency: "none", outliers_excluded: [], stockout_months: [] },
+    };
+  }
 
   const existing = database.prepare("SELECT doc_no,at,state FROM outlier_doc WHERE code_1c=?").all(code_1c) as Outlier[];
   const outlierState = new Map(existing.map((row) => [`${row.doc_no}|${row.at?.slice(0, 7)}`, row.state]));

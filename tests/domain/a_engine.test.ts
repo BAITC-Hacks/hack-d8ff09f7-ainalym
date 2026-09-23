@@ -35,6 +35,16 @@ function fixture(options: { seasonal?: boolean; stockout?: boolean; oneoff?: boo
 const context = (database: DatabaseSync, as_of = "2025-09-23") => ({ database, as_of });
 
 describe("deterministic replenishment need", () => {
+  it("completes a supplier's SKUs when one has no sales", async () => {
+    const database = fixture();
+    database.prepare("INSERT INTO sku (code_1c,supplier_id,name,moq) VALUES ('INACTIVE','IEK','Без продаж',1)").run();
+    database.prepare("INSERT INTO stock_month (code_1c,ym,opening_qty) VALUES ('INACTIVE','2025-09','5')").run();
+    const results = await Promise.all(["TEST", "INACTIVE"].map((code) => computeNeed(code, params, context(database))));
+    expect(results[0].need).toBeGreaterThan(0);
+    expect(results[1]).toMatchObject({ need: 0, flags: ["inactive"], components: { flags: ["inactive"] } });
+    expect(results[1].rationale_ru).toContain("нет продаж за период — заказ не требуется");
+  });
+
   it("reduces need when in-transit supply rises", async () => {
     const base = await computeNeed("TEST", params, context(fixture()));
     const supplied = await computeNeed("TEST", params, context(fixture({ inTransit: 2 })));
