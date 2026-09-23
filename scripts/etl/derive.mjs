@@ -26,7 +26,7 @@ try {
   const stockoutUpdate=d.prepare('UPDATE sales_month SET stockout=1 WHERE code_1c=? AND ym=?');
   d.exec('UPDATE sales_month SET stockout=0');
   for(const r of d.prepare('SELECT code_1c,ym,opening_qty,known FROM stock_month').iterate()){
-    if(r.known===1 && Number(r.opening_qty)>0)continue;
+    if(r.known===1 && Number(r.opening_qty)!==0)continue;
     const prior=[1,2,3].filter(n=>(sales.get(`${r.code_1c}|${prev(r.ym,n)}`)||0)>0).length;
     if(prior>=2)stockoutUpdate.run(r.code_1c,r.ym);
   }

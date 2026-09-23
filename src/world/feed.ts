@@ -17,7 +17,9 @@ export interface WorldRow {
 }
 
 export function activeOrg(orgId?: string): string {
-  const row = db().prepare("SELECT id FROM organization ORDER BY rowid LIMIT 1").get() as { id: string } | undefined;
+  // The ETL reset may provide the single demo org through scripted events first.
+  const row = (db().prepare("SELECT id FROM organization ORDER BY rowid LIMIT 1").get() as { id: string } | undefined)
+    ?? (db().prepare("SELECT org_id AS id FROM world_event ORDER BY seq, rowid LIMIT 1").get() as { id: string } | undefined);
   if (!row || (orgId && orgId !== row.id)) throw new WorldError("unknown_org", 404);
   return row.id;
 }
