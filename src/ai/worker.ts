@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { db, bumpStateVersion, withTx } from "../db/client";
 import { applyWorldEvent } from "../domain/events";
 import { recomputeAffected as domainRecompute } from "../domain/recompute";
-import { applyRecommendations } from "../domain/apply";
 import { startRun, recordAction, finishRun } from "../server/ledger";
 import { decide } from "./decisions";
 import { judgeOutlier, summarizeChanges } from "./interpret";
@@ -125,32 +124,13 @@ async function recomputeAffected(row: EventRow, codes: string[], runId: string):
   const d = db();
   const recomputed = await domainRecompute(unique);
   if (recomputed.affected_codes.length !== unique.length) throw new Error("affected_sku_missing");
-  const computed: { code: string; supplier: string; result: typeof recomputed.results[string] }[] = [];
+  const computed: { code: string; result: typeof recomputed.results[string] }[] = [];
   for (const code of recomputed.affected_codes) {
-    const supplier = d.prepare("SELECT supplier_id FROM sku WHERE code_1c=?").get(code) as { supplier_id: string } | undefined;
-    if (!supplier) throw new Error(`sku_not_found:${code}`);
     const result = recomputed.results[code];
-    if (!result.forecast) throw new Error(`engine_unavailable:${code}`);
-    computed.push({ code, supplier: supplier.supplier_id, result });
+    if (!result) throw new Error(`engine_unavailable:${code}`);
+    computed.push({ code, result });
   }
-  const calcId = `RUN-${randomUUID()}`;
-  const now = new Date().toISOString();
-  withTx(tx => {
-    tx.prepare("INSERT INTO calc_run(id,scope,params,started_at,finished_at,skus,recommended,agent_run_id) VALUES (?,?,?,?,?,?,?,?)")
-      .run(calcId, JSON.stringify({ codes: unique }), "{}", now, now, unique.length, computed.filter(c => c.result.need > 0).length, runId);
-    for (const { code, supplier, result } of computed) {
-      const forecastId = `FC-${randomUUID()}`;
-      const forecast = result.forecast!;
-      tx.prepare(`INSERT INTO forecast(id,run_id,code_1c,horizon_months,base_rate,season,growth,stockout_uplift,safety,method_ru)
-        VALUES (?,?,?,?,?,?,?,?,?,?)`).run(forecastId, calcId, code, Number(forecast.horizon_months), String(forecast.base_rate),
-          JSON.stringify(forecast.season || {}), String(forecast.growth), String(forecast.stockout_uplift), String(forecast.safety), String(forecast.method_ru || ""));
-      tx.prepare(`INSERT INTO recommendation(id,run_id,code_1c,supplier_id,qty_recommended,on_hand,in_transit,forecast_id,urgency,rationale_ru,components)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(`REC-${randomUUID()}`, calcId, code, supplier, result.need,
-          String(result.components.on_hand ?? "0"), String(result.components.in_transit ?? "0"), forecastId,
-          String(result.components.urgency ?? "none"), result.rationale_ru, JSON.stringify(result.components));
-    }
-    bumpStateVersion(tx);
-  });
+  const calcId = recomputed.run_id!;
   for (const { code, result } of computed) {
     await recordAction(runId, {
       kind: "recompute", subject_ref: code, code_1c: code, world_event_id: row.id,
@@ -163,11 +143,10 @@ async function recomputeAffected(row: EventRow, codes: string[], runId: string):
       await recordDecision(runId, row.id, "category_hint", code, { name: sku.name, org_id: row.org_id });
     }
   }
-  const applied = await applyRecommendations(calcId);
   await recordAction(runId, {
     kind: "status_change", subject_ref: calcId, world_event_id: row.id,
-    summary_ru: `Созданы предложения поставщикам: ${applied.proposals.length}`,
-    sources: applied.proposals.map(p => p && typeof p === "object" && "id" in p ? String(p.id) : calcId),
+    summary_ru: `Созданы предложения поставщикам: ${recomputed.proposal_ids.length}`,
+    sources: recomputed.proposal_ids,
     idempotency_key: `${row.id}:proposals`,
   });
   const summary = await summarizeChanges(calcId);

@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { bumpStateVersion, db, resetInstance } from "../../src/db/client";
 import { executeVoiceTool } from "../../src/voice/tools";
-import { VoiceTurnGate } from "../../src/voice/transport";
+import * as views from "../../src/domain/views";
+import { TranscriptGate, VoiceTurnGate } from "../../src/voice/transport";
 import { POST as toolRoute } from "../../src/app/api/voice/tools/[name]/route";
 
 const priorPath = process.env.DATABASE_PATH;
@@ -68,6 +69,19 @@ describe("voice tool bridge", () => {
     expect(typeof explanation.result.rationale_ru).toBe("string");
   });
 
+  it("returns the first result to a duplicate while a slow tool is running", async () => {
+    const view = vi.spyOn(views, "queueView").mockImplementation(async () => {
+      await new Promise(resolve => setTimeout(resolve, 2200));
+      return { items: [{ id: "PR-1", kind: "proposal", title: "Проверить заказ SE", why: "Требуется решение", sources: [], money_at_stake: null, options: [], href: "/review/PR-1", since: "2026-09-23" }] };
+    });
+    const call = { request_id: "call-slow-duplicate", scope: { org_id: "ORG-1" }, args: {} };
+    const [first, second] = await Promise.all([executeVoiceTool("what_needs_me", call), executeVoiceTool("what_needs_me", call)]);
+    expect(first.result).toMatchObject({ ok: true, items: [{ id: "PR-1" }] });
+    expect(second.result).toMatchObject({ ok: true, replayed: true, items: [{ id: "PR-1" }] });
+    expect(view).toHaveBeenCalledTimes(1);
+    view.mockRestore();
+  });
+
   it("rejects a SKU outside the current supplier", async () => {
     db().prepare("INSERT INTO supplier (id, name, lead_time_days) VALUES (?, ?, ?)").run("IEK", "IEK", 40);
     db().prepare("INSERT INTO sku (code_1c, supplier_id, name) VALUES (?, ?, ?)").run("SKU-1", "IEK", "Part");
@@ -96,9 +110,17 @@ describe("voice tool bridge", () => {
   it("does not create a run for a corrected, ambiguous spoken quantity", async () => {
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
+    const transcript = new TranscriptGate();
+    for (const event of [
+      { type: "input_audio_buffer.speech_started", item_id: "input-ambiguous" },
+      { type: "conversation.item.input_audio_transcription.completed", item_id: "input-ambiguous", text: "Закажи тринадцать… нет, четырнадцать тысяч" },
+    ]) {
+      if (event.type === "input_audio_buffer.speech_started") transcript.started(event.item_id);
+      else transcript.completed(event.item_id, event.text!);
+    }
     const response = await executeVoiceTool("recommend_for", {
       request_id: "call-ambiguous", scope: { org_id: "ORG-1", supplier_id: "SE" },
-      args: { supplier_id: "SE", utterance: "Закажи тринадцать… нет, четырнадцать тысяч" },
+      args: { supplier_id: "SE", utterance: transcript.take() },
     });
     expect(response.status).toBe(422);
     expect(response.result.code).toBe("needs_clarification");
