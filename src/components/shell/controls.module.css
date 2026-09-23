@@ -1,0 +1,16 @@
+.button { min-height: var(--button-h); display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); padding: 7px 12px; font: var(--t-button); position: relative; transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease); }
+.primary { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.secondary { background: var(--panel); }
+.quiet { background: transparent; border-color: transparent; color: var(--muted); }
+.button[aria-busy=true] { cursor: wait; background: var(--wash); color: var(--ink); }
+.busyMark { position: absolute; inset-inline-end: 3px; bottom: 0; font: var(--t-caption); }
+.status { min-height: 20px; font: var(--t-meta); color: var(--success); overflow-wrap: anywhere; }
+.error { color: var(--danger-fg); }
+.loadError { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font: var(--t-label); color: var(--muted); }
+.skeleton { display: grid; gap: 12px; padding-block: 8px; }
+.skeleton span { display: block; height: 20px; background: var(--wash); border-radius: 4px; }
+.skeleton span:last-child { width: 68%; }
+.empty { color: var(--muted); font: var(--t-label); padding-block: 16px; max-width: 65ch; }
+@media (hover: hover) { .secondary:hover,.quiet:hover { background: var(--wash); } .primary:hover { background: #293848; } }
+.button:active { background: var(--pressed); color: var(--ink); }
+@media (max-width: 767px) { .button { min-width: 44px; } }

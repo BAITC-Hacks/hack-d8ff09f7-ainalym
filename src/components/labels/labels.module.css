@@ -1,0 +1,4 @@
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: var(--radius-chip); background: var(--wash); color: var(--ink); font: var(--t-caption); font-weight: 500; max-width: 100%; overflow-wrap: anywhere; }
+.axes { display: flex; flex-wrap: wrap; gap: 4px 8px; }
+.warning { color: var(--warning); background: #fff8e9; }
+.danger { color: var(--danger-fg); background: var(--danger-bg); }
