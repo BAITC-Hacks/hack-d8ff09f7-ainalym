@@ -63,6 +63,8 @@ App Router handlers use the zod schemas in src/server/contracts.ts. A successful
 | GET /api/recommendations/:id | {recommendation:single row with rationale_ru, parsed components, version and proposal_id} | 200, 404 |
 | POST /api/recommendations/:id/adjust | {qty:integer ≥ 0, reason:non-empty string ≤ 200, version:integer} → {recommendation:updated row,proposal:{id,version}}; stale version → {code:stale_version,current_version} | 200, 400, 404, 409 |
 | GET /api/skus?q=&supplier=&category=&limit=&offset=; GET /api/skus/:code | {items:[sku],total:i}; {sku,series:[{ym,qty_file,qty_lines,qty_regular,stock,stock_known,stockout,outliers}],forecast?,recommendation?,in_transit:[],timeline:[]} | 200, 404 |
+| GET /api/ekt/status | `{configured,live_reachable,last_snapshot_at,products,mapped_skus,source,as_of,label}`; read-only catalog status | 200 |
+
 | GET /api/params; PUT /api/params | {suppliers:[{id,lead_time_days,review_days,terms,currency,version}],defaults:{service_level,growth_cap,outlier}}; PUT {supplier_id,lead_time_days?,review_days?,service_level?,growth_cap?} → {proposal_id,state:needs_review}; no immediate parameter write | 200, 202, 400, 404 |
 | GET /api/money | {cash:[Money],committed_by_supplier:[{supplier_id,amount,currency,lines,cost_known_lines}],next_60d:{out:[{at,amount,currency,po_id,kind}]},stock_value:Money with cost_known_share or null,risks:[]} | 200, 500 |
 | GET /api/today | {lead:s,decision:object or null,queue_count:i,pulse:{money,stockout_risk:{count,top:[{code_1c,name,days_of_cover,lead_time_days}]},agents:{auto:i,needs_you:i,ratio:number}},commitments:[],background:[],feed_next:[],empty_reason?:s}; derived from persisted runs, actions, proposals and world events | 200, 500 |
@@ -70,6 +72,8 @@ App Router handlers use the zod schemas in src/server/contracts.ts. A successful
 | GET /api/agent/ledger?since=&code=&po=&limit= | {rows:[agent_action with sources array],stats:{auto:i,needs_you:i}}; newest first, limit 1–200 | 200 |
 | GET /api/agent/runs; GET /api/agent/runs/:id | {runs:[agent_run]}; {run:agent_run,actions:[agent_action]} | 200, 404 |
 | POST /api/agent/tick | {runs:[s],processed:i}; delegates to L3 worker | 200, 500 |
+
+EKT-1 additions: `GET /api/skus/:code` carries `ekt:{id,url,price,currency,stock_total,stock_by_warehouse,availability,image_url,as_of,source}|null`. SKU and recommendation rows carry nullable `image_url`, `ekt_url`, `ekt_stock_total`, `ekt_source`, `ekt_as_of` from the dated snapshot; recommendation rows also carry nullable `ekt_price`, `ekt_currency`. Only the single-SKU route attempts a live detail lookup. EKT source labels are in §5.
 
 Internal entry onEvent(kind, payload, source_id) accepts the section 2 world kinds, validates the current organization, inserts one pending world_event by (org_id,source_id), then calls processEvent(id). An identical source returns {event_id,run_id,replayed:true} with no second insert or state_version bump. Ledger startRun, recordAction and finishRun accept an optional caller DatabaseSync transaction; action idempotency_key replay returns the existing ID with no write.
 

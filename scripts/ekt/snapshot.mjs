@@ -1,13 +1,14 @@
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync, readFileSync, writeFileSync, existsSync, unlinkSync, statSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, existsSync, unlinkSync, statSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { fetchPage, fetchDetail, loadSnapshot } from '../../src/peers/ekt.ts';
+import { fetchPage, fetchDetail, loadSnapshot, ektRequestCount, setEktRequestBudget } from '../../src/peers/ekt.ts';
 import { mapSkus } from './mapping.mjs';
 import { databasePath } from '../../src/db/path.mjs';
 
 const root = process.cwd();
 const cap = Math.min(1500, Math.max(1, Number(process.env.EKT_SNAPSHOT_REQUEST_CAP || 1500)));
+setEktRequestBudget(cap);
 const pageCap = Math.max(1, Number(process.env.EKT_SNAPSHOT_PAGE_CAP || Infinity));
 const snapshotPath = join(root, 'fixtures/ekt_snapshot.json');
 const mapPath = join(root, 'fixtures/ekt_map.json');
@@ -20,18 +21,19 @@ let snapshot = loadSnapshot();
 let requests = 0;
 let page = snapshot.complete ? 1 : snapshot.pages_fetched + 1;
 let done = false;
-const save = () => writeFileSync(snapshotPath, JSON.stringify(snapshot));
+const writeJson = (path, value) => { const temp = `${path}.${process.pid}.tmp`; writeFileSync(temp, JSON.stringify(value)); renameSync(temp, path); };
+const save = () => writeJson(snapshotPath, snapshot);
 while (!imagesOnly && requests < cap && page <= pageCap) {
   let data;
-  try { data = await fetchPage(page); requests++; }
+  try { data = await fetchPage(page); requests = ektRequestCount(); }
   catch (error) { console.error(`EKT page ${page} stopped: ${error.message}`); break; }
-  if (!data.items.length) { done = true; break; }
-  for (const item of data.items) snapshot.products[item.id] = item;
+  if (!data.items.length) { done = true; snapshot.complete = true; break; }
+  for (const item of data.items) snapshot.products[item.id] = { ...item, source: 'ekt_snapshot' };
   snapshot.fetched_at = data.as_of;
   snapshot.pages_fetched = page;
-  snapshot.complete = data.items.length < data.per_page;
+  // This API can return a short nonfinal page; only an empty page proves the end.
+  snapshot.complete = false;
   if (page % 50 === 0) { save(); console.log(`pages=${page} products=${Object.keys(snapshot.products).length} requests=${requests}`); }
-  if (snapshot.complete) { done = true; break; }
   page++;
 }
 if (!imagesOnly) save();
@@ -42,20 +44,27 @@ const ids = [...new Set([...recommended.map(code => map[code]?.id).filter(Boolea
 for (const id of imagesOnly ? [] : ids) {
   if (requests >= cap) break;
   if (snapshot.products[id]?.stock_total !== null) continue;
-  try { snapshot.products[id] = await fetchDetail(id); requests++; }
-  catch (error) { console.error(`EKT detail ${id}: ${error.message}`); requests++; }
+  try { snapshot.products[id] = { ...await fetchDetail(id), source: 'ekt_snapshot' }; }
+  catch (error) { console.error(`EKT detail ${id}: ${error.message}`); }
+  requests = ektRequestCount();
   if (requests % 50 === 0) save();
 }
 if (!imagesOnly) {
   save();
   ({ map, rates } = mapSkus(skus, snapshot.products));
-  writeFileSync(mapPath, JSON.stringify(map));
+  writeJson(mapPath, map);
   console.log(`EKT snapshot: pages=${snapshot.pages_fetched} products=${Object.keys(snapshot.products).length} complete=${snapshot.complete || done} requests=${requests}`);
   console.log(`EKT mapping: ${JSON.stringify(rates)}`);
 }
 
 // Images are restricted to SKUs in a persisted recommendation and a verified map.
 const images = existsSync(imageMapPath) ? JSON.parse(readFileSync(imageMapPath, 'utf8')) : {};
+const saveImages = () => {
+  const latest = existsSync(imageMapPath) ? JSON.parse(readFileSync(imageMapPath, 'utf8')) : {};
+  const merged = { ...latest };
+  for (const [code, image] of Object.entries(images)) if (!latest[code] || latest[code].kind === 'store') merged[code] = image;
+  writeJson(imageMapPath, merged);
+};
 const imageDir = join(root, 'public/sku'); mkdirSync(imageDir, { recursive: true });
 let downloaded = 0;
 for (const code of recommended) {
@@ -64,7 +73,10 @@ for (const code of recommended) {
   if (!mapped || !product?.image_url || images[code]?.kind && images[code].kind !== 'store') continue;
   if (!/^[\w-]+$/.test(code)) continue;
   const target = join(imageDir, `${code}.jpg`);
-  if (existsSync(target) && statSync(target).size <= 12288 && images[code]?.kind === 'store') continue;
+  if (existsSync(target) && statSync(target).size <= 12288 && images[code]?.kind === 'store') {
+    const dimensions = execFileSync('sips', ['-g','pixelWidth','-g','pixelHeight',target], { encoding: 'utf8' });
+    if (/pixelWidth: 96/.test(dimensions) && /pixelHeight: 96/.test(dimensions)) continue;
+  }
   try {
     const response = await fetch(product.image_url, { headers: { 'User-Agent': 'Ainalym-HackAlem/1.0' }, signal: AbortSignal.timeout(8000) });
     if (!response.ok) continue;
@@ -74,10 +86,10 @@ for (const code of recommended) {
     if (statSync(target).size > 12288) { unlinkSync(target); continue; }
     images[code] = { path: `/sku/${code}.jpg`, source: product.image_url, kind: 'store', fetched_at: new Date().toISOString() };
     downloaded++;
-    if (downloaded % 25 === 0) writeFileSync(imageMapPath, JSON.stringify(images));
+    if (downloaded % 25 === 0) saveImages();
   } catch { if (existsSync(target)) unlinkSync(target); }
   await new Promise(resolve => setTimeout(resolve, 500));
 }
-writeFileSync(imageMapPath, JSON.stringify(images));
+saveImages();
 console.log(`EKT thumbnails: ${downloaded}`);
 database.close();
