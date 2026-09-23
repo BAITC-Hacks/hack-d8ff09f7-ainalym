@@ -94,3 +94,9 @@
   .reviewLink { margin-left: 0; width: 100%; }
   .lead { font-size: 16px; }
 }
+
+/* Phone guard: nothing on this page may push the viewport wider than the screen. */
+.page { min-width: 0; max-width: 100%; }
+.strip, .columns, .card { min-width: 0; }
+.headActions { flex-wrap: wrap; }
+.taskNote { font: var(--v2-small, 500 13px/18px var(--v2-font)); color: var(--v2-ink-2); }

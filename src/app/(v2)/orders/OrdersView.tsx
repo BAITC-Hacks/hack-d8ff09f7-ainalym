@@ -2,10 +2,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ClipboardList, FileSpreadsheet, FileText, Mail, Truck } from "lucide-react";
-import { useApi } from "@/components/shell";
-import { Card, Empty, Kpis, Loading, PageHead, Pill, Section, Truth, Unavailable, fmtDate, fmtMoney, fmtNum } from "@/components/v2/ui";
+import { ApiError, apiRequest, useApi, useApiSync } from "@/components/shell";
+import { Btn, Card, Empty, Kpis, Loading, PageHead, Pill, Section, Truth, Unavailable, fmtDate, fmtMoney, fmtNum } from "@/components/v2/ui";
 import { stakeTier } from "@/components/v2/primitives";
 import { buildPipeline, daysLabel, ddmm, type FeedIn, type LedgerIn, type MoneyOutIn, type OrderIn, type PipelineRow, type TransitIn } from "./pipeline";
+import { ExportButton } from "@/components/v2/ExportButton";
 import styles from "./orders.module.css";
 
 type OrdersResp = { orders: OrderIn[] };
@@ -23,7 +24,38 @@ function StageRail({ row }: { row: PipelineRow }) {
   </ol>;
 }
 
-function OrderRow({ row, selected, onSelect }: { row: PipelineRow; selected: boolean; onSelect: () => void }) {
+/** Approve from the list: binds the visible order version, same contract as the order page. */
+function OrderActions({ row, onChanged }: { row: PipelineRow; onChanged: () => void }) {
+  const { refresh } = useApiSync();
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<{ tone: "ok" | "warn" | "bad"; text: string } | null>(null);
+  const draft = row.kind === "system" && row.steps.some(s => s.key === "approved" && s.state === "pending");
+  const approved = row.kind === "system" && !draft;
+  async function approve() {
+    if (busy) return; setBusy(true); setNote(null);
+    try {
+      const current = await apiRequest<{ order: { version: number } }>(`/api/orders/${encodeURIComponent(row.id)}`);
+      const version = current.order?.version ?? row.version;
+      if (version === undefined) throw new ApiError(409, "version_unknown", "Версия заказа неизвестна");
+      await apiRequest(`/api/orders/${encodeURIComponent(row.id)}/approve`, { method: "POST", body: JSON.stringify({ version }) });
+      setNote({ tone: "ok", text: `Заказ утверждён. Обязательство перед ${row.supplier_id} появилось в «Деньгах»; файл для 1С можно скачать.` });
+      refresh(); onChanged();
+    } catch (failure) {
+      const e = failure instanceof ApiError ? failure : new ApiError(500, "unknown", "Действие не выполнено.");
+      if (e.status === 409) { setNote({ tone: "warn", text: "Данные обновились — список обновлён, проверьте заказ ещё раз." }); onChanged(); }
+      else setNote({ tone: "bad", text: e.message });
+    } finally { setBusy(false); }
+  }
+  if (row.kind !== "system") return null;
+  return <div className={styles.actions}>
+    {draft && !note?.tone.startsWith("ok") ? <Btn variant="primary" busy={busy} onClick={approve}>Утвердить заказ</Btn> : null}
+    <Link href={`/orders/${encodeURIComponent(row.id)}`} className={styles.link}>Открыть</Link>
+    {(approved || note?.tone === "ok") ? <><Link href="/money" className={styles.link}>Деньги</Link><ExportButton poId={row.id} format="xlsx" lines={row.lines} className={styles.link} /></> : null}
+    {note ? <p className={styles.receipt} data-tone={note.tone} role="status">{note.text}</p> : null}
+  </div>;
+}
+
+function OrderRow({ row, selected, onSelect, onChanged }: { row: PipelineRow; selected: boolean; onSelect: () => void; onChanged: () => void }) {
   const days = daysLabel(row.arrival.days);
   const transit = row.steps.some(s => s.key === "transit" && s.state === "current");
   return <li>
@@ -34,7 +66,7 @@ function OrderRow({ row, selected, onSelect }: { row: PipelineRow; selected: boo
           <h3 className={styles.title}>{row.title}</h3>
           <div className={styles.meta}>
             <Pill tone={transit ? "good" : row.stage_label === "Черновик" ? "warn" : "neutral"}>{row.stage_label}</Pill>
-            <span>{row.supplier_id} · {fmtNum(row.lines)} {plural(row.lines, "позиция", "позиции", "позиций")} · {fmtNum(row.qty)} шт{row.kind === "partner" ? " · заказ из 1С" : ""}</span>
+            <span>{row.supplier_id} · {fmtNum(row.lines)} {plural(row.lines, "позиция", "позиции", "позиций")} · {fmtNum(row.qty)} шт{row.kind === "partner" && !row.synthetic ? " · заказ из 1С" : row.synthetic ? " · демо-событие" : ""}</span>
           </div>
         </div>
         <div className={styles.sum}>
@@ -46,6 +78,7 @@ function OrderRow({ row, selected, onSelect }: { row: PipelineRow; selected: boo
       </div>
       <StageRail row={row} />
     </button>
+    <OrderActions row={row} onChanged={onChanged} />
   </li>;
 }
 
@@ -87,7 +120,7 @@ export function OrdersView() {
       <div className={styles.main}>
         <Section title="Заказы поставщикам" count={rows.length} aside={<span className={styles.muted}>Выберите заказ — справа документы и ответ поставщика</span>}>
           {rows.length === 0 ? <Empty title="Заказов пока нет">Заказ появится здесь после утверждения предложения на странице «Сегодня».</Empty>
-            : <ul className={styles.list}>{rows.map(r => <OrderRow key={r.id} row={r} selected={selected?.id === r.id} onSelect={() => setPicked(r.id)} />)}</ul>}
+            : <ul className={styles.list}>{rows.map(r => <OrderRow key={r.id} row={r} selected={selected?.id === r.id} onSelect={() => setPicked(r.id)} onChanged={() => { orders.reload(); cash.reload(); ledger.reload(); }} />)}</ul>}
         </Section>
       </div>
       <aside className={styles.rail} aria-label="Документы и источники">
@@ -101,7 +134,7 @@ export function OrdersView() {
                 {selected.kind === "system" ? <li><FileSpreadsheet size={15} aria-hidden /><span>{selected.total_cost ? `Сумма ${fmtMoney(selected.total_cost)} · цена известна для ${fmtNum(selected.cost_known_lines)} из ${fmtNum(selected.lines)}` : "Себестоимость не задана"}</span></li> : null}
                 {selected.source_file ? <li><FileText size={15} aria-hidden /><span>Из файла «{selected.source_file}»{selected.file_date ? ` от ${fmtDate(selected.file_date)}` : ""}</span></li> : null}
               </ul>
-              {selected.kind === "system" ? <p style={{ margin: "12px 0 0" }}><Link className={styles.link} href={`/supplier/${encodeURIComponent(selected.id)}`}>Открыть письмо поставщику</Link></p> : null}
+              {selected.kind === "system" ? <p style={{ margin: "12px 0 0", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}><Link className={styles.link} href={`/orders/${encodeURIComponent(selected.id)}`}>Открыть письмо поставщику</Link>{selected.steps.some(st => st.key === "approved" && st.state !== "pending") ? <ExportButton poId={selected.id} format="xlsx" lines={selected.lines} className={styles.link} /> : null}</p> : null}
             </Card>
           </Section>
           <Section title="Ответ поставщика">

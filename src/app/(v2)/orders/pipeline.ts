@@ -6,7 +6,7 @@ export type DocState = "получен" | "не получен" | "не треб
 export type Doc = { label: string; state: DocState; note?: string };
 export type Payout = { kind: string; amount: string; currency: string; at: string };
 export type PipelineRow = {
-  id: string; kind: "system" | "partner"; supplier_id: string; title: string; header: string;
+  id: string; kind: "system" | "partner"; synthetic?: boolean; version?: number; supplier_id: string; title: string; header: string;
   lines: number; qty: number; total_cost: string | null; cost_known_lines: number;
   steps: Step[]; stage_label: string;
   arrival: { date: string | null; days: number | null; label: string };
@@ -17,11 +17,11 @@ export type PipelineRow = {
   source_file: string | null; file_date: string | null;
 };
 
-export type OrderIn = { id: string; supplier_id: string; state: string; total_qty?: number; total_cost?: string | null; cost_known_lines?: number; eta?: string | null; export_path?: string | null; lines?: unknown[]; arrival_at?: string | null; arrives_by?: string | null; arrival_by?: string | null };
+export type OrderIn = { id: string; supplier_id: string; state: string; version?: number; total_qty?: number; total_cost?: string | null; cost_known_lines?: number; eta?: string | null; export_path?: string | null; lines?: unknown[]; arrival_at?: string | null; arrives_by?: string | null; arrival_by?: string | null };
 export type FeedIn = { kind: string; po_id?: string | null; text?: string | null; at?: string | null; emitted_at?: string | null };
 export type LedgerIn = { kind: string; po_id?: string | null; at: string; summary_ru?: string | null };
 export type MoneyOutIn = { at: string; amount: string; currency: string; po_id: string; kind: string };
-export type TransitIn = { po_ref: string; supplier_id: string; expected_at?: string | null; source_file: string; file_date?: string | null; lines: number; qty: number };
+export type TransitIn = { po_ref: string; supplier_id: string; expected_at?: string | null; source_file: string | null; file_date?: string | null; lines: number; qty: number };
 
 export const STEP_LABELS: Record<StepKey, string> = { draft: "Черновик", approved: "Утверждён", letter: "Письмо подготовлено", reply: "Ответ поставщика", transit: "В пути", received: "Получен" };
 export const CUSTOMS_LINE = "граница/таможня ~2–3 дн (регламент)";
@@ -85,12 +85,12 @@ export function mapSystemOrder(o: OrderIn, feed: FeedIn[], ledger: LedgerIn[], m
     { label: "Черновик заказа", state: "получен" },
     { label: "Письмо поставщику (черновик)", state: approved ? (letter ? "получен" : "не получен") : "не требуется", note: approved ? undefined : "после утверждения" },
     { label: "Ответ поставщика", state: approved ? (reply ? "получен" : "не получен") : "не требуется", note: approved && !reply ? "ответа пока нет" : undefined },
-    { label: "Экспорт для 1С (файл)", state: exported ? "получен" : approved ? "не получен" : "не требуется" },
+    { label: "Экспорт для 1С (файл)", state: exported ? "получен" : approved ? "не получен" : "не требуется", note: exported ? undefined : approved ? "скачайте на странице заказа" : "после утверждения" },
     { label: "Предоплата 30 %", state: approved && prepay ? "не получен" : "не требуется", note: prepay ? `к оплате ${prepay.amount} ${prepay.currency}` : approved ? "себестоимость не задана" : "после утверждения" },
   ];
   const lines = o.lines?.length ?? 0;
   return {
-    id: o.id, kind: "system", supplier_id: o.supplier_id, title: `Заказ ${o.supplier_id} · №${shortId(o.id)}`, header: `Заказ ${o.id} поставщику ${o.supplier_id}: ${grouped(lines)} позиций, ${grouped(o.total_qty ?? 0)} шт`,
+    id: o.id, kind: "system", version: o.version, supplier_id: o.supplier_id, title: `Заказ ${o.supplier_id} · №${shortId(o.id)}`, header: `Заказ ${o.id} поставщику ${o.supplier_id}: ${grouped(lines)} позиций, ${grouped(o.total_qty ?? 0)} шт`,
     lines, qty: o.total_qty ?? 0, total_cost: o.total_cost ?? null, cost_known_lines: o.cost_known_lines ?? 0,
     steps, stage_label: stageLabel(steps),
     arrival: { date: realArrival, days: daysUntil(realArrival, now), label: inTransit ? arrivalLabel(realArrival) : "ещё не отправлен" },
@@ -100,8 +100,10 @@ export function mapSystemOrder(o: OrderIn, feed: FeedIn[], ledger: LedgerIn[], m
   };
 }
 
+const SYNTHETIC_REF = /^(JUDGE|WE|SCRIPT|DEMO)[-_]/i;
 export function mapPartnerTransit(t: TransitIn, now: Date): PipelineRow {
   const date = arrivalFromHeader(t.po_ref);
+  if (SYNTHETIC_REF.test(t.po_ref) || !t.source_file) return mapDemoTransit(t, date, now);
   const steps: Step[] = ORDER.map(key => {
     if (key === "draft" || key === "approved") return { key, label: STEP_LABELS[key], state: "done", note: "оформлен в 1С" };
     if (key === "letter" || key === "reply") return { key, label: STEP_LABELS[key], state: "unknown", note: "ведётся в 1С" };
@@ -122,6 +124,21 @@ export function mapPartnerTransit(t: TransitIn, now: Date): PipelineRow {
       { label: "Экспорт для 1С (файл)", state: "не требуется", note: "заказ уже в 1С" },
     ],
     payouts: [], source_file: t.source_file, file_date: t.file_date ?? null,
+  };
+}
+
+function mapDemoTransit(t: TransitIn, date: string | null, now: Date): PipelineRow {
+  const title = `Демо-событие: +${grouped(Math.round(t.qty))} шт в пути по ${t.supplier_id}`;
+  const steps: Step[] = ORDER.map(key => key === "transit" ? { key, label: STEP_LABELS[key], state: "current", note: arrivalLabel(date) } : key === "received" ? { key, label: STEP_LABELS[key], state: "pending" } : { key, label: STEP_LABELS[key], state: "unknown", note: "событие ленты" });
+  return {
+    id: `partner:${t.supplier_id}:${t.po_ref}`, kind: "partner", synthetic: true, supplier_id: t.supplier_id, title, header: `${title} — добавлено из ленты событий`,
+    lines: t.lines, qty: Math.round(t.qty), total_cost: null, cost_known_lines: 0,
+    steps, stage_label: STEP_LABELS.transit,
+    arrival: { date, days: daysUntil(date, now), label: arrivalLabel(date) },
+    customs: null, plan_eta: null,
+    reply: { text: null, at: null }, letter_at: null,
+    docs: [{ label: "Событие ленты «товар в пути»", state: "получен" }, { label: "Экспорт для 1С (файл)", state: "не требуется", note: "демо-событие" }],
+    payouts: [], source_file: null, file_date: t.file_date ?? null,
   };
 }
 
