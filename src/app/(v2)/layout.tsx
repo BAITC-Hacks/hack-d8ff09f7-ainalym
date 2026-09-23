@@ -6,5 +6,5 @@ import { V2Shell } from "@/components/v2/Shell";
 export const metadata: Metadata = { title: { default: "Ainalym", template: "%s · Ainalym" } };
 
 export default function V2Layout({ children }: { children: React.ReactNode }) {
-  return <div className="v2"><ApiProvider><V2Shell>{children}</V2Shell></ApiProvider></div>;
+  return <ApiProvider><V2Shell>{children}</V2Shell></ApiProvider>;
 }
