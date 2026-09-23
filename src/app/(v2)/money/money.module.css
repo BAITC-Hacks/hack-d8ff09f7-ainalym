@@ -27,6 +27,16 @@
 .riskBody { margin: 0; font: var(--v2-meta); color: var(--v2-ink-2); }
 .sources { display: flex; flex-direction: column; gap: 8px; font: var(--v2-meta); color: var(--v2-ink-2); }
 .sources p { margin: 0; }
-.sources code { font: 500 12px/16px ui-monospace, Menlo, monospace; background: var(--v2-well); padding: 1px 5px; border-radius: 4px; }
+.fill { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: var(--v2-radius-sm); border: 1px solid var(--v2-accent); background: var(--v2-accent); color: var(--v2-on-accent); font: 500 13px/20px var(--v2-font); text-decoration: none; white-space: nowrap; letter-spacing: 0; }
+.fill:hover { background: var(--v2-accent-hover); border-color: var(--v2-accent-hover); }
+.risk .fill { margin-top: 12px; }
+.gapsCard { padding: 20px 24px; margin: 0 0 28px; }
+.gapsHead { margin-bottom: 12px; }
+.gapsTitle { margin: 0 0 4px; font: var(--v2-h2); }
+.gapsSub { margin: 0; font: var(--v2-meta); color: var(--v2-muted); }
+.gaps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.gaps li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--v2-line); }
+.gapText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gapText b { font: var(--v2-body); font-weight: 500; }
 @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; gap: 32px; } }
 @media (max-width: 767px) { .thead { display: none; } .tr, .tfoot { grid-template-columns: minmax(0, 1fr) auto; } .tr > :nth-child(2), .tr > :nth-child(3), .tfoot > :nth-child(2), .tfoot > :nth-child(3) { display: none; } .tr { padding: 12px 8px; min-height: 44px; } }

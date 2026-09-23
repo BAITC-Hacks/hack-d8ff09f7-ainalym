@@ -1,0 +1,12 @@
+# UX-FIX-B closeout — Настройки, Деньги без пустот, Связи → Настройки (23.09.2026)
+
+- Outcome: owner verdicts A/B/C closed. `/settings` is the one plain-Russian page for owner inputs (Деньги: остаток + дата + валюта + условия оплаты per supplier, saved directly; Поставки: срок / период проверки / доля колебаний, via the existing proposal gate; Себестоимость: live count of SKUs without cost + the two honest routes, README run/data sections, no fake upload; Откуда данные: three lines, last 1С load from data). `/connections` redirects to `/settings#sources`; nav «Связи» → «Настройки» (same slot).
+- Money: every known number stays; each gap is a «Заполнить» / «Где взять» button to `/settings#opening_cash` / `#cost`; top card «Что заполнить, чтобы видеть деньги полностью» with the SKU-without-cost count; 30/70 obligations view kept; all field/table names and «LLM»/«jev» removed from copy and tooltips (formulas in words).
+- API: `GET /api/params` now also returns `org` (opening cash, currency, last load) and `cost`; new `PATCH /api/params` writes opening cash/currency into the existing organization payload and prepay share into supplier terms (the fields cashflow/obligations already read) — no schema DDL was needed, so `src/db/schema.sql` is untouched. Default margin: no field exists in the money layer, so none was invented.
+- Loading: pages use the tracked `useApi`, so the shell ribbon shows for any request > 300 ms; skeletons for first paint.
+- Checks: `npm run etl && npm run check` → passed=305 failed=0 skipped=7 (externally-unverified); `npm run build` OK; `npx tsc --noEmit` clean; vitest `tests/domain/uxfix_b_settings.test.ts` (4 tests: read gaps, PATCH round trip reflected in `moneyView`, validation/null clear, PUT still a proposal); Playwright `tests/e2e/v2_uxfix_b.config.ts` 2/2 with no-technical-terms assertions on both pages.
+- Evidence: `docs/evidence/v2/uxfix_b/{money,settings}_desktop{,_full}.png` (1440×900).
+- Files: `src/app/(v2)/settings/{page,SettingsPage}.tsx`, `settings.module.css`, `src/app/(v2)/money/{MoneyPage.tsx,money.module.css}`, `src/app/(v2)/connections/page.tsx`, `src/app/api/params/route.ts`, `src/server/contracts.ts`, `src/components/v2/Shell.tsx` (nav entry + icon import only), tests above.
+- Not touched: assistant, voice, replenishment, skus, orders, suppliers lanes.
+- Unverified: supply-form save was exercised only through the API test (proposal path), not clicked in the browser.
+- Gate: GREEN
