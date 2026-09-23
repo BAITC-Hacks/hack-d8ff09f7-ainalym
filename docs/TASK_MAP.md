@@ -2,7 +2,7 @@
 
 Единственный источник статусов для README. Статус ставится только по коду на `main` и `Gate: GREEN` в `docs/agent_handoffs/*`. Обновляется после каждого слияния (L7).
 
-Наблюдение: **2026-09-23 08:45Z**, `main` @ `0d9406a`.
+Наблюдение: **2026-09-23 08:55Z**, `main` @ `3e964a0` (L9 ETL влит).
 
 Статусы: `GREEN` — проверено командой в это время · `PARTIAL` — есть код, проверки нет или неполная · `PENDING` — кода нет на `main`.
 
@@ -13,7 +13,8 @@
 | M3 | Оценка и компенсация упущенного спроса (stockout) | `src/domain/engine.ts` | `node scripts/scenario.mjs` (M3) | PENDING · 08:45Z |
 | M4 | Выявление и исключение разовых крупных заказов | `src/domain/engine.ts` · `POST /api/world/compose` | `node scripts/scenario.mjs` (M4) | PENDING · 08:45Z |
 | M5 | Список по поставщикам + обоснование по строке + экспорт «Код 1с» | `src/domain/apply.ts` · `GET /api/recommendations` · `GET /api/orders/:id/export.xlsx` | `node scripts/scenario.mjs` (M5) | PENDING · 08:45Z |
-| D1 | Загрузка данных партнёра в SQLite, счётчики | `npm run etl` · `POST /api/demo/reset` | `npm run etl` | PENDING · 08:45Z |
+| D1 | Загрузка данных партнёра в SQLite, счётчики | `scripts/etl/*.mjs` → `data/partner.db` · (`POST /api/demo/reset` — PENDING) | `npm run etl` → sku 3909, sales_line 248915, in_transit 313, stockout months 1596; `npx vitest run tests/etl/counts.test.ts` | GREEN · 08:53Z |
+| D4 | Лента событий-фикстур и эталоны проверок | `fixtures/world_events.jsonl` (45) · `tests/fixtures/eval/replenishment_expectations.json` | `wc -l fixtures/world_events.jsonl` → 45 | GREEN · 08:55Z |
 | D2 | Схема БД и клиент SQLite | `src/db/schema.sql` (26 таблиц) · `src/db/client.ts` | `grep -c "CREATE TABLE" src/db/schema.sql` → 26 | GREEN · 08:45Z |
 | D3 | Данные партнёра в репозитории | `fixtures/partner/{IEK,SE}/*.xlsx` (12 файлов) | `ls fixtures/partner/*/*.xlsx \| wc -l` → 12 | GREEN · 08:45Z |
 | Q1 | Очередь решений: утверждение привязано к версии, без автоотправки | `/api/proposals/*` · `/api/queue` | `npm run check` | PENDING · 08:45Z |
